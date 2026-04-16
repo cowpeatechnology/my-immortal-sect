@@ -1,0 +1,37 @@
+{
+  "manifest_version": 3,
+  "name": "SlgGame ChatGPT Bridge",
+  "version": "0.1.0",
+  "description": "Reuse a normal Chrome ChatGPT session and bridge commands from localhost.",
+  "permissions": [
+    "storage",
+    "downloads",
+    "tabs",
+    "activeTab"
+  ],
+  "host_permissions": [
+    "https://chatgpt.com/*",
+    "https://*.oaiusercontent.com/*",
+    "https://*.openai.com/*",
+    "http://127.0.0.1:8765/*",
+    "http://localhost:8765/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_title": "SlgGame ChatGPT Bridge",
+    "default_popup": "popup.html"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://chatgpt.com/*"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ]
+}

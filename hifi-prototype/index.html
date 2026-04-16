@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>修仙宗门经营 UI 高保真原型</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="atmosphere"></div>
+    <div class="grain"></div>
+
+    <div class="app-shell">
+      <aside class="design-rail">
+        <div class="design-kicker">SLGGAME / HI-FI PROTOTYPE</div>
+        <h1>青岚宗高保真界面提案</h1>
+        <p class="lead">
+          以你选中的山门大图作为主视觉母体，把现有 14 张低保真原型统一到
+          “青绿山水、绢纸卡片、木构鎏金、轻卷轴感”的界面体系中。
+        </p>
+
+        <section class="token-board">
+          <div class="token-card">
+            <span class="token-label">视觉气质</span>
+            <strong>山门庭院 / 水瀑云岚 / 仙家工坊</strong>
+          </div>
+          <div class="token-card">
+            <span class="token-label">信息结构</span>
+            <strong>场景先行，信息浮于边缘，核心操作收束到底部</strong>
+          </div>
+          <div class="token-card">
+            <span class="token-label">原型覆盖</span>
+            <strong>14 个界面状态 + 统一底部导航体系</strong>
+          </div>
+        </section>
+
+        <section class="palette-board">
+          <div class="swatch">
+            <span class="swatch-color jade"></span>
+            <div>
+              <strong>屋脊青玉</strong>
+              <span>#3f6b58</span>
+            </div>
+          </div>
+          <div class="swatch">
+            <span class="swatch-color parchment"></span>
+            <div>
+              <strong>绢纸米白</strong>
+              <span>#f6ead1</span>
+            </div>
+          </div>
+          <div class="swatch">
+            <span class="swatch-color timber"></span>
+            <div>
+              <strong>木构深褐</strong>
+              <span>#4d3624</span>
+            </div>
+          </div>
+          <div class="swatch">
+            <span class="swatch-color blossom"></span>
+            <div>
+              <strong>桃瓣粉霞</strong>
+              <span>#e9b7c3</span>
+            </div>
+          </div>
+          <div class="swatch">
+            <span class="swatch-color gold"></span>
+            <div>
+              <strong>描边暖金</strong>
+              <span>#cda168</span>
+            </div>
+          </div>
+        </section>
+
+        <section class="principles">
+          <div class="principle">
+            <span>01</span>
+            <p>主城界面保持可玩感，中间视野尽量让给场景与建筑。</p>
+          </div>
+          <div class="principle">
+            <span>02</span>
+            <p>所有信息采用“绢纸卡 + 玉牌标签”，避免现代后台感。</p>
+          </div>
+          <div class="principle">
+            <span>03</span>
+            <p>重要操作只用一枚主按钮，次级按钮退到描边与灰金层级。</p>
+          </div>
+        </section>
+
+        <section>
+          <div class="section-title">界面目录</div>
+          <nav class="screen-nav" id="screenNav"></nav>
+        </section>
+      </aside>
+
+      <main class="preview-stage">
+        <header class="stage-header">
+          <div class="stage-title-block">
+            <span class="stage-tag" id="screenModule">宗门系统</span>
+            <h2 id="screenTitle">宗门主界面</h2>
+            <p id="screenSubtitle">
+              主城保留大景深山门表现，操作按钮作为木牌悬挂在左右两侧。
+            </p>
+          </div>
+          <div class="stage-actions">
+            <button class="stage-btn" id="prevScreen" type="button">上一张</button>
+            <button class="stage-btn primary" id="nextScreen" type="button">下一张</button>
+          </div>
+        </header>
+
+        <section class="phone-stage">
+          <div class="phone-shadow"></div>
+          <div class="phone-frame">
+            <div class="phone-speaker"></div>
+            <div class="phone-screen" id="phoneScreen"></div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script src="./app.js"></script>
+  </body>
+</html>

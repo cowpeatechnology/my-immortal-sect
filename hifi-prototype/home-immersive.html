@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>主城实机定稿图</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body class="immersive-body immersive-body--final">
+    <div class="atmosphere"></div>
+    <div class="grain"></div>
+
+    <main class="cinematic-stage">
+      <section class="screen final-home screen-enter">
+        <header class="final-home__hud">
+          <div class="sect-seal">
+            <div class="sect-seal__crest">
+              <span class="sect-seal__roof"></span>
+            </div>
+            <div class="sect-seal__copy">
+              <span class="sect-seal__tag">主城实机演示</span>
+              <strong>无极仙宗</strong>
+            </div>
+          </div>
+
+          <div class="resource-ribbon final-resource-ribbon">
+            <div class="resource-chip">
+              <span class="resource-dot">木</span>
+              <span>木材 <b>268</b></span>
+            </div>
+            <div class="resource-chip">
+              <span class="resource-dot">石</span>
+              <span>石料 <b>154</b></span>
+            </div>
+            <div class="resource-chip">
+              <span class="resource-dot">草</span>
+              <span>灵草 <b>82</b></span>
+            </div>
+            <div class="resource-chip">
+              <span class="resource-dot">香</span>
+              <span>香火 <b>48</b></span>
+            </div>
+          </div>
+        </header>
+
+        <div class="final-home__topline">
+          <span class="scene-chip">第 12 日 · 辰时</span>
+          <span class="scene-chip scene-chip--muted">白昼作业段</span>
+          <span class="scene-chip scene-chip--accent">炼丹房蓝图已落位</span>
+        </div>
+
+        <section class="final-home__scene">
+          <canvas class="final-home__canvas" id="immersiveMapCanvas" aria-hidden="true"></canvas>
+
+          <div class="brush-label brush-label--hall">
+            <span>太清殿</span>
+          </div>
+          <div class="brush-label brush-label--store">
+            <span>仓苑</span>
+          </div>
+          <div class="brush-label brush-label--alchemy">
+            <span>炼丹房</span>
+          </div>
+
+          <div class="task-badge task-badge--store">
+            <span class="task-badge__icon"></span>
+            <strong>搬运</strong>
+          </div>
+          <div class="task-badge task-badge--build">
+            <span class="task-badge__icon"></span>
+            <strong>施工</strong>
+          </div>
+        </section>
+
+        <section class="final-home__status">
+          <div class="status-chip">
+            <strong>今日规则</strong>
+            <span>搬运 = 建造 > 修炼</span>
+          </div>
+          <div class="status-chip">
+            <strong>当前营造</strong>
+            <span>东坪炼丹房进入备料</span>
+          </div>
+          <div class="status-chip">
+            <strong>表现目标</strong>
+            <span>主城画面优先展现地图本体</span>
+          </div>
+        </section>
+
+        <nav class="bottom-dock bottom-dock--final">
+          <div class="dock-item is-active">
+            <span class="dock-item__icon dock-item__icon--home">
+              <span class="dock-glyph"></span>
+            </span>
+            <span class="dock-item__label">主城</span>
+          </div>
+          <div class="dock-item">
+            <span class="dock-item__icon dock-item__icon--build">
+              <span class="dock-glyph"></span>
+            </span>
+            <span class="dock-item__label">建造</span>
+          </div>
+          <div class="dock-item">
+            <span class="dock-item__icon dock-item__icon--disciples">
+              <span class="dock-glyph"></span>
+            </span>
+            <span class="dock-item__label">弟子</span>
+          </div>
+          <div class="dock-item">
+            <span class="dock-item__icon dock-item__icon--descent">
+              <span class="dock-glyph"></span>
+            </span>
+            <span class="dock-item__label">神降</span>
+          </div>
+        </nav>
+      </section>
+    </main>
+
+    <script src="./immersive-map.js"></script>
+  </body>
+</html>

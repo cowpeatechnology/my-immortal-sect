@@ -1,0 +1,38 @@
+# Current repository stage is planning / pre-M0. Repository initialization commands
+# should always stop for explicit confirmation.
+
+prefix_rule(
+    pattern = ["go", "mod", "init"],
+    decision = "prompt",
+    justification = "Go module initialization means M0 server scaffolding has started. Only do this when the user explicitly asks for initialization.",
+)
+
+prefix_rule(
+    pattern = ["npm", "init"],
+    decision = "prompt",
+    justification = "npm init means client or tooling scaffolding has started. Confirm explicit user intent first.",
+)
+
+prefix_rule(
+    pattern = ["pnpm", "init"],
+    decision = "prompt",
+    justification = "pnpm init means client or tooling scaffolding has started. Confirm explicit user intent first.",
+)
+
+prefix_rule(
+    pattern = ["yarn", "init"],
+    decision = "prompt",
+    justification = "yarn init means client or tooling scaffolding has started. Confirm explicit user intent first.",
+)
+
+prefix_rule(
+    pattern = ["bun", "init"],
+    decision = "prompt",
+    justification = "bun init means a new runtime scaffold is being created. Confirm explicit user intent first.",
+)
+
+prefix_rule(
+    pattern = ["mkdir", ["client", "server", "shared"]],
+    decision = "prompt",
+    justification = "Creating top-level game worktrees is a stage-gated action. Confirm the user has explicitly started M0 or asked for scaffolding.",
+)

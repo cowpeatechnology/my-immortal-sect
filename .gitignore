@@ -1,0 +1,14 @@
+.DS_Store
+*.pyc
+__pycache__/
+
+.claude/
+.playwright-cli/
+
+output/
+UI参考/
+
+node_modules/
+.venv/
+.idea/
+.vscode/

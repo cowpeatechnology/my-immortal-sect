@@ -1,0 +1,80 @@
+{
+  "version": 1,
+  "defaults": {
+    "output_dir": "../output/chrome-bridge/test-varied-assets-20260416",
+    "size": "1024x1024",
+    "format": "png",
+    "wait_timeout": 1500,
+    "generation_timeout_ms": 600000,
+    "post_completion_settle_ms": 30000,
+    "continue_on_error": true,
+    "skip_done": true
+  },
+  "items": [
+    {
+      "id": "female-sword-cultivator",
+      "name": "冷艳女剑修",
+      "basename": "female-sword-cultivator",
+      "prompt": "生成一张适合修仙题材游戏使用的角色资源图：一位冷艳克制的年轻女剑修，黑发高束，发冠简洁利落，气质清冷而锋利，穿青绿色、月白色与少量银色点缀的国风修仙劲装，服装层次清晰，腰间玉佩与剑穗细节精致，手持细长仙剑或背负长剑，完整全身，三分之四轻微侧身站姿，人物比例自然，风格精致唯美，国风水墨青绿系，适合游戏角色立绘/角色资产使用，背景透明，只保留单个人物，不要场景，不要底座，不要文字，不要UI，不要水印，不要多人。",
+      "status": "done",
+      "error_message": null,
+      "updated_at": "2026-04-15T19:53:10Z",
+      "output_path": "/Users/mawei/MyWork/SlgGame/output/chrome-bridge/test-varied-assets-20260416/female-sword-cultivator.png",
+      "output_paths": [
+        "/Users/mawei/MyWork/SlgGame/output/chrome-bridge/test-varied-assets-20260416/female-sword-cultivator.png"
+      ],
+      "last_command_id": "b38b94e4-79bc-40e8-8646-c299839bcddc",
+      "last_generation": {
+        "completed": true,
+        "completed_at": "2026-04-15T19:52:52.581Z",
+        "final_image_count": 1,
+        "busy_observed": true,
+        "response_sections_observed": true,
+        "media_observed": true,
+        "stable_polls": 3,
+        "poll_count": 27,
+        "settle_ms": 30000,
+        "capture_method": "modal-save-download",
+        "capture_url": "blob:https://chatgpt.com/81ff02dc-10da-4d96-8ac9-f01c881fe61a",
+        "downloaded_file": "/Users/mawei/Downloads/ChatGPT Image 2026年4月16日 03_53_08.png"
+      }
+    },
+    {
+      "id": "spirit-deer-mount",
+      "name": "灵鹿坐骑",
+      "basename": "spirit-deer-mount",
+      "prompt": "生成一张适合修仙题材游戏使用的生物资源图：一只仙气十足的灵鹿坐骑，体态修长优雅，毛色以浅白、淡青和少量金色为主，鹿角像温润玉石与藤蔓结合的形态，四肢轻盈，背部有简洁古风鞍具或飘带装饰，完整全身，侧向站立，轮廓清楚，风格精致唯美，国风水墨青绿系，适合游戏宠物/坐骑资产使用，背景透明，只保留单个生物，不要场景，不要地面，不要文字，不要UI，不要水印，不要人物，不要多人。",
+      "status": "error",
+      "error_message": "Could not find a final download action on the latest generated image.",
+      "updated_at": "2026-04-15T19:54:34Z"
+    },
+    {
+      "id": "bronze-alchemy-furnace",
+      "name": "青铜炼丹炉",
+      "basename": "bronze-alchemy-furnace",
+      "prompt": "生成一张适合修仙题材游戏使用的道具资源图：一个精致古朴的青铜炼丹炉，主体为青铜与青玉材质，局部有暖金色微光和云纹、饕餮纹、仙家符纹细节，三足稳固，炉盖带小型兽首或宝珠装饰，整体造型庄重但有仙气，体块清晰，完整单体，适合游戏道具/建筑内摆件资产使用，背景透明，只保留单个炼丹炉，不要场景，不要桌面，不要人物，不要文字，不要UI，不要水印。",
+      "status": "done",
+      "error_message": null,
+      "updated_at": "2026-04-15T19:55:44Z",
+      "output_path": "/Users/mawei/MyWork/SlgGame/output/chrome-bridge/test-varied-assets-20260416/bronze-alchemy-furnace.png",
+      "output_paths": [
+        "/Users/mawei/MyWork/SlgGame/output/chrome-bridge/test-varied-assets-20260416/bronze-alchemy-furnace.png"
+      ],
+      "last_command_id": "709c0a05-aca5-4a5d-bd57-1149c668af9c",
+      "last_generation": {
+        "completed": true,
+        "completed_at": "2026-04-15T19:55:40.316Z",
+        "final_image_count": 1,
+        "busy_observed": true,
+        "response_sections_observed": true,
+        "media_observed": true,
+        "stable_polls": 2,
+        "poll_count": 29,
+        "settle_ms": 30000,
+        "capture_method": "modal-save-download",
+        "capture_url": "blob:https://chatgpt.com/b302d933-53da-4e9d-9234-0b418af0208b",
+        "downloaded_file": "/Users/mawei/Downloads/ChatGPT Image 2026年4月16日 03_55_42.png"
+      }
+    }
+  ]
+}
