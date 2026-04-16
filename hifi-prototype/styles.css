@@ -3598,6 +3598,292 @@ body.immersive-body--final::before {
   top: 276px;
 }
 
+.interactive-lot {
+  position: absolute;
+  z-index: 7;
+  width: 128px;
+  min-height: 34px;
+  border: 1px solid rgba(74, 122, 126, 0.54);
+  border-radius: 14px;
+  background:
+    linear-gradient(180deg, rgba(239, 252, 251, 0.9), rgba(197, 232, 230, 0.86));
+  color: rgba(30, 56, 64, 0.92);
+  font-size: 11px;
+  line-height: 1.25;
+  padding: 6px 8px;
+  text-align: left;
+  cursor: pointer;
+  box-shadow:
+    0 14px 24px rgba(44, 59, 62, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.76);
+  transition: transform 220ms ease, box-shadow 220ms ease, background 220ms ease;
+}
+
+.interactive-lot:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    0 18px 30px rgba(44, 59, 62, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.84);
+}
+
+.interactive-lot span {
+  display: block;
+}
+
+.interactive-lot.is-selected {
+  border-color: rgba(198, 152, 84, 0.76);
+  background:
+    linear-gradient(180deg, rgba(255, 246, 225, 0.98), rgba(243, 217, 166, 0.94));
+  color: rgba(75, 49, 30, 0.92);
+}
+
+.interactive-lot.is-building {
+  border-color: rgba(84, 162, 166, 0.8);
+  background:
+    linear-gradient(180deg, rgba(221, 247, 249, 0.96), rgba(169, 219, 224, 0.94));
+}
+
+.interactive-lot.is-occupied {
+  border-color: rgba(112, 161, 95, 0.72);
+  background:
+    linear-gradient(180deg, rgba(234, 248, 225, 0.96), rgba(183, 218, 158, 0.9));
+}
+
+.interactive-lot--east {
+  right: 28px;
+  top: 254px;
+}
+
+.interactive-lot--south {
+  left: 138px;
+  top: 316px;
+}
+
+.interactive-lot--west {
+  left: 22px;
+  top: 318px;
+}
+
+.pawn-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 7;
+  pointer-events: none;
+}
+
+.map-site {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  min-width: 98px;
+  padding: 6px 8px;
+  border-radius: 12px;
+  background: rgba(37, 68, 78, 0.86);
+  border: 1px solid rgba(161, 212, 214, 0.56);
+  color: rgba(243, 252, 249, 0.94);
+  box-shadow: 0 12px 20px rgba(39, 29, 20, 0.2);
+}
+
+.map-site strong {
+  display: block;
+  font-size: 11px;
+}
+
+.map-site span {
+  display: block;
+  margin-top: 2px;
+  font-size: 10px;
+  opacity: 0.86;
+}
+
+.map-site.is-active {
+  background: rgba(62, 96, 63, 0.86);
+  border-color: rgba(183, 226, 162, 0.62);
+}
+
+.map-pawn {
+  position: absolute;
+  transform: translate(-50%, -88%);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.map-pawn__dot {
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: var(--disciple-primary, rgba(160, 190, 219, 0.95));
+  border: 1px solid rgba(255, 248, 235, 0.82);
+  box-shadow:
+    0 0 0 3px rgba(112, 142, 171, 0.26),
+    0 8px 14px rgba(28, 20, 13, 0.24);
+}
+
+.map-pawn__meta {
+  max-width: 124px;
+  padding: 3px 6px;
+  border-radius: 10px;
+  background: rgba(31, 28, 24, 0.78);
+  color: rgba(249, 241, 225, 0.9);
+  box-shadow: 0 10px 18px rgba(44, 33, 24, 0.18);
+}
+
+.map-pawn__name {
+  display: block;
+  font-size: 10px;
+  line-height: 1.1;
+}
+
+.map-pawn__task {
+  display: block;
+  margin-top: 2px;
+  font-size: 9px;
+  line-height: 1.2;
+  opacity: 0.82;
+}
+
+.phase1-panel {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 198px;
+  z-index: 7;
+  max-height: 220px;
+  overflow: hidden;
+  border-radius: 18px;
+  border: 1px solid rgba(188, 145, 84, 0.24);
+  background:
+    linear-gradient(180deg, rgba(255, 250, 240, 0.9), rgba(241, 228, 198, 0.9));
+  box-shadow:
+    0 16px 24px rgba(53, 38, 26, 0.14),
+    inset 0 1px 0 rgba(255, 255, 255, 0.72);
+  padding: 10px 11px;
+  display: grid;
+  gap: 8px;
+}
+
+.phase1-panel__head {
+  display: grid;
+  gap: 2px;
+}
+
+.phase1-panel__head strong {
+  font-size: 12px;
+  color: rgba(63, 107, 88, 0.94);
+}
+
+.phase1-panel__head span {
+  font-size: 10px;
+  color: rgba(79, 59, 40, 0.78);
+}
+
+.phase1-panel__summary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.phase1-panel__summary span {
+  padding: 5px 7px;
+  border-radius: 10px;
+  background: rgba(255, 246, 227, 0.92);
+  border: 1px solid rgba(188, 145, 84, 0.18);
+  font-size: 10px;
+  color: rgba(65, 51, 38, 0.84);
+}
+
+.phase1-panel__buildings {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.phase1-blueprint-btn {
+  min-height: 32px;
+  border-radius: 10px;
+  border: 1px solid rgba(126, 99, 64, 0.22);
+  background: rgba(255, 250, 242, 0.84);
+  color: rgba(72, 55, 36, 0.9);
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.phase1-blueprint-btn.is-selected {
+  border-color: rgba(66, 111, 90, 0.56);
+  background: linear-gradient(180deg, rgba(132, 177, 152, 0.94), rgba(73, 114, 94, 0.94));
+  color: rgba(255, 248, 233, 0.98);
+}
+
+.phase1-panel__actions {
+  display: grid;
+  grid-template-columns: 1.6fr 1fr;
+  gap: 8px;
+}
+
+.phase1-action-btn {
+  min-height: 36px;
+  border-radius: 12px;
+  border: 1px solid rgba(70, 108, 90, 0.44);
+  background: linear-gradient(180deg, rgba(96, 149, 124, 0.96), rgba(57, 98, 79, 0.96));
+  color: rgba(255, 248, 236, 0.98);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  box-shadow: 0 8px 14px rgba(35, 51, 44, 0.24);
+}
+
+.phase1-action-btn.is-secondary {
+  border-color: rgba(125, 95, 63, 0.28);
+  background: rgba(253, 245, 232, 0.94);
+  color: rgba(86, 63, 40, 0.9);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72);
+}
+
+.phase1-panel__feedback {
+  padding: 6px 8px;
+  border-radius: 10px;
+  background: rgba(251, 242, 221, 0.9);
+  border: 1px solid rgba(178, 136, 77, 0.2);
+  font-size: 11px;
+  color: rgba(83, 59, 35, 0.9);
+}
+
+.phase1-panel__feedback[data-type="warn"] {
+  background: rgba(250, 230, 214, 0.92);
+  border-color: rgba(173, 84, 62, 0.3);
+  color: rgba(124, 55, 40, 0.92);
+}
+
+.phase1-panel__feedback[data-type="good"] {
+  background: rgba(230, 245, 225, 0.92);
+  border-color: rgba(95, 145, 86, 0.3);
+  color: rgba(45, 90, 56, 0.92);
+}
+
+.phase1-panel__tasks strong {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 10px;
+  color: rgba(63, 107, 88, 0.92);
+}
+
+.phase1-panel__tasks ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 3px;
+  max-height: 56px;
+  overflow: hidden;
+}
+
+.phase1-panel__tasks li {
+  font-size: 10px;
+  line-height: 1.28;
+  color: rgba(73, 55, 37, 0.88);
+}
+
 .final-home__status {
   position: absolute;
   left: 12px;
@@ -3695,5 +3981,57 @@ body.immersive-body--final::before {
   .brush-label--alchemy {
     right: 24px;
     top: 274px;
+  }
+
+  .interactive-lot--west {
+    left: 14px;
+    top: 306px;
+  }
+
+  .interactive-lot--east {
+    right: 20px;
+    top: 246px;
+  }
+
+  .interactive-lot--south {
+    left: 120px;
+    top: 302px;
+  }
+
+  .phase1-panel {
+    bottom: 188px;
+    padding: 8px 9px;
+    gap: 6px;
+  }
+
+  .phase1-panel__head strong {
+    font-size: 11px;
+  }
+
+  .phase1-panel__head span,
+  .phase1-panel__summary span,
+  .phase1-panel__tasks li {
+    font-size: 9px;
+  }
+
+  .phase1-panel__summary,
+  .phase1-panel__actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .phase1-panel__buildings {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 5px;
+  }
+
+  .phase1-blueprint-btn,
+  .phase1-action-btn {
+    min-height: 30px;
+    font-size: 10px;
+  }
+
+  .phase1-panel__tasks ul {
+    gap: 2px;
   }
 }

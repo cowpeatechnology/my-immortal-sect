@@ -3,7 +3,7 @@
 **状态**: 活文档  
 **最后更新**: 2026-04-16  
 **项目名**: My Immortal Sect（《我的宗门》）  
-**当前阶段**: pre-M0 / 设计与核心流程收敛  
+**当前阶段**: Phase 1 / accepted, ready for user playtest  
 
 ## Context
 
@@ -20,11 +20,11 @@
 
 ## 1. 当前里程碑
 
-- 当前主里程碑：`pre-M0`
+- 当前主里程碑：`Phase 1 / sect-map validation slice`
 - 当前目标：
-  - 固化项目根规则与智能体协作方式
-  - 收敛玩法 / 架构 / 研发循环文档体系
-  - 保留并服务于既有美术与图像工作流
+  - 验证大地图是否真的可用、可读、可玩
+  - 收敛大地图交互规则、blueprint 反馈和弟子任务可见性
+  - 为 full M0 提供经过验证的地图交互前提
 
 ## 2. 活跃循环
 
@@ -32,6 +32,7 @@
 |---|---|---|---|---|---|
 | L-001 | `F-001` 项目治理基础设施 | process / architecture | supervisor | accepted | 已固化主管制、角色模板、agent team model |
 | L-002 | `F-001` 正式命名与循环模板 | process / docs | supervisor | accepted | 已完成模板、总台账、Git 工作流与项目名同步 |
+| L-003 | `F-002` 大地图可玩性验证切片 | client / design / qa | supervisor | accepted | 已完成地图闭环实现与浏览器验收，可交给项目主管体验 |
 
 ## 3. 已实现 / 已固化
 
@@ -54,6 +55,13 @@
 - [x] ChatGPT 图像生成工作流已具备基本可用性
 - [x] 相关工具文档已存在于 `tools/` 范围
 
+### 3.4 Phase 1 原型验证
+
+- [x] `hifi-prototype/home-immersive.html` 已具备大地图可玩验证闭环
+- [x] 已验证地块选择、蓝图落位、备料、施工、启用产出
+- [x] 已验证重复交互：南坡完工后可继续推进西侧施工
+- [x] 已修复 Phase 1 面板遮挡南坡/西侧 lot 的问题
+
 ## 4. 未实现 / 待推进
 
 ### 4.1 设计与策划
@@ -62,32 +70,37 @@
 - [ ] 因果系统文档
 - [ ] 弟子系统文档
 - [ ] 建筑系统文档
+- [x] Phase 1 大地图可玩性验证完成并验收
 
 ### 4.2 工程与实现
 
-- [ ] 本地 git 仓库初始化并绑定远程
+- [x] 本地 git 仓库初始化并绑定远程
 - [ ] `client/`, `server/`, `shared/` 正式进入 M0
 - [x] 第一个 feature 文档按模板启动（`F-001-project-governance-foundation.md`）
+- [x] `F-002-sect-map-playability-validation.md` 进入执行、验证并通过首轮验收
 
 ## 5. 暂缓 / Deferred
 
 - [ ] PM 智能体单独设岗
 - [ ] 细分 `client_feature_worker` / `server_feature_worker`
 - [ ] 细分“提示词设计”和“出图执行”两个美术角色
+- [ ] full M0 技术垂直切片在 Phase 1 完成前展开
 
 ## 6. 当前冲突与风险
 
 | ID | Topic | Type | Status | Notes |
 |---|---|---|---|---|
-| R-001 | 本地仍非 git 仓库 | process | open | 远程已建，本地尚未执行 `git init` 和 remote 绑定 |
+| R-001 | 本地 git 仓库 | process | closed | 已初始化并绑定到 `git@github.com:cowpeatechnology/my-immortal-sect.git` |
 | R-002 | 设计文档仍多于实现文档 | stage | expected | 目前仍是 pre-M0，属合理现象 |
 | R-003 | 图像工作流可用但仍非项目核心 | scope | watch | 要防止工具工作继续挤占玩法 / 架构主线 |
+| R-004 | 大地图读图性与可玩性未实测 | product | closed | Phase 1 已完成 prototype 级验收，风险下降为后续平衡与扩展问题 |
+| R-005 | Phase 1 已通过但仍缺少用户主管体验反馈 | product | watch | 需由项目主管亲手体验后再决定 M0 的具体落点 |
 
 ## 7. 下一步建议
 
-1. 初始化本地 git 仓库并绑定远程
-2. 选定第一个真正进入产品/技术研发循环的 feature，创建 `F-002-...`
-3. 用新模板跑一次完整的“Plan -> Design -> Execute -> Verify -> Record”
+1. 由项目主管体验 `hifi-prototype/home-immersive.html`，确认 Phase 1 是否满足“真的可玩”
+2. 基于 Phase 1 验证结果，拆出 M0 技术垂直切片的第一个研发 feature
+3. 用新模板启动下一个 “Plan -> Design -> Execute -> Verify -> Record” 循环
 
 ## 相关文档
 

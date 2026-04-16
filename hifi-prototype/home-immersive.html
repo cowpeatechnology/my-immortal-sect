@@ -26,27 +26,27 @@
           <div class="resource-ribbon final-resource-ribbon">
             <div class="resource-chip">
               <span class="resource-dot">木</span>
-              <span>木材 <b>268</b></span>
+              <span>木材 <b id="resourceWood">268</b></span>
             </div>
             <div class="resource-chip">
               <span class="resource-dot">石</span>
-              <span>石料 <b>154</b></span>
+              <span>石料 <b id="resourceStone">154</b></span>
             </div>
             <div class="resource-chip">
               <span class="resource-dot">草</span>
-              <span>灵草 <b>82</b></span>
+              <span>灵草 <b id="resourceHerb">82</b></span>
             </div>
             <div class="resource-chip">
               <span class="resource-dot">香</span>
-              <span>香火 <b>48</b></span>
+              <span>香火 <b id="resourceFaith">48</b></span>
             </div>
           </div>
         </header>
 
         <div class="final-home__topline">
-          <span class="scene-chip">第 12 日 · 辰时</span>
-          <span class="scene-chip scene-chip--muted">白昼作业段</span>
-          <span class="scene-chip scene-chip--accent">炼丹房蓝图已落位</span>
+          <span class="scene-chip" id="sceneClock">第 12 日 · 辰时</span>
+          <span class="scene-chip scene-chip--muted" id="sceneShift">白昼作业段</span>
+          <span class="scene-chip scene-chip--accent" id="sceneObjective">请选择地块并落位蓝图</span>
         </div>
 
         <section class="final-home__scene">
@@ -64,26 +64,63 @@
 
           <div class="task-badge task-badge--store">
             <span class="task-badge__icon"></span>
-            <strong>搬运</strong>
+            <strong id="taskBadgeStore">搬运</strong>
           </div>
           <div class="task-badge task-badge--build">
             <span class="task-badge__icon"></span>
-            <strong>施工</strong>
+            <strong id="taskBadgeBuild">施工</strong>
+          </div>
+
+          <button class="interactive-lot interactive-lot--east" id="lotEast" type="button">
+            <span>东坪地块</span>
+          </button>
+          <button class="interactive-lot interactive-lot--south" id="lotSouth" type="button">
+            <span>南坡地块</span>
+          </button>
+          <button class="interactive-lot interactive-lot--west" id="lotWest" type="button">
+            <span>西侧地块</span>
+          </button>
+
+          <div class="pawn-layer" id="pawnLayer" aria-hidden="true"></div>
+        </section>
+
+        <section class="phase1-panel">
+          <header class="phase1-panel__head">
+            <strong>Phase 1 大地图可玩验证</strong>
+            <span>选地块 → 选蓝图 → 落位后自动搬运施工</span>
+          </header>
+          <div class="phase1-panel__summary">
+            <span id="selectedLotReadout">当前地块：未选择</span>
+            <span id="selectedBlueprintReadout">当前蓝图：未选择</span>
+          </div>
+          <div class="phase1-panel__buildings" id="blueprintSelector">
+            <button type="button" class="phase1-blueprint-btn is-selected" data-blueprint="alchemy">炼丹房</button>
+            <button type="button" class="phase1-blueprint-btn" data-blueprint="herbGarden">药园</button>
+            <button type="button" class="phase1-blueprint-btn" data-blueprint="forge">炼器房</button>
+          </div>
+          <div class="phase1-panel__actions">
+            <button class="phase1-action-btn" id="placeBlueprintBtn" type="button">落位蓝图</button>
+            <button class="phase1-action-btn is-secondary" id="clearSelectionBtn" type="button">清空选择</button>
+          </div>
+          <div class="phase1-panel__feedback" id="loopFeedback">请选择一个地块开始验证。</div>
+          <div class="phase1-panel__tasks">
+            <strong>当前任务流</strong>
+            <ul id="taskFlowList"></ul>
           </div>
         </section>
 
         <section class="final-home__status">
           <div class="status-chip">
             <strong>今日规则</strong>
-            <span>搬运 = 建造 > 修炼</span>
+            <span id="statusRule">搬运 = 建造 > 修炼</span>
           </div>
           <div class="status-chip">
             <strong>当前营造</strong>
-            <span>东坪炼丹房进入备料</span>
+            <span id="statusBuild">暂无施工</span>
           </div>
           <div class="status-chip">
             <strong>表现目标</strong>
-            <span>主城画面优先展现地图本体</span>
+            <span id="statusPlayable">请完成至少 1 栋建筑的落位与启用</span>
           </div>
         </section>
 
@@ -117,5 +154,6 @@
     </main>
 
     <script src="./immersive-map.js"></script>
+    <script src="./immersive-loop-phase1.js"></script>
   </body>
 </html>
