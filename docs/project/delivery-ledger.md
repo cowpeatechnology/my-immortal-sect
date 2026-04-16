@@ -3,7 +3,7 @@
 **状态**: 活文档  
 **最后更新**: 2026-04-16  
 **项目名**: My Immortal Sect（《我的宗门》）  
-**当前阶段**: Phase 1 / accepted, ready for user playtest  
+**当前阶段**: Phase 1 / runtime sect-map slice planning  
 
 ## Context
 
@@ -32,7 +32,7 @@
 |---|---|---|---|---|---|
 | L-001 | `F-001` 项目治理基础设施 | process / architecture | supervisor | accepted | 已固化主管制、角色模板、agent team model |
 | L-002 | `F-001` 正式命名与循环模板 | process / docs | supervisor | accepted | 已完成模板、总台账、Git 工作流与项目名同步 |
-| L-003 | `F-002` 大地图可玩性验证切片 | client / design / qa | supervisor | accepted | 已完成地图闭环实现与浏览器验收，可交给项目主管体验 |
+| L-003 | `F-002` 大地图可玩性验证切片 | prototype / design / qa | supervisor | exploratory | 已完成 `hifi-prototype` 探索，但不构成真实前后端切片验收 |
 
 ## 3. 已实现 / 已固化
 
@@ -41,7 +41,7 @@
 - [x] 主线程作为 `supervisor`
 - [x] 常驻角色模板与临时角色模板划分
 - [x] hub-and-spoke 调度原则
-- [x] pre-M0 阶段保护规则
+- [x] 保护目录与阶段性初始化规则
 
 ### 3.2 文档与架构
 
@@ -62,6 +62,12 @@
 - [x] 已验证重复交互：南坡完工后可继续推进西侧施工
 - [x] 已修复 Phase 1 面板遮挡南坡/西侧 lot 的问题
 
+### 3.5 已确认的真实实现约束
+
+- [x] 第一阶段的“可玩大地图”必须是 Cocos + Go 真实切片，不是 HTML prototype
+- [x] 主管与 worker 的交接必须包含启动命令、测试入口和验收流程
+- [x] 后续子智能体统一使用 `gpt-5.4` + `xhigh`
+
 ## 4. 未实现 / 待推进
 
 ### 4.1 设计与策划
@@ -70,14 +76,15 @@
 - [ ] 因果系统文档
 - [ ] 弟子系统文档
 - [ ] 建筑系统文档
-- [x] Phase 1 大地图可玩性验证完成并验收
+- [ ] Phase 1 大地图可玩性验证完成并验收（真实运行栈）
 
 ### 4.2 工程与实现
 
 - [x] 本地 git 仓库初始化并绑定远程
 - [ ] `client/`, `server/`, `shared/` 正式进入 M0
 - [x] 第一个 feature 文档按模板启动（`F-001-project-governance-foundation.md`）
-- [x] `F-002-sect-map-playability-validation.md` 进入执行、验证并通过首轮验收
+- [ ] `client/`, `server/`, `shared/` 按真实技术栈进入实施
+- [ ] `F-002-sect-map-playability-validation.md` 在真实运行栈中完成验收
 
 ## 5. 暂缓 / Deferred
 
@@ -91,16 +98,16 @@
 | ID | Topic | Type | Status | Notes |
 |---|---|---|---|---|
 | R-001 | 本地 git 仓库 | process | closed | 已初始化并绑定到 `git@github.com:cowpeatechnology/my-immortal-sect.git` |
-| R-002 | 设计文档仍多于实现文档 | stage | expected | 目前仍是 pre-M0，属合理现象 |
+| R-002 | 设计文档仍多于实现文档 | stage | expected | 当前仍处于从规划转向真实实现的早期阶段，属合理现象 |
 | R-003 | 图像工作流可用但仍非项目核心 | scope | watch | 要防止工具工作继续挤占玩法 / 架构主线 |
-| R-004 | 大地图读图性与可玩性未实测 | product | closed | Phase 1 已完成 prototype 级验收，风险下降为后续平衡与扩展问题 |
-| R-005 | Phase 1 已通过但仍缺少用户主管体验反馈 | product | watch | 需由项目主管亲手体验后再决定 M0 的具体落点 |
+| R-004 | 大地图读图性与可玩性未实测 | product | open | HTML prototype 只提供探索证据，真实 Cocos + Go 切片尚未完成 |
+| R-005 | 主管与 worker 缺少统一 runtime handoff | process | watch | 已补模板与规则，但需要在真实开发循环中验证是否顺畅 |
 
 ## 7. 下一步建议
 
-1. 由项目主管体验 `hifi-prototype/home-immersive.html`，确认 Phase 1 是否满足“真的可玩”
-2. 基于 Phase 1 验证结果，拆出 M0 技术垂直切片的第一个研发 feature
-3. 用新模板启动下一个 “Plan -> Design -> Execute -> Verify -> Record” 循环
+1. 以真实技术栈重定义 Phase 1 的第一个研发 work order
+2. 启动 `client/` 与 `server/` 的最小切片，而不是继续把 milestone 建在 `hifi-prototype/`
+3. 用新模板启动下一轮 “Plan -> Design -> Execute -> Verify -> Record” 循环，并强制写入 runtime handoff 信息
 
 ## 相关文档
 

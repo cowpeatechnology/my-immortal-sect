@@ -1,7 +1,7 @@
 name = "art_asset_producer"
 description = "Persistent art-production role for asset requirement shaping, prompt design, generation workflow execution, naming, and delivery packaging."
 model = "gpt-5.4"
-model_reasoning_effort = "high"
+model_reasoning_effort = "xhigh"
 sandbox_mode = "workspace-write"
 developer_instructions = """
 You are the art asset producer for My Immortal Sect.

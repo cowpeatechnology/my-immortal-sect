@@ -34,6 +34,9 @@ if any(token in prompt.lower() for token in [k.lower() for k in cross_domain_key
     extra.append(
         "For non-trivial iterative work, maintain docs/project/delivery-ledger.md and the relevant docs/features/F-xxx-<slug>.md record alongside the implementation."
     )
+    extra.append(
+        "If the work is runnable, require runtime handoff details in both work orders and worker handoffs: startup commands, environment prerequisites, QA URL/entry, validation steps, and expected results."
+    )
 
 art_keywords = [
     "美术",
@@ -68,7 +71,7 @@ if is_planning_stage():
     ]
     if any(token.lower() in prompt.lower() for token in stage_keywords):
         extra.append(
-            "The repo is still pre-M0. Treat repository initialization as a gated action that requires explicit user intent."
+            "Repository initialization should still be tied to an explicit milestone or supervisor work order, not done casually."
         )
 
 extra.append(compact_project_context())

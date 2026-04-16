@@ -18,7 +18,7 @@
 
 V1 范围已经在多轮讨论中锁定（见 `design-decisions.md` V1 锁定范围总表）。4 份核心 ADR 已经把架构原则和硬约束固化。**M0 的目的是用最少的代码打通从 Cocos 客户端到 Hollywood actor 到 PostgreSQL 的完整链路，并在真机上压测技术红线**。
 
-Phase 1 的大地图可玩性验证切片是 M0 的前置门槛。该门槛已于 2026-04-16 完成 prototype 级验收，后续 M0 只能沿用已经验证过的地图交互假设继续推进。
+Phase 1 的大地图可玩性验证切片是 M0 的前置门槛。2026-04-16 已完成一次 prototype 级探索，但该探索不等于门槛通过。真正的通过标准仍然是基于 `Cocos Creator + TypeScript + Tiled / Cocos TiledMap` 与 `Go + Hollywood` 的真实切片验证。
 
 > 原则：M0 不追求功能丰富，追求**架构全链路通**。每个模块只做最小闭环，但所有模块都必须存在。
 

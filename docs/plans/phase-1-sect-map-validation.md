@@ -1,6 +1,6 @@
 # Phase 1 Sect-Map Validation Plan
 
-**状态**: accepted  
+**状态**: active  
 **最后更新**: 2026-04-16  
 **依赖**:
 - `AGENTS.md`
@@ -30,7 +30,7 @@ Phase 1 therefore treats the map as the first product truth to prove:
 
 ## Goal
 
-Prove that the sect map is a playable surface, not just a pretty background.
+Prove that the sect map is a playable surface in the real project stack, not just a pretty background or an HTML exploration artifact.
 
 ## Non-Goals
 
@@ -39,6 +39,7 @@ Prove that the sect map is a playable surface, not just a pretty background.
 - 不做完整 storylet / karma 系统
 - 不做大规模内容填充
 - 不做“先好看再可玩”的纯插画方向
+- 不把 `hifi-prototype/` 结果当作 Phase 1 完成态
 
 ## Phase Definition
 
@@ -52,6 +53,12 @@ The required emphasis is:
 - moment-to-moment playability
 
 Visual polish is still important, but it must serve readability and interaction.
+
+Stack clarification:
+
+- 客户端路径必须落在 `Cocos Creator + TypeScript + Tiled / Cocos TiledMap`
+- 服务端路径必须落在 `Go + Hollywood` 的真实工程结构中
+- prototype 可以帮助定义交互，但不能替代该阶段通过
 
 ## Milestones
 
@@ -108,12 +115,13 @@ Run a short structured playtest and verify:
 
 Phase 1 is complete only when all of the following are true:
 
-- [x] New tester can identify the map’s main play objects within 5 seconds
-- [x] Blueprint placement can be understood without external instruction
-- [x] Disciple task state is visible during normal play
-- [x] At least one map loop feels immediate and legible
-- [x] The map can be played for a short session without confusion or UI overload
-- [x] No later M0 assumption is made if the map validation slice has not passed
+- [ ] New tester can identify the map’s main play objects within 5 seconds
+- [ ] Blueprint placement can be understood without external instruction
+- [ ] Disciple task state is visible during normal play
+- [ ] At least one map loop feels immediate and legible
+- [ ] The map can be played for a short session without confusion or UI overload
+- [ ] No later M0 assumption is made if the map validation slice has not passed
+- [ ] Validation happens in the real stack, not only in `hifi-prototype/`
 
 ## Exit Condition
 
@@ -123,21 +131,21 @@ When Phase 1 is accepted:
 - roll forward only the validated assumptions into M0
 - move the project into the full M0 technical slice with map interaction risks reduced
 
-## Validation Result
+## Prototype Exploration Record
 
-Phase 1 passed prototype-level QA on 2026-04-16.
+An HTML prototype exploration was completed on 2026-04-16.
 
-Validated outcomes:
+What it usefully proved:
 
-- 玩家可以直接在地图上选择东坪 / 南坡 / 西侧地块
-- 蓝图落位后会进入清晰的 `备料 -> 施工 -> 启用` 状态链
-- 弟子任务、资源变化、当前营造和地图标注能同步说明系统正在发生什么
-- 地图不仅能完成单次建造，也能在一块地启用后继续切到另一块地推进下一条施工链
+- 地图至少需要 lot 选择、蓝图落位、`备料 -> 施工 -> 启用` 状态链
+- 弟子任务、资源变化、当前营造和地图标注必须同屏解释系统正在发生什么
+- 大地图必须支持重复交互，不能只完成单次建造
 
-Captured and fixed during validation:
+What it did **not** prove:
 
-- Phase 1 中部面板在桌面浏览器里高度过高，曾遮挡南坡与西侧 lot
-- 通过压缩任务流摘要和限制面板高度，已恢复重复交互可达性
+- 它没有进入真实 `Cocos Creator + TypeScript` 客户端
+- 它没有进入真实 `Go + Hollywood` 服务端路径
+- 它不能作为 Phase 1 的通过依据
 
 ## Authority Docs
 

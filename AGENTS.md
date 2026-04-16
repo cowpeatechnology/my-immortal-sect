@@ -15,16 +15,20 @@ Detailed engineering execution rules live in [docs/process/engineering-standards
 
 ## 2. Current stage
 
-The repository is still in planning / pre-M0.
+The repository is in transition from planning into real M0 implementation.
 
 Current top-level contents:
 - `docs/`: authority docs and plans
-- `hifi-prototype/`: early HTML/JS prototype, preserve by default
+- `hifi-prototype/`: early HTML/JS exploration artifact, preserve by default
 - `tools/`: art-generation and workflow tooling, preserve by default
 
 Code worktrees such as `client/`, `server/`, and `shared/` do not exist yet.
 
-Do not initialize code scaffolding, package managers, or Go modules unless the user explicitly says M0 has started or explicitly asks for repository initialization.
+Important clarification:
+- `hifi-prototype/` may be used for visual exploration or interaction sketching, but it does **not** satisfy a gameplay milestone by itself.
+- When the user asks for a map slice that is "really playable", that means a real stack implementation using the documented project stack, not an HTML-only prototype.
+- Real implementation for this project means: `Cocos Creator + TypeScript + Tiled/TiledMap` on the client and `Go + Hollywood + PostgreSQL/Redis` on the server side as applicable to the slice.
+- Repository initialization and scaffolding are now allowed when they are tied to an approved milestone or explicit supervisor work order.
 
 ## 3. Authority order
 
@@ -115,6 +119,10 @@ Temporary role templates may also be used for bounded work:
 - `feature_worker`: short-lived implementation agent for a well-scoped coding task
 - `tools_engineer`: short-lived tools/pipeline agent for support workflows, scripts, and one-off automation
 
+Execution default for all subagents in this repository:
+- model: `gpt-5.4`
+- reasoning effort: `xhigh`
+
 If a task only belongs to one domain, do not create fake collaboration overhead. Assign one owner and one verifier at most.
 
 ## 8. Work order format
@@ -154,6 +162,9 @@ Every worker handoff must include:
 - unresolved risks
 - assumptions made
 - recommended next owner
+- startup or boot commands if runtime work exists
+- QA entry URL / screen / command if the work can be exercised directly
+- exact validation flow the supervisor or QA should follow
 
 The supervisor should not present work to the user as final if those items are missing.
 
@@ -183,6 +194,6 @@ For iterative development work:
 ## 12. Practical defaults
 
 - If the user asks for design, start with docs and plans before code.
-- If the user asks for implementation during pre-M0, confirm whether they want initialization or just design scaffolding.
+- If the user asks for implementation, confirm whether they want exploratory prototype work or the real documented stack.
 - If the user asks for testing, evaluate against documented M0 acceptance criteria instead of ad-hoc taste.
 - If the user asks for art-pipeline work, isolate it from gameplay/system design work unless the request explicitly joins them.

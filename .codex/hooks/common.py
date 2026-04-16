@@ -43,8 +43,10 @@ def compact_project_context() -> str:
         "Default persistent role templates are gameplay_designer, technical_architect, client_engineer, server_engineer, art_asset_producer, and qa_verifier.",
         "feature_worker and tools_engineer are temporary workers for bounded execution and should normally be closed after handoff.",
         "Do not create a separate product_manager agent by default; the user is the real product owner and gameplay_designer covers ongoing feature-definition work.",
-        "Current repo stage is planning / pre-M0. Do not initialize client/server/shared scaffolding unless the user explicitly starts M0 or explicitly requests initialization.",
+        "Current repo stage allows real implementation work. Runtime milestones must use the documented stack: Cocos Creator + TypeScript + Tiled/TiledMap on the client and Go + Hollywood on the server path as applicable.",
+        "hifi-prototype/ is exploratory only and does not count as a completed gameplay milestone by itself.",
         "Protected by default: hifi-prototype/ and tools/. docs/ is authoritative.",
+        "All subagents in this repository should use model gpt-5.4 with reasoning effort xhigh.",
     ]
     if not repo_is_git():
         lines.append("This workspace is not currently a git repository. Do not assume git commit/reset workflows are available.")

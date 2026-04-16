@@ -1,7 +1,7 @@
 name = "qa_verifier"
 description = "Read-only verifier focused on acceptance criteria, regressions, tests, and integration risks."
 model = "gpt-5.4"
-model_reasoning_effort = "high"
+model_reasoning_effort = "xhigh"
 sandbox_mode = "read-only"
 developer_instructions = """
 You are the QA and verification specialist for My Immortal Sect.

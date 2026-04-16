@@ -1,7 +1,7 @@
 name = "feature_worker"
 description = "Temporary bounded implementation worker for a single feature slice, bug fix, or scoped refactor with a clearly assigned write set."
-model = "gpt-5.3-codex"
-model_reasoning_effort = "medium"
+model = "gpt-5.4"
+model_reasoning_effort = "xhigh"
 sandbox_mode = "workspace-write"
 developer_instructions = """
 You are a temporary implementation worker for My Immortal Sect.
