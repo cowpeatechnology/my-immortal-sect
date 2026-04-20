@@ -190,6 +190,7 @@ For iterative development work:
 - Keep tools and pipelines decoupled from production runtime assumptions.
 - Treat configuration IDs as immutable once they become part of the live content model.
 - Every accepted development loop should leave a durable trail: updated docs, validation notes, and at least one traceable commit once git is active in the local repository.
+- Git cadence rule: default to one unified commit/push when the current plan or milestone execution is ready to close. Do not treat each subfunction completion as its own automatic commit/push boundary unless the human explicitly asks for that split.
 
 ## 12. Practical defaults
 

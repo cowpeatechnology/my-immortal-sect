@@ -8,3 +8,4 @@ Use this loop for scoped project work.
 4. Validate using the real project path when available.
 5. Return a concise handoff with artifacts, validation, blockers, and next owner.
 6. Update durable project docs when the same missing context is likely to matter again.
+7. When the full current plan or milestone is ready to close, perform one consolidated commit/push after the required doc updates. Do not default to committing/pushing after each subfunction.
