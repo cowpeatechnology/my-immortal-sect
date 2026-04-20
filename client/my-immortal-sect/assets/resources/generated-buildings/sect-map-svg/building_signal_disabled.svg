@@ -1,0 +1,12 @@
+<svg width="72" height="72" viewBox="0 0 72 72" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <title>建筑状态信号 - 瘫痪</title>
+  <desc>用于远距识别 disabled 瘫痪状态的暗色断裂封印标记。</desc>
+  <circle cx="36" cy="36" r="29" fill="#26242A"/>
+  <circle cx="36" cy="36" r="25" fill="#73727C"/>
+  <path d="M36 19L49 26.5V41.5L36 49L23 41.5V26.5L36 19Z" fill="#E7E7EB"/>
+  <path d="M28 29L44 45" stroke="#4A4853" stroke-width="4.5" stroke-linecap="round"/>
+  <path d="M44 29L28 45" stroke="#4A4853" stroke-width="4.5" stroke-linecap="round"/>
+  <path d="M18 54L54 18" stroke="#D86E62" stroke-width="4.5" stroke-linecap="round"/>
+  <path d="M16 36H22" stroke="#ECEDEF" stroke-width="3" stroke-linecap="round"/>
+  <path d="M50 36H56" stroke="#ECEDEF" stroke-width="3" stroke-linecap="round"/>
+</svg>

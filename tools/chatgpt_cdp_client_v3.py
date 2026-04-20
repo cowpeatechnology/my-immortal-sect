@@ -187,6 +187,13 @@ def page_status(server_base: str) -> dict[str, Any]:
     return page
 
 
+def debug_events(server_base: str, *, limit: int, event: str) -> dict[str, Any]:
+    query = [f"limit={max(1, limit)}"]
+    if event:
+        query.append(f"event={quote(event)}")
+    return request_json("GET", f"{server_base}/debug/events?{'&'.join(query)}")
+
+
 def resolve_candidate_choice(
     server_base: str,
     *,
@@ -424,6 +431,17 @@ def command_status(args: argparse.Namespace) -> int:
     return 0
 
 
+def command_events(args: argparse.Namespace) -> int:
+    server_base = args.server_base.rstrip("/")
+    data = debug_events(
+        server_base,
+        limit=args.limit,
+        event=args.event,
+    )
+    print(json.dumps(data, ensure_ascii=False, indent=2))
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -452,6 +470,12 @@ def build_parser() -> argparse.ArgumentParser:
     status = subparsers.add_parser("status", help="Read observer status.")
     status.add_argument("--server-base", default=DEFAULT_SERVER_BASE, help=f"Observer base URL. Default: {DEFAULT_SERVER_BASE}")
     status.set_defaults(func=command_status)
+
+    events = subparsers.add_parser("events", help="Read recent observer debug event summaries.")
+    events.add_argument("--server-base", default=DEFAULT_SERVER_BASE, help=f"Observer base URL. Default: {DEFAULT_SERVER_BASE}")
+    events.add_argument("--limit", type=int, default=20, help="Max events to return. Default: 20")
+    events.add_argument("--event", default="", help="Optional event name filter, e.g. job_ready")
+    events.set_defaults(func=command_events)
 
     return parser
 

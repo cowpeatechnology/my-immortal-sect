@@ -22,13 +22,24 @@ Current top-level contents:
 - `hifi-prototype/`: early HTML/JS exploration artifact, preserve by default
 - `tools/`: art-generation and workflow tooling, preserve by default
 
-Code worktrees such as `client/`, `server/`, and `shared/` do not exist yet.
+Current code worktrees:
+- `client/my-immortal-sect/`: active Cocos Creator 3.8.8 client project
+- `server/`: reserved Go server runtime skeleton
+- `shared/`: reserved shared config / contract skeleton
+
+Current Cocos runtime facts:
+- project path: `client/my-immortal-sect/`
+- project-local MCP settings: `client/my-immortal-sect/settings/mcp-server.json`
+- MCP HTTP server port: `9527`
+- MCP extension source-of-truth: `client/my-immortal-sect/extensions/cocos-mcp-server/`
 
 Important clarification:
 - `hifi-prototype/` may be used for visual exploration or interaction sketching, but it does **not** satisfy a gameplay milestone by itself.
 - When the user asks for a map slice that is "really playable", that means a real stack implementation using the documented project stack, not an HTML-only prototype.
 - Real implementation for this project means: `Cocos Creator + TypeScript + Tiled/TiledMap` on the client and `Go + Hollywood + PostgreSQL/Redis` on the server side as applicable to the slice.
 - Repository initialization and scaffolding are now allowed when they are tied to an approved milestone or explicit supervisor work order.
+- Git topology rule: `~/MyWork/SlgGame/.git` is the only canonical project repository. Any nested `.git` directory under the project root is a configuration error unless the human explicitly restores that exception.
+- For Cocos MCP work, edit `client/my-immortal-sect/extensions/cocos-mcp-server/` directly as part of the root project repository, not as a separate maintained Git working tree.
 
 ## 3. Authority order
 
@@ -67,104 +78,93 @@ Rules:
 - If a task touches a protected area and gameplay docs at the same time, split ownership and keep tool changes isolated.
 - `docs/` is authoritative, not disposable scratch space.
 
-This workspace is not guaranteed to be a Git repository. Do not assume git-based workflows, commits, or resets are available.
+This workspace is currently a Git repository. Use non-destructive git workflows when needed, and do not rewrite or discard history unless the human explicitly asks.
 
-## 6. Main-thread operating model
+## 6. Coordex Visible-Role Operating Model
 
-The main Codex thread acts as the project supervisor, not as a single all-purpose implementer.
+This repository now uses Coordex's visible-role workflow as the authoritative project collaboration model.
 
-Default behavior:
-- Intake the request.
-- Classify whether it is product/design, architecture, client, server, tools/pipeline, or QA.
-- If the task spans multiple domains, break it into owned work orders before implementation.
-- Delegate domain work to specialized subagents when available.
-- Keep final integration, conflict resolution, and user-facing synthesis in the main thread.
-
-The main thread is responsible for:
-- enforcing authority docs
-- sequencing work
-- preventing scope bleed
-- requesting evidence from workers
-- deciding when work is ready to integrate
-
-Important distinction:
-- Persistent in this project means persistent role definitions and persistent process rules.
-- It does not mean keeping many long-lived worker threads alive forever.
-- Outside the main supervisor thread, worker threads should usually be spawned for a scoped work order and then closed after handoff or acceptance.
+Current operating assumptions:
+- durable role chats live under `Agents/<role>/`
+- the confirmed durable role set is `supervisor`, `engineer`, and `art_asset_producer`
+- root chats remain temporary project-root conversations and are not part of the durable role roster
+- the human remains the final authority over scope, priority, and product direction
+- inside the visible-role system, `supervisor` acts as the project product owner and coordination lead
+- older specialist `.codex/agents` templates have been moved to `.codex/agents/legacy/` and disabled; they are historical reference, not active project roles
 
 Rationale:
-- reduces context rot
-- keeps write scope explicit
-- avoids mixing tools work, product design, and implementation state in one agent thread
+- responsibilities stay explicit and inspectable
+- durable context stays attached to visible role threads instead of hidden child-thread chains
+- the operator can read planning, execution, blockers, and handoffs without reverse-engineering opaque subagent state
 
-## 7. Required specialist roles
+Runtime safety defaults:
+- Do not read full observer / network / HAR / capture logs into Codex context by default. Use bounded sampling first: keyword search, timestamp windows, `tail`, `head`, or narrow offset-based reads.
+- For runtime evidence, prefer `file path + timestamp/line window + event summary` over pasting raw dumps into the thread.
+- Any role expected to run longer than 1 minute, or expected to watch an external runtime, must have an explicit heartbeat cadence in the work order. Default cadence: `60s`.
+- Default silence handling: after `120s` without a useful heartbeat, the supervisor should inspect status, interrupt for a checkpoint, or close the run if the task is clearly wedged or no longer needed.
 
-Default long-lived role templates for this repository:
+## 7. Confirmed Role Set
 
-- `gameplay_designer`: gameplay loops, disciple systems, karma flow, content-facing design docs, and product-facing game design
-- `technical_architect`: architecture, ADRs, module boundaries, implementation plans
-- `client_engineer`: Cocos Creator, TypeScript, tilemap rendering, UI/event-bus/client sync
-- `server_engineer`: Go, Hollywood, simulation, save/sync, protobuf, persistence
-- `art_asset_producer`: art requirement breakdown, prompt shaping, asset batch generation workflows, naming/output discipline, and visual acceptance preparation
-- `qa_verifier`: acceptance criteria, test plans, regression review, risk review
+Default durable roles for this repository:
 
-Project-specific decision:
-- Do not create a separate standalone `product_manager` agent for now.
-- The user is the real product owner and project director.
-- `gameplay_designer` covers ongoing game-system and feature-definition work.
-- `technical_architect` covers execution structure and engineering tradeoffs.
-- A dedicated PM agent at this stage would mostly add manager-of-manager overhead.
+- `supervisor`: owns current goal, milestone planning, product decisions, task routing, scope boundaries, and final acceptance
+- `engineer`: owns technical architecture, implementation, integration, debugging, and technical validation across the real project stack
+- `art_asset_producer`: owns visual direction breakdown, asset planning, generation workflow usage, output naming, and delivery packaging
 
-Temporary role templates may also be used for bounded work:
-- `feature_worker`: short-lived implementation agent for a well-scoped coding task
-- `tools_engineer`: short-lived tools/pipeline agent for support workflows, scripts, and one-off automation
+Confirmed responsibility merge:
+- there is no separate standalone `product_manager` role in the current workflow
+- there is no separate standalone `technical_architect`, `client_engineer`, `server_engineer`, or `qa_verifier` role in the default Coordex setup for this repository
+- architecture ownership is folded into `engineer`
+- acceptance ownership is folded into `supervisor`, with the human keeping final approval
 
-Execution default for all subagents in this repository:
+Execution default for the current durable roles:
 - model: `gpt-5.4`
 - reasoning effort: `xhigh`
 
-If a task only belongs to one domain, do not create fake collaboration overhead. Assign one owner and one verifier at most.
+## 8. Coordination And Work Orders
 
-## 8. Work order format
-
-Before specialized work begins on a cross-functional task, the supervisor should define:
+Before non-trivial work begins, the supervisor should define:
 
 - objective
 - owner
 - explicit write scope
 - explicit no-touch scope
 - authority docs to read first
+- official external baseline when the task depends on engine / platform / editor / build rules
 - expected deliverable
+- preferred execution path, especially whether the task is editor/config-first or code-first
+- human-assist checkpoint when an editor control exists but MCP coverage may be insufficient
+- runtime contract for long-running work, including heartbeat cadence, silence timeout, and evidence source
 - validation required before handoff
-- loop record to update (`docs/project/delivery-ledger.md` and the relevant `docs/features/F-xxx-<slug>.md` file for non-trivial work)
+- records to update, including `docs/project/delivery-ledger.md` and the relevant `docs/features/F-xxx-<slug>.md` file when applicable
 
-Example:
-- Objective: draft the first Storylet DSL spec
-- Owner: `gameplay_designer`
-- Write scope: `docs/design/systems/`, `docs/design/content/`
-- No-touch scope: `tools/`, `hifi-prototype/`, root architecture docs
-- Authority docs: `AGENTS.md`, `docs/vision/design-decisions.md`, `docs/README.md`
-- Deliverable: one spec doc plus unresolved questions
-- Validation: `technical_architect` reviews engine coupling and migration impact
+Default coordination rules:
+- Each active subfunction has exactly one owner role.
+- New task start, owner assignment, milestone changes, scope changes, and final acceptance belong to the human or `supervisor`.
+- Once a subfunction is already active, direct peer coordination between visible roles is allowed only inside that confirmed scope.
+- Direct peer coordination may ask questions, report blockers, exchange integration details, or hand off intermediate results.
+- Direct peer coordination must not silently widen scope, self-assign a new feature, or self-accept final completion.
+- Use `docs/process/structured-agent-communication-protocol.md` for role-to-role and role-to-supervisor coordination messages that need low drift.
+- Mirror only high-value coordination events into `docs/project/thread-conversation-ledger.md` when durable visibility or auditability helps.
 
-Default collaboration topology:
-- All worker communication is hub-and-spoke through the supervisor.
-- Workers do not silently coordinate among themselves or assume another worker has seen their context.
-- If one worker needs another domain, the request goes back to the supervisor for rerouting.
+If a task only belongs to one domain, do not invent fake collaboration overhead. Prefer one owner role plus supervisor acceptance.
 
-## 9. Handoff contract
+## 9. Handoff Contract
 
 Every worker handoff must include:
 
 - what changed
 - files touched
 - tests or checks run
+- official docs or external contract used when the task depends on outside platform / engine behavior
+- if code or raw file edits were used for a configuration-class task, why editor/config and human-assist paths were insufficient
+- evidence references when runtime artifacts exist, using bounded paths / timestamps / line windows instead of full raw logs
 - unresolved risks
 - assumptions made
-- recommended next owner
+- recommended next role or human action
 - startup or boot commands if runtime work exists
-- QA entry URL / screen / command if the work can be exercised directly
-- exact validation flow the supervisor or QA should follow
+- validation entry URL / screen / command if the work can be exercised directly
+- exact validation flow the supervisor or human should follow
 
 The supervisor should not present work to the user as final if those items are missing.
 
@@ -180,7 +180,7 @@ When editing docs:
 For iterative development work:
 - update [docs/project/delivery-ledger.md](/Users/mawei/MyWork/SlgGame/docs/project/delivery-ledger.md) to reflect current loop status
 - keep one feature loop doc under `docs/features/` per substantial feature or initiative
-- use templates under `docs/templates/` for supervisor work orders, worker handoffs, and feature loop records
+- use templates under `docs/templates/` for supervisor work orders, worker handoffs, feature loop records, and thread messages
 
 ## 11. Engineering discipline
 
@@ -197,3 +197,63 @@ For iterative development work:
 - If the user asks for implementation, confirm whether they want exploratory prototype work or the real documented stack.
 - If the user asks for testing, evaluate against documented M0 acceptance criteria instead of ad-hoc taste.
 - If the user asks for art-pipeline work, isolate it from gameplay/system design work unless the request explicitly joins them.
+- If the task depends on external platform, engine, editor, or build behavior, check official docs first and freeze the contract before implementation.
+- If the task is configuration-class work, prefer editor/config paths first, then human assist if MCP is insufficient, and only then consider code fallback.
+- For the current client-local phase, treat `Cocos Creator` compile/export capability plus the documented preview path as the primary validation surface. Do not schedule WeChat/Douyin developer-tool or real mini-game container testing by default; defer that work until the human explicitly asks to switch into platform-container validation.
+
+## Coordex Workflow
+
+<!-- COORDEX:PROJECT-WORKFLOW:START -->
+This block is maintained by Coordex from the `2d-cocos-creator-game-development` template. Keep project-specific identity facts elsewhere in the root file; keep repeatable coordination rules here or in the referenced durable docs.
+
+- Template: `2D Cocos Creator Game Development`
+- Durable role threads live under `Agents/<role>/`.
+- The supervisor owns planning, routing, scope boundaries, and final acceptance.
+- The supervisor plans and routes by default; it does not absorb worker-owned implementation unless the human explicitly assigns that ownership.
+- Each active subfunction must have exactly one implementation owner role.
+- The human-readable current plan lives in `.coordex/current-plan.md`.
+- `.coordex/project-board.json` is the machine-consumed Coordex board state. Keep it schema-accurate if it must be repaired, but do not treat it as a free-form planning note.
+- Role-local durable context belongs in `docs/project/role-state/<role>.md` instead of long chat history.
+- When the same missing fact causes repeated mistakes, write it back into this file or another checked-in project doc.
+
+### Default Roles
+
+- `supervisor`: product owner, milestone planner, dispatcher, and final accepter.
+- `engineer`: technical architecture, implementation, integration, debugging, and technical validation.
+- `art_asset_producer`: visual direction, asset planning, and asset production for assigned scope.
+
+### Required Durable Docs
+
+- `docs/project/project-method.md`
+- `docs/project/delivery-ledger.md`
+- `docs/project/thread-conversation-ledger.md`
+- `docs/project/decision-log.md`
+- `docs/process/dedicated-browser-workflow.md`
+- `docs/process/cocos-mcp-workflow.md`
+- `docs/process/engineering-standards.md`
+- `docs/process/development-loop.md`
+- `docs/process/structured-agent-communication-protocol.md`
+
+### Template-Specific Expectations
+
+- This template assumes a 2D Cocos Creator game workflow unless project-specific docs later narrow the stack further.
+- Browser validation is only valid when attached to the dedicated Chrome instance at `http://127.0.0.1:9333`.
+- Keep changing execution state in plan, ledger, and role-state files instead of bloating the root `AGENTS.md`.
+<!-- COORDEX:PROJECT-WORKFLOW:END -->
+
+## Coordex Agent Roles
+
+<!-- COORDEX:AGENT-ROSTER:START -->
+This block is maintained by Coordex and keeps active role agents aligned across the local role directories under `Agents/`, the Codex threads started from those directories, and this project-level roster.
+
+Agent threads should start in `Agents/<role>/` so Codex loads instructions from the project root down to the role directory: this `AGENTS.md`, then `Agents/AGENTS.md`, then `Agents/<role>/AGENTS.md`.
+
+Root chats created from Coordex remain project-root conversations and are intentionally excluded from this role roster.
+
+| Role | Directory | Thread | Responsibility |
+| --- | --- | --- | --- |
+| `art_asset_producer` | `Agents/art_asset_producer/` | `art_asset_producer` | Visual direction, asset planning, and SVG or image production for assigned milestones. |
+| `engineer` | `Agents/engineer/` | `engineer` | Technical architecture, implementation, integration, debugging, and technical validation. |
+| `supervisor` | `Agents/supervisor/` | `supervisor` | Product owner and project coordinator. Owns milestone planning, routing, and final acceptance. |
+
+<!-- COORDEX:AGENT-ROSTER:END -->

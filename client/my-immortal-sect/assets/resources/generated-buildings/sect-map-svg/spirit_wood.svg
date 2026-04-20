@@ -1,0 +1,32 @@
+<svg width="128" height="128" viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <title>灵木</title>
+  <desc>灵木资源点，树桩与木料堆，对齐 1x1 footprint。</desc>
+  <defs>
+    <filter id="spirit_wood-drop" x="0" y="0" width="128" height="128" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feOffset dy="10"/>
+      <feGaussianBlur stdDeviation="8"/>
+      <feColorMatrix type="matrix" values="0 0 0 0 0.211765 0 0 0 0 0.152941 0 0 0 0 0.105882 0 0 0 0.18 0"/>
+      <feBlend in2="SourceGraphic" result="shape"/>
+    </filter>
+    <filter id="spirit_wood-mist" x="0" y="0" width="128" height="128" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feGaussianBlur stdDeviation="6"/>
+    </filter>
+  </defs>
+  <ellipse cx="64" cy="160" rx="32" ry="8" fill="#3c2a1b" opacity="0.12" filter="url(#spirit_wood-mist)"/>
+  <polygon points="25.6,92 64,111.2 64,117.2 25.6,98" fill="#b89265" stroke="#4d392a" stroke-opacity="0.28" stroke-width="1.1"/>
+  <polygon points="101.12,92.64 64,111.2 64,117.2 101.12,98.64" fill="#8f6844" stroke="#4d392a" stroke-opacity="0.3" stroke-width="1.1"/>
+  <polygon points="62.72,73.44 101.12,92.64 64,111.2 25.6,92" fill="#dac8a4" stroke="#4d392a" stroke-opacity="0.36" stroke-width="1.1"/>
+  <polygon points="48.64,48.88 62.72,55.92 62.72,85.92 48.64,78.88" fill="#65452f" stroke="#4d392a" stroke-opacity="0.28" stroke-width="1.5"/>
+  <polygon points="76.8,48.88 62.72,55.92 62.72,85.92 76.8,78.88" fill="#503726" stroke="#4d392a" stroke-opacity="0.3" stroke-width="1.5"/>
+  <polygon points="62.72,41.84 76.8,48.88 62.72,55.92 48.64,48.88" fill="#8c6544" stroke="#4d392a" stroke-opacity="0.36" stroke-width="1.5"/>
+  <polygon points="55.04,81.76 70.4,89.44 70.4,99.44 55.04,91.76" fill="#7c5637" stroke="#4d392a" stroke-opacity="0.28" stroke-width="1.5"/>
+  <polygon points="80.64,84.32 70.4,89.44 70.4,99.44 80.64,94.32" fill="#63432b" stroke="#4d392a" stroke-opacity="0.3" stroke-width="1.5"/>
+  <polygon points="65.28,76.64 80.64,84.32 70.4,89.44 55.04,81.76" fill="#9d7348" stroke="#4d392a" stroke-opacity="0.36" stroke-width="1.5"/>
+  <polygon points="32,73.52 43.52,79.28 43.52,87.28 32,81.52" fill="#7f5738" stroke="#4d392a" stroke-opacity="0.28" stroke-width="1.5"/>
+  <polygon points="52.48,74.8 43.52,79.28 43.52,87.28 52.48,82.8" fill="#65442d" stroke="#4d392a" stroke-opacity="0.3" stroke-width="1.5"/>
+  <polygon points="40.96,69.04 52.48,74.8 43.52,79.28 32,73.52" fill="#aa8050" stroke="#4d392a" stroke-opacity="0.36" stroke-width="1.5"/>
+  <line x1="69.12" y1="24.48" x2="73.12" y2="-1.52" stroke="#64864d" stroke-width="2.2"/>
+  <ellipse cx="67.12" cy="4.48" rx="8" ry="5" fill="#a9c77d" opacity="0.94"/>
+  <ellipse cx="77.12" cy="-1.52" rx="8" ry="5" fill="#7ea660" opacity="0.94"/>
+  <ellipse cx="64" cy="88" rx="22" ry="8" fill="#a3d1d6" opacity="0.18"/>
+</svg>

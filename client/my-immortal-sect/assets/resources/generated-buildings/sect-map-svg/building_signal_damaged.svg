@@ -1,0 +1,10 @@
+<svg width="72" height="72" viewBox="0 0 72 72" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <title>建筑状态信号 - 受损</title>
+  <desc>用于远距识别 damaged 状态的红色裂纹标记。</desc>
+  <circle cx="36" cy="36" r="29" fill="#431D1F"/>
+  <circle cx="36" cy="36" r="25" fill="#B85454"/>
+  <path d="M36 20L50 28V40C50 49 44 54 36 57C28 54 22 49 22 40V28L36 20Z" fill="#F7E7E1"/>
+  <path d="M38 25L33 37H39L34 49" stroke="#A84743" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M18 54L24 48" stroke="#FFD5BF" stroke-width="3" stroke-linecap="round"/>
+  <path d="M48 18L54 12" stroke="#FFD5BF" stroke-width="3" stroke-linecap="round"/>
+</svg>

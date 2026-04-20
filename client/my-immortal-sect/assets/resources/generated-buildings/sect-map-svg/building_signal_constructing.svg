@@ -1,0 +1,12 @@
+<svg width="72" height="72" viewBox="0 0 72 72" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <title>建筑状态信号 - 施工中</title>
+  <desc>用于远距识别 constructing 状态的金色工具标记。</desc>
+  <circle cx="36" cy="36" r="29" fill="#3A2816"/>
+  <circle cx="36" cy="36" r="25" fill="#D7A348"/>
+  <path d="M27 48L45 30" stroke="#FFF4D8" stroke-width="5" stroke-linecap="round"/>
+  <path d="M24 28L31 21L36 26L29 33L24 28Z" fill="#FFF4D8"/>
+  <path d="M39 37L48 46" stroke="#6D4A24" stroke-width="5" stroke-linecap="round"/>
+  <path d="M47 47L53 53" stroke="#6D4A24" stroke-width="5" stroke-linecap="round"/>
+  <path d="M50 21L52 16" stroke="#FFF4D8" stroke-width="3" stroke-linecap="round"/>
+  <path d="M56 28L61 26" stroke="#FFF4D8" stroke-width="3" stroke-linecap="round"/>
+</svg>

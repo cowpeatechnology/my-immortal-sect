@@ -7,16 +7,18 @@
 - `docs/vision/design-decisions.md` §4 技术栈与后端架构
 - `AGENTS.md` §4 服务端权威与非妥协架构规则
 
+> **注**：本 ADR 的服务端框架决策仍然有效，但其中关于“多人在线”的早期表述已被 [0011-v1-sync-model-and-multiplayer-pattern.md](/Users/mawei/MyWork/SlgGame/docs/decisions/0011-v1-sync-model-and-multiplayer-pattern.md) 收窄。当前应以“V1 单玩家云存档，未来再扩展多人模式”为准。
+
 ---
 
 ## Context
 
-SlgGame 是一款多人在线的修仙宗门经营小游戏，服务端需承载以下核心职责：
+SlgGame 是一款以 V1 单玩家云存档为核心、并为未来多人扩展保留参考的修仙宗门经营小游戏，服务端需承载以下核心职责：
 
 1. **服务端权威**（`AGENTS.md` §4）：所有关键状态（资源、弟子属性、因果触发、战斗结算）必须在服务端计算，客户端只做展示和预测
 2. **Storylet 引擎**（`AGENTS.md` §4）：因果 + 神降共享同一套底层，支持触发条件、叙事节点、分支、结果、可种下新 storylet
 3. **云端存档 + 增量同步**（`design-decisions.md` §4.3）：每个玩家的宗门状态、弟子、活跃 storylet、历史事件需要结构化持久化
-4. **多人在线**（未来集群化）：初期单机，长期应支持横向扩展到多节点
+4. **多人扩展参考**：V1 不做跨玩家实时同步，但长期仍应保留横向扩展到多节点的技术余量
 5. **Codex 作为主力实现者**：代码结构必须对 AI 友好，模块边界硬约束（`docs/process/engineering-standards.md`）
 
 服务端技术选型已约定为 Go（见 `docs/legacy/04_技术选型文档.md` 与 `design-decisions.md` §4.1），但需要决定:

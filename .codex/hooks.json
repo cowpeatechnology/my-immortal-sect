@@ -6,43 +6,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 /Users/mawei/MyWork/SlgGame/.codex/hooks/session_start.py",
-            "statusMessage": "Loading My Immortal Sect session policy"
-          }
-        ]
-      }
-    ],
-    "UserPromptSubmit": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python3 /Users/mawei/MyWork/SlgGame/.codex/hooks/user_prompt_submit.py",
-            "statusMessage": "Checking supervisor workflow"
-          }
-        ]
-      }
-    ],
-    "PreToolUse": [
-      {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python3 /Users/mawei/MyWork/SlgGame/.codex/hooks/pre_tool_use_policy.py",
-            "statusMessage": "Checking protected shell command"
-          }
-        ]
-      }
-    ],
-    "PostToolUse": [
-      {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python3 /Users/mawei/MyWork/SlgGame/.codex/hooks/post_tool_use_review.py",
-            "statusMessage": "Reviewing shell result"
+            "command": "/bin/sh -lc 'd=\"$PWD\"; while [ \"$d\" != \"/\" ]; do if [ -f \"$d/.codex/hooks/session-start-context.mjs\" ]; then exec node \"$d/.codex/hooks/session-start-context.mjs\"; fi; d=$(dirname \"$d\"); done; exit 0'",
+            "statusMessage": "Loading Coordex project context"
           }
         ]
       }

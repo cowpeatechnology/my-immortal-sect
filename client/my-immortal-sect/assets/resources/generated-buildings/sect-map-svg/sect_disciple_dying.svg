@@ -1,0 +1,32 @@
+<svg width="96" height="96" viewBox="0 0 96 96" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <title>弟子头像 - 濒死</title>
+  <desc>高可读大头弟子 token，濒死状态，紫灰护环、苍白肤色、下垂眼与命火将熄的预警效果。</desc>
+  <defs>
+    <linearGradient id="disciple-dying-ring" x1="22" y1="18" x2="74" y2="78" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#CDB9FF"/>
+      <stop offset="1" stop-color="#71568E"/>
+    </linearGradient>
+    <linearGradient id="disciple-dying-face" x1="48" y1="24" x2="48" y2="74" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#F3E9E6"/>
+      <stop offset="1" stop-color="#C9B8C0"/>
+    </linearGradient>
+  </defs>
+  <ellipse cx="48" cy="83" rx="23" ry="7" fill="#201823" opacity="0.2"/>
+  <circle cx="48" cy="48" r="31" fill="#251D32"/>
+  <circle cx="48" cy="48" r="28" fill="url(#disciple-dying-ring)"/>
+  <circle cx="48" cy="48" r="24" fill="#19141F"/>
+  <ellipse cx="48" cy="30" rx="12" ry="10" fill="#231A2A"/>
+  <path d="M39 30C39 21.716 45.716 15 54 15C62.284 15 69 21.716 69 30V44H39V30Z" fill="#22182B"/>
+  <path d="M25 43C25 30.297 35.297 20 48 20C60.703 20 71 30.297 71 43V54C71 66.703 60.703 77 48 77C35.297 77 25 66.703 25 54V43Z" fill="url(#disciple-dying-face)"/>
+  <path d="M28 46C31.4 39.2 38.8 35 48 35C57.2 35 64.6 39.2 68 46V33C68 22.507 59.493 14 49 14H47C36.507 14 28 22.507 28 33V46Z" fill="#261C2F"/>
+  <ellipse cx="38" cy="50.5" rx="3.4" ry="3" fill="#2B2034"/>
+  <ellipse cx="58" cy="50.5" rx="3.4" ry="3" fill="#2B2034"/>
+  <path d="M35 46.5L41 44.5" stroke="#2B2034" stroke-width="2.4" stroke-linecap="round"/>
+  <path d="M61 46.5L55 44.5" stroke="#2B2034" stroke-width="2.4" stroke-linecap="round"/>
+  <path d="M43 64.5C46.5 62.2 49.5 62.2 53 64.5" stroke="#7E626F" stroke-width="2.8" stroke-linecap="round"/>
+  <ellipse cx="38" cy="57" rx="6" ry="3" fill="#927C90" opacity="0.32"/>
+  <ellipse cx="58" cy="57" rx="6" ry="3" fill="#927C90" opacity="0.32"/>
+  <path d="M18 54C20 34 35 21 48 21" stroke="#E1C98B" stroke-width="3" stroke-linecap="round" opacity="0.6"/>
+  <path d="M18 58C20.5 65 24 70 29 74" stroke="#E1C98B" stroke-width="3" stroke-linecap="round" opacity="0.6"/>
+  <path d="M48 17L52 23L48 29L44 23L48 17Z" fill="#E1C98B" opacity="0.72"/>
+</svg>

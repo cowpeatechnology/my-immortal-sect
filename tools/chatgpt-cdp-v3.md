@@ -288,11 +288,33 @@ observer 调试状态：
 curl http://127.0.0.1:8776/debug/state
 ```
 
+observer 最近事件摘要，常规排障推荐先看这个：
+
+```bash
+curl "http://127.0.0.1:8776/debug/events?limit=20"
+```
+
+只看某一类事件时：
+
+```bash
+curl "http://127.0.0.1:8776/debug/events?limit=20&event=job_ready"
+```
+
 Python 方式：
 
 ```bash
 python3 /Users/mawei/MyWork/SlgGame/tools/chatgpt_cdp_client_v3.py status
 ```
+
+```bash
+python3 /Users/mawei/MyWork/SlgGame/tools/chatgpt_cdp_client_v3.py events --limit 20
+```
+
+说明：
+
+- `/debug/state` 仍然保留，适合看完整快照
+- `/debug/events` 只返回最近事件摘要，适合日常排障
+- 不建议把原始 `observer-v3-*.jsonl` 直接 `tail` 到 Codex 会话里；常规调试优先用 `/debug/events`
 
 ## HTTP 接口
 
@@ -474,4 +496,4 @@ python3 /Users/mawei/MyWork/SlgGame/tools/chatgpt_batch_generate_v3.py \
 3. 先用单条 `generate` 跑一张图
 4. 再用 batch manifest 跑 2 到 3 条串行任务
 5. 看 manifest 是否正确回写
-6. 再看 observer 的 `/debug/state` 和日志是否收敛
+6. 再看 observer 的 `/debug/state` 和 `/debug/events` 是否收敛；常规优先看 `/debug/events`，只有需要离线深挖时再直接看原始 jsonl

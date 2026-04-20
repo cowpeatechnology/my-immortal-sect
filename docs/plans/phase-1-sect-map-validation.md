@@ -102,7 +102,7 @@ Deliver a short playable loop on the big map:
 
 The tester should understand what happened without reading implementation notes.
 
-### P1-5: QA / Exit Gate
+### P1-5: Acceptance / Exit Gate
 
 Run a short structured playtest and verify:
 

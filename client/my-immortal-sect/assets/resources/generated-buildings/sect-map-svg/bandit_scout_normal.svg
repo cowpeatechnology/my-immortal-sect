@@ -1,0 +1,31 @@
+<svg width="96" height="96" viewBox="0 0 96 96" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <title>外敌头像 - 山寇斥候</title>
+  <desc>高可读 hostile token，赤铜威胁环、兜帽与冷色目光，用于地图内快速识别敌袭目标。</desc>
+  <defs>
+    <linearGradient id="bandit-normal-ring" x1="20" y1="18" x2="76" y2="78" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFD3A5"/>
+      <stop offset="1" stop-color="#B34632"/>
+    </linearGradient>
+    <linearGradient id="bandit-normal-face" x1="48" y1="26" x2="48" y2="74" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#E6C6B0"/>
+      <stop offset="1" stop-color="#B8876C"/>
+    </linearGradient>
+  </defs>
+  <ellipse cx="48" cy="83" rx="23" ry="7" fill="#28160E" opacity="0.2"/>
+  <circle cx="48" cy="48" r="31" fill="#341A16"/>
+  <circle cx="48" cy="48" r="28" fill="url(#bandit-normal-ring)"/>
+  <circle cx="48" cy="48" r="24" fill="#1F0F10"/>
+  <path d="M23 44C24.5 27.5 36.8 15 52 15C64 15 74 24 75 37L72 37C67 28 57 23 47 23C36 23 27 30 24 41L23 44Z" fill="#4B1E1C"/>
+  <path d="M25 46C25 32.193 35.745 21 49 21C62.255 21 73 32.193 73 46V54C73 67.255 61.807 78 48 78C34.193 78 23 67.255 23 54V48L25 46Z" fill="url(#bandit-normal-face)"/>
+  <path d="M28 47C30.6 38.8 38 33 48 33C58 33 65.4 38.8 68 47V30C68 21.163 60.837 14 52 14H44C35.163 14 28 21.163 28 30V47Z" fill="#2A1719"/>
+  <path d="M32 55L40 49H56L64 55L56 63H40L32 55Z" fill="#3A1C1E"/>
+  <ellipse cx="40" cy="49.5" rx="4.2" ry="2.8" fill="#F0D9A2"/>
+  <ellipse cx="56" cy="49.5" rx="4.2" ry="2.8" fill="#F0D9A2"/>
+  <circle cx="40" cy="49.5" r="1.2" fill="#1E2024"/>
+  <circle cx="56" cy="49.5" r="1.2" fill="#1E2024"/>
+  <path d="M34 42L41 40" stroke="#261315" stroke-width="2.4" stroke-linecap="round"/>
+  <path d="M62 42L55 40" stroke="#261315" stroke-width="2.4" stroke-linecap="round"/>
+  <path d="M38 67C44 69.5 52 69.5 58 67" stroke="#A8634B" stroke-width="2.8" stroke-linecap="round"/>
+  <path d="M19 54C20.5 44 23.5 36 28 31" stroke="#F5C56F" stroke-width="3" stroke-linecap="round" opacity="0.72"/>
+  <path d="M20 58C22 66 26 72 31 76" stroke="#F5C56F" stroke-width="3" stroke-linecap="round" opacity="0.72"/>
+</svg>

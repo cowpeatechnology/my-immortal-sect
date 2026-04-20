@@ -1,0 +1,28 @@
+<svg width="96" height="96" viewBox="0 0 96 96" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <title>弟子头像 - 正常</title>
+  <desc>高可读大头弟子 token，正常状态，蓝青护环与平稳神情，适用于宗门地图常态工作表现。</desc>
+  <defs>
+    <linearGradient id="disciple-normal-ring" x1="24" y1="16" x2="72" y2="80" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#9DD6FF"/>
+      <stop offset="1" stop-color="#4B78BE"/>
+    </linearGradient>
+    <linearGradient id="disciple-normal-face" x1="48" y1="24" x2="48" y2="74" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#F7E9D2"/>
+      <stop offset="1" stop-color="#E0B78D"/>
+    </linearGradient>
+  </defs>
+  <ellipse cx="48" cy="83" rx="23" ry="7" fill="#2D2015" opacity="0.16"/>
+  <circle cx="48" cy="48" r="31" fill="#223146"/>
+  <circle cx="48" cy="48" r="28" fill="url(#disciple-normal-ring)"/>
+  <circle cx="48" cy="48" r="24" fill="#142232"/>
+  <ellipse cx="48" cy="30" rx="12" ry="10" fill="#203246"/>
+  <path d="M39 30C39 21.716 45.716 15 54 15C62.284 15 69 21.716 69 30V44H39V30Z" fill="#1B2736"/>
+  <path d="M25 43C25 30.297 35.297 20 48 20C60.703 20 71 30.297 71 43V54C71 66.703 60.703 77 48 77C35.297 77 25 66.703 25 54V43Z" fill="url(#disciple-normal-face)"/>
+  <path d="M28 46C31.4 39.2 38.8 35 48 35C57.2 35 64.6 39.2 68 46V33C68 22.507 59.493 14 49 14H47C36.507 14 28 22.507 28 33V46Z" fill="#212F40"/>
+  <ellipse cx="38" cy="49" rx="3.5" ry="4.2" fill="#233247"/>
+  <ellipse cx="58" cy="49" rx="3.5" ry="4.2" fill="#233247"/>
+  <path d="M43 61C46.2 63.4 49.8 63.4 53 61" stroke="#9E5B53" stroke-width="2.8" stroke-linecap="round"/>
+  <path d="M35 42.5L41 40.5" stroke="#233247" stroke-width="2.4" stroke-linecap="round"/>
+  <path d="M61 42.5L55 40.5" stroke="#233247" stroke-width="2.4" stroke-linecap="round"/>
+  <path d="M48 20L53 27L48 34L43 27L48 20Z" fill="#D7B36C" opacity="0.92"/>
+</svg>

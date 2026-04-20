@@ -1,10 +1,7 @@
-project_doc_max_bytes = 65536
-project_doc_fallback_filenames = ["AGENTS.md"]
+# Coordex project-scoped Codex config
+
+model = "gpt-5.4"
+model_reasoning_effort = "high"
 
 [features]
 codex_hooks = true
-multi_agent = true
-
-[agents]
-max_threads = 6
-max_depth = 1

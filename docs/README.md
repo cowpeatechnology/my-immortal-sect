@@ -69,20 +69,24 @@ docs/
 
 ### `architecture/`
 - `tech-stack.md` — 技术栈综述（继承并更新 legacy `04`）
-- `client-structure.md` — Cocos 工程目录、模块划分、事件总线
-- `server-structure.md` — Go 服务端模块、API 约定、数据库 schema
+- ✅ `client-structure.md` — Cocos 工程目录、模块划分、事件总线（已起草 2026-04-16）
+- ✅ `server-structure.md` — Go 服务端模块、API 约定、数据库 schema（已起草 2026-04-16）
 - `save-sync-protocol.md` — 云端存档结构、增量同步协议、离线时间处理
 - `config-pipeline.md` — Excel → JSON → 双端类型生成
 - `version-migration.md` — 配置与存档的版本迁移铁律
-- ✅ `agent-team-operating-model.md` — Codex 多智能体团队编制、主管调度方式、常驻与临时角色划分（已起草 2026-04-16）
+- ✅ `agent-team-operating-model.md` — 当前 Coordex 三角色可见线程体系：`supervisor / engineer / art_asset_producer` 的职责边界与协作规则（已更新 2026-04-19）
 
 ### `process/`
 - ✅ `development-loop.md` — 标准研发循环：Plan → Design → Execute → Verify → Record
 - ✅ `github-workflow.md` — GitHub issue / branch / commit / merge 约定
 - ✅ `engineering-standards.md` — 项目级 Codex 工程规范：命名、禁令、TS / Go / commit 约束
+- ✅ `cocos-mcp-workflow.md` — 项目内 Cocos MCP 的运行端口、编辑源与同步规则（已起草 2026-04-16）
+- ✅ `dedicated-browser-workflow.md` — 浏览器相关任务的首选运行模式：专用 Chrome + 固定调试端口 + 会话复用（已确认 2026-04-17）
+- ✅ `thread-conversation-protocol.md` — 多个可见角色线程之间的共享对话协议：单 owner 子功能、激活后受限直连、结构化消息与 ledger 留痕（已更新 2026-04-19）
 
 ### `project/`
 - ✅ `delivery-ledger.md` — 项目总台账：当前里程碑、活跃循环、已实现 / 未实现 / 暂缓功能、主要冲突
+- ✅ `thread-conversation-ledger.md` — 项目内线程对话账本：不同角色线程之间的 request / handoff / blocker / status 记录（已起草 2026-04-18）
 
 ### `features/`
 - `F-xxx-<slug>.md` — 单功能循环文档，记录每轮计划、设计、执行、验收、冲突和当前状态
@@ -91,6 +95,7 @@ docs/
 - ✅ `supervisor-work-order-template.md` — 主管派单模板
 - ✅ `worker-handoff-template.md` — worker 回传模板
 - ✅ `feature-loop-template.md` — 单功能循环文档模板
+- ✅ `thread-message-template.md` — 线程对话消息模板
 
 ### `decisions/`（ADR，每个决策一个文件）
 - `0001-big-head-over-spine.md` — 为什么用大头替代全身 Spine

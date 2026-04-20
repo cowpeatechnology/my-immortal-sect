@@ -1,0 +1,12 @@
+# Decision Log
+
+Record only decisions that change future work.
+
+## Entries
+
+- 2026-04-20: `M1-A` 的偏验收只接受宗门地图在真实 Cocos 客户端路径中的 client-local `建 + 运` 基线；不得把该结论表述为已完成 `Go + Hollywood` / `shared` 权威闭环。后续里程碑入口应先补权威路径与最小 `守` 分支，而不是把当前状态误判为前后端主线已通。
+- 2026-04-20: 人类已明确覆盖上一条“先补权威路径”的下一步建议。下一里程碑改为 `M1-B` 本地优先深化：先在真实 Cocos 客户端中补通用单位属性、建筑 HP / 受损 / 修复与更高可读资源包，用更丰富的本地流程验证玩法，再决定后续服务端权威接入顺序。
+- 2026-04-21: `M1-C` 已接受为 client-local 可完成短会话里程碑。后续规划不得把该结论表述为小游戏宿主验证已通过，或 `Go + Hollywood` / `shared` 权威路径已接入；下一阶段应在“补小游戏容器侧有效 smoke/产物链路”与“开始 authority-boundary 接入”之间，由人类按产品目标继续裁定优先级。
+- 2026-04-21: 当前阶段的验证顺序调整为“先确认 `Cocos Creator` 编译/预览链路，再决定是否切换到平台宿主”。微信/抖音开发者工具与真实小游戏容器测试后置，不再作为默认下一步或当前里程碑 blocker；只有在人类明确要求切换到对应工具验证时，才启动单独计划。
+- 2026-04-21: `M1-D` 的首轮 authority 竖切范围已冻结为“建造状态与资源结算”最小贯通：只覆盖 `place / upgrade / demolish`、资源扣减/返还与短会话关键快照的最小 `shared + Go + Hollywood` 路径；微信/抖音开发者工具、宿主 smoke、平台适配与新玩法扩写全部保持 out-of-scope。后续 `engineer` handoff 必须带回文档回写范围、提交 SHA 与远程分支信息，才可进入主管验收。
+- 2026-04-21: Git 拓扑已由人类重新裁定：`~/MyWork/SlgGame/.git` 是唯一 canonical 仓库，根目录下任何独立子仓库都视为配置错误，需被清理并归并到根仓。当前根仓已存在可用 `origin=git@github.com:cowpeatechnology/my-immortal-sect.git`，因此优先路径是删除嵌套 `.git` 并继续在根仓提交/推送，而不是默认整仓重建。

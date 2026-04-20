@@ -1,0 +1,28 @@
+<svg width="128" height="128" viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <title>灵石</title>
+  <desc>灵石资源点，石簇与矿脉裂面，对齐 1x1 footprint。</desc>
+  <defs>
+    <filter id="spirit_stone-drop" x="0" y="0" width="128" height="128" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feOffset dy="10"/>
+      <feGaussianBlur stdDeviation="8"/>
+      <feColorMatrix type="matrix" values="0 0 0 0 0.211765 0 0 0 0 0.152941 0 0 0 0 0.105882 0 0 0 0.18 0"/>
+      <feBlend in2="SourceGraphic" result="shape"/>
+    </filter>
+    <filter id="spirit_stone-mist" x="0" y="0" width="128" height="128" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feGaussianBlur stdDeviation="6"/>
+    </filter>
+  </defs>
+  <ellipse cx="64" cy="160" rx="30" ry="8" fill="#3c2a1b" opacity="0.12" filter="url(#spirit_stone-mist)"/>
+  <polygon points="28.16,92 64,109.92 64,115.92 28.16,98" fill="#8f96a5" stroke="#4d392a" stroke-opacity="0.28" stroke-width="1.1"/>
+  <polygon points="98.56,92.64 64,109.92 64,115.92 98.56,98.64" fill="#646b7a" stroke="#4d392a" stroke-opacity="0.3" stroke-width="1.1"/>
+  <polygon points="62.72,74.72 98.56,92.64 64,109.92 28.16,92" fill="#d2d4db" stroke="#4d392a" stroke-opacity="0.36" stroke-width="1.1"/>
+  <polygon points="64,40 82,70 64,88 66,78" fill="#7185ad" stroke="#586987" stroke-opacity="0.34" stroke-width="1.2"/>
+  <polygon points="64,40 46,74 62,80 64,88" fill="#9cb3d8" stroke="#586987" stroke-opacity="0.34" stroke-width="1.2"/>
+  <polygon points="48,62 62,84 48,102 50,92" fill="#8996ab" stroke="#667284" stroke-opacity="0.34" stroke-width="1.2"/>
+  <polygon points="48,62 34,88 46,94 48,102" fill="#c2cedf" stroke="#667284" stroke-opacity="0.34" stroke-width="1.2"/>
+  <polygon points="84,70 96,88 84,106 86,96" fill="#708e9c" stroke="#56727f" stroke-opacity="0.34" stroke-width="1.2"/>
+  <polygon points="84,70 72,92 82,98 84,106" fill="#a8c3cf" stroke="#56727f" stroke-opacity="0.34" stroke-width="1.2"/>
+  <polygon points="34,102 43.6,84 58,91.2 60.4,105.6 44.8,111.6" fill="#5f6778" stroke="#525867" stroke-opacity="0.34" stroke-width="1"/>
+  <polygon points="80,105 88,90 100,96 102,108 89,113" fill="#5f6778" stroke="#525867" stroke-opacity="0.34" stroke-width="1"/>
+  <ellipse cx="64" cy="92" rx="18" ry="7" fill="#a3d1d6" opacity="0.14"/>
+</svg>

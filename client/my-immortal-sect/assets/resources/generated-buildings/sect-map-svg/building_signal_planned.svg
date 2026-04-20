@@ -1,0 +1,13 @@
+<svg width="72" height="72" viewBox="0 0 72 72" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <title>建筑状态信号 - 蓝图</title>
+  <desc>用于远距识别 planned 状态的灰蓝图标记。</desc>
+  <circle cx="36" cy="36" r="29" fill="#293242"/>
+  <circle cx="36" cy="36" r="25" fill="#6D7788"/>
+  <path d="M23 25H49V47H23V25Z" fill="#E6EEF8"/>
+  <path d="M29 29H43V43H29V29Z" fill="#B8CCDD"/>
+  <path d="M23 31H49" stroke="#8CA2B6" stroke-width="1.8"/>
+  <path d="M23 37H49" stroke="#8CA2B6" stroke-width="1.8"/>
+  <path d="M31 25V47" stroke="#8CA2B6" stroke-width="1.8"/>
+  <path d="M39 25V47" stroke="#8CA2B6" stroke-width="1.8"/>
+  <path d="M47 22L52 27L47 32" stroke="#F3F7FC" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

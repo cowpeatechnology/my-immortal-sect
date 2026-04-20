@@ -1,44 +1,21 @@
 # Worker Handoff Template
 
-**Work Order ID**: `WO-xxx`  
-**Worker Role**: `<agent role>`  
-**状态**: handoff-ready / blocked  
-**最后更新**: `YYYY-MM-DD`
+## Summary
 
-## What Changed
+_What was completed?_
 
-一句话概括这次完成了什么。
+## Artifacts
 
-## Files Touched
+- _Changed files or produced assets_
 
-- `...`
+## Validation
 
-## Checks Run
+- _Commands, manual checks, or evidence_
 
-- `...`
+## Blockers
 
-## Runtime / QA Handoff
+- _None_
 
-- 启动命令：`...`
-- 环境前提：`...`
-- 测试地址 / 页面：`...`
-- 主管 / QA 验收步骤：`...`
-- 预期结果：`...`
+## Next Owner
 
-## Findings / Risks
-
-- `...`
-
-## Assumptions Made
-
-- `...`
-
-## Recommended Next Owner
-
-- `<agent role>`
-
-## Supervisor Decision Needed
-
-列出仍需主管拍板的点：
-
-- `...`
+`supervisor`

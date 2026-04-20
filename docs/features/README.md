@@ -10,7 +10,7 @@
 
 - `F-001-storylet-dsl.md`
 - `F-002-sect-map-playability-validation.md`
-- `F-003-first-client-bootstrap.md`
+- `F-003-knowledge-harvest-pipeline.md`
 
 每个 feature 文档都应基于：
 

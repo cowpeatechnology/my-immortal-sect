@@ -1,116 +1,23 @@
-# My Immortal Sect 项目总台账
+# Delivery Ledger
 
-**状态**: 活文档  
-**最后更新**: 2026-04-16  
-**项目名**: My Immortal Sect（《我的宗门》）  
-**当前阶段**: Phase 1 / runtime sect-map slice planning  
+Record only accepted work here.
 
-## Context
+## Current Release Or Milestone
 
-本文件是项目级持续更新台账。
+- Name: `M1-C` 本地短会话收口
+- Goal: 在不接服务端的前提下，把贴图版宗门地图收口为一轮可从新档跑完的 `5~10` 分钟本地短会话，补齐 `place / upgrade / demolish`、首波敌袭、修复恢复与胜负节奏。
+- Acceptance owner: `supervisor`
 
-它不记录某个功能的全部细节，而是记录：
+## Accepted Deliveries
 
-- 当前里程碑是什么
-- 目前哪些循环正在推进
-- 已实现 / 未实现 / 暂缓项有哪些
-- 当前最主要的冲突和风险是什么
-
-详细过程进入 `docs/features/`。
-
-## 1. 当前里程碑
-
-- 当前主里程碑：`Phase 1 / sect-map validation slice`
-- 当前目标：
-  - 验证大地图是否真的可用、可读、可玩
-  - 收敛大地图交互规则、blueprint 反馈和弟子任务可见性
-  - 为 full M0 提供经过验证的地图交互前提
-
-## 2. 活跃循环
-
-| Loop ID | Feature / Topic | Area | Owner | Status | Notes |
-|---|---|---|---|---|---|
-| L-001 | `F-001` 项目治理基础设施 | process / architecture | supervisor | accepted | 已固化主管制、角色模板、agent team model |
-| L-002 | `F-001` 正式命名与循环模板 | process / docs | supervisor | accepted | 已完成模板、总台账、Git 工作流与项目名同步 |
-| L-003 | `F-002` 大地图可玩性验证切片 | prototype / design / qa | supervisor | exploratory | 已完成 `hifi-prototype` 探索，但不构成真实前后端切片验收 |
-
-## 3. 已实现 / 已固化
-
-### 3.1 规则与组织
-
-- [x] 主线程作为 `supervisor`
-- [x] 常驻角色模板与临时角色模板划分
-- [x] hub-and-spoke 调度原则
-- [x] 保护目录与阶段性初始化规则
-
-### 3.2 文档与架构
-
-- [x] 核心愿景文档
-- [x] ADR 0007 ~ 0011
-- [x] M0 vertical slice 草案
-- [x] 智能体团队运作模型草案
-
-### 3.3 工具与资产工作流
-
-- [x] ChatGPT 图像生成工作流已具备基本可用性
-- [x] 相关工具文档已存在于 `tools/` 范围
-
-### 3.4 Phase 1 原型验证
-
-- [x] `hifi-prototype/home-immersive.html` 已具备大地图可玩验证闭环
-- [x] 已验证地块选择、蓝图落位、备料、施工、启用产出
-- [x] 已验证重复交互：南坡完工后可继续推进西侧施工
-- [x] 已修复 Phase 1 面板遮挡南坡/西侧 lot 的问题
-
-### 3.5 已确认的真实实现约束
-
-- [x] 第一阶段的“可玩大地图”必须是 Cocos + Go 真实切片，不是 HTML prototype
-- [x] 主管与 worker 的交接必须包含启动命令、测试入口和验收流程
-- [x] 后续子智能体统一使用 `gpt-5.4` + `xhigh`
-
-## 4. 未实现 / 待推进
-
-### 4.1 设计与策划
-
-- [ ] Storylet DSL 正式文档
-- [ ] 因果系统文档
-- [ ] 弟子系统文档
-- [ ] 建筑系统文档
-- [ ] Phase 1 大地图可玩性验证完成并验收（真实运行栈）
-
-### 4.2 工程与实现
-
-- [x] 本地 git 仓库初始化并绑定远程
-- [ ] `client/`, `server/`, `shared/` 正式进入 M0
-- [x] 第一个 feature 文档按模板启动（`F-001-project-governance-foundation.md`）
-- [ ] `client/`, `server/`, `shared/` 按真实技术栈进入实施
-- [ ] `F-002-sect-map-playability-validation.md` 在真实运行栈中完成验收
-
-## 5. 暂缓 / Deferred
-
-- [ ] PM 智能体单独设岗
-- [ ] 细分 `client_feature_worker` / `server_feature_worker`
-- [ ] 细分“提示词设计”和“出图执行”两个美术角色
-- [ ] full M0 技术垂直切片在 Phase 1 完成前展开
-
-## 6. 当前冲突与风险
-
-| ID | Topic | Type | Status | Notes |
-|---|---|---|---|---|
-| R-001 | 本地 git 仓库 | process | closed | 已初始化并绑定到 `git@github.com:cowpeatechnology/my-immortal-sect.git` |
-| R-002 | 设计文档仍多于实现文档 | stage | expected | 当前仍处于从规划转向真实实现的早期阶段，属合理现象 |
-| R-003 | 图像工作流可用但仍非项目核心 | scope | watch | 要防止工具工作继续挤占玩法 / 架构主线 |
-| R-004 | 大地图读图性与可玩性未实测 | product | open | HTML prototype 只提供探索证据，真实 Cocos + Go 切片尚未完成 |
-| R-005 | 主管与 worker 缺少统一 runtime handoff | process | watch | 已补模板与规则，但需要在真实开发循环中验证是否顺畅 |
-
-## 7. 下一步建议
-
-1. 以真实技术栈重定义 Phase 1 的第一个研发 work order
-2. 启动 `client/` 与 `server/` 的最小切片，而不是继续把 milestone 建在 `hifi-prototype/`
-3. 用新模板启动下一轮 “Plan -> Design -> Execute -> Verify -> Record” 循环，并强制写入 runtime handoff 信息
-
-## 相关文档
-
-- [docs/process/development-loop.md](/Users/mawei/MyWork/SlgGame/docs/process/development-loop.md)
-- [docs/process/github-workflow.md](/Users/mawei/MyWork/SlgGame/docs/process/github-workflow.md)
-- [docs/templates/feature-loop-template.md](/Users/mawei/MyWork/SlgGame/docs/templates/feature-loop-template.md)
+| Date | Scope | Evidence | Accepted By |
+| --- | --- | --- | --- |
+| 2026-04-20 | `M1-A` client-local `建 + 运` 偏验收基线 | `F-002` 与 `F-004` 已回写代码审计结论：accepted 为地图契约快照、有限资源节点、`gather -> haul -> build`、资源入库、可见状态变化与最小可读反馈；`safeArea` 原生证据保持 `partial`，`Go + Hollywood` / `shared` 权威路径保持 `missing` | `supervisor` |
+| 2026-04-20 | `M1-B` 本地通用单位属性与损伤/修复闭环 | `F-004` 已回写真实 Cocos 客户端中的共享单位模型、建筑 HP / `damaged` / `repairCost`、外敌边缘刷新、`guard_tower` 自动守御、弟子 `guard / repair`、修复缺口优先采集与 `http://localhost:7456/` 预览页验证结果；该接受态仅覆盖 client-local 玩法深化，不外推为 `Go + Hollywood` / `shared` 权威闭环 | `supervisor` |
+| 2026-04-20 | `M1-B` 高可读地图资源包 | `F-004` 已冻结 `client/my-immortal-sect/assets/resources/generated-buildings/sect-map-svg/` 下的 canonical SVG 资源包：建筑 5 个、资源 3 个、弟子四态头像 4 个，并记录命名、尺寸、锚点与导出合同；该接受态仅覆盖资源包与规格交付，不外推为运行时贴图接入已完成 | `supervisor` |
+| 2026-04-20 | `M1-B` 资源接图与关键占位刷新 | `F-004` 已回写 `sect-map-svg -> sect-map-raster -> SpriteFrame` 的稳定消费路径、12 个 runtime PNG 贴图、弟子/建筑/资源关键占位替换，以及 `http://localhost:7456/` 预览页下 `build -> haul -> guard -> repair` 本地闭环未被破坏的验证结果；该接受态仅覆盖关键地图表现刷新，不外推为整轮体验验证已完成 | `supervisor` |
+| 2026-04-20 | `M1-B` 体验刷新与可玩验证 | `F-004` 已回写贴图版地图在 `http://localhost:7456/` 预览页上的短流程回归、建筑标签遮挡收口、默认盘/注入盘验证与剩余体验 blocker 清单；该接受态仅覆盖体验刷新后的回归验证与问题收敛，不外推为所有体验问题、敌方视觉刷新或服务端权威路径已完成 | `supervisor` |
+| 2026-04-21 | `M1-C` 本地短会话核心循环 | `F-004` 已回写 `place / upgrade / demolish`、首波敌袭、repair 恢复、短会话阶段机与 `victory / defeat` 收口；专用 Chrome `http://localhost:7456/` 预览页已跑通一轮新档 `victory` 短会话，约 `82.4s`，阶段推进为 `clear_ruin -> place_guard_tower -> upgrade_guard_tower -> raid_countdown -> defend -> recover -> victory`；该接受态仅覆盖 client-local 短会话核心循环，不外推为整个 `M1-C`、小游戏容器 smoke 或服务端权威路径已完成 | `supervisor` |
+| 2026-04-21 | `M1-C` 威胁识别与状态信号资源 | `F-004` 已回写 `bandit_scout_normal / injured` hostile 头像与 `building_signal_planned / supplied / constructing / damaged / disabled` 远距状态信号的 canonical SVG + runtime PNG/SpriteFrame 资源合同；该接受态仅覆盖资源与规格交付，不外推为 live runtime 接图、小游戏容器 smoke 或服务端权威路径已完成 | `supervisor` |
+| 2026-04-21 | `M1-C` 目标指向收口与宿主 smoke 结论 | `F-004` 已回写导向式 HUD、objective marker、建筑状态徽记与 hostile 头像贴图进入当前 runtime，并在专用 Chrome `http://localhost:7456/` 预览页确认短会话仍可跑通 `victory`；小游戏宿主 smoke 已推进到抖音开发者工具登录门槛，但受登录页与缺少抖音构建产物限制，当前结论保持 `partial`。该接受态仅覆盖目标指向收口与 blocker 明确化，不外推为宿主验证通过 | `supervisor` |
+| 2026-04-21 | `M1-C` client-local 可完成短会话里程碑 | `F-004` 已由主管补记里程碑验收结论：贴图版宗门地图在真实 Cocos 客户端路径中，已具备从新档完成一轮本地短会话的门槛，包含 `place / upgrade / demolish`、首波敌袭、防守、修复恢复、目标导向与胜负收口；专用 Chrome `http://localhost:7456/` 预览页已有约 `82.4s` 的 `victory` 证据。该接受态仅表述为 client-local 里程碑通过，小游戏宿主 smoke 仍为 `partial`，`Go + Hollywood` / `shared` 权威路径仍未完成 | `supervisor` |

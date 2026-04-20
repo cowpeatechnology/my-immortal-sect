@@ -19,7 +19,12 @@ const DEFAULT_PORT = 8776;
 const DEFAULT_SETTLE_MS = 3000;
 const DEFAULT_GRACE_MS = 30000;
 const DEFAULT_MAX_DEBUG_EVENTS = 400;
+const DEFAULT_DEBUG_EVENTS_LIMIT = 20;
 const DEFAULT_STATE_DIR = path.join(process.cwd(), 'output', 'chatgpt-capture-v3-server');
+const MAX_LOG_STRING_LENGTH = 4096;
+const MAX_LOG_ARRAY_ITEMS = 32;
+const MAX_LOG_OBJECT_KEYS = 64;
+const MAX_LOG_DEPTH = 6;
 const IMAGE_CHOICE_PROMPT_KEYWORDS = [
   '你更喜欢哪张图片',
   'which image do you prefer'
@@ -219,6 +224,133 @@ function extFromMimeType(mimeType) {
     return '.webp';
   }
   return '.bin';
+}
+
+function sanitizeForLog(value, depth = 0) {
+  if (value === null || value === undefined) {
+    return value ?? null;
+  }
+
+  if (Buffer.isBuffer(value)) {
+    return {
+      type: 'Buffer',
+      byteLength: value.length
+    };
+  }
+
+  if (typeof value === 'string') {
+    if (value.length <= MAX_LOG_STRING_LENGTH) {
+      return value;
+    }
+    return `${value.slice(0, MAX_LOG_STRING_LENGTH)}… [truncated ${value.length - MAX_LOG_STRING_LENGTH} chars]`;
+  }
+
+  if (typeof value !== 'object') {
+    return value;
+  }
+
+  if (depth >= MAX_LOG_DEPTH) {
+    if (Array.isArray(value)) {
+      return `[array:${value.length}]`;
+    }
+    return '[object]';
+  }
+
+  if (Array.isArray(value)) {
+    const items = value
+      .slice(0, MAX_LOG_ARRAY_ITEMS)
+      .map((item) => sanitizeForLog(item, depth + 1));
+    if (value.length > MAX_LOG_ARRAY_ITEMS) {
+      items.push(`[+${value.length - MAX_LOG_ARRAY_ITEMS} more items]`);
+    }
+    return items;
+  }
+
+  const entries = Object.entries(value).filter(([, nested]) => nested !== undefined);
+  const output = {};
+  for (const [key, nested] of entries.slice(0, MAX_LOG_OBJECT_KEYS)) {
+    output[key] = sanitizeForLog(nested, depth + 1);
+  }
+  if (entries.length > MAX_LOG_OBJECT_KEYS) {
+    output.__truncatedKeys = entries.length - MAX_LOG_OBJECT_KEYS;
+  }
+  return output;
+}
+
+function summarizeDebugEvent(record) {
+  const summary = {};
+  const keys = [
+    'ts',
+    'source',
+    'event',
+    'runIndex',
+    'requestId',
+    'sequence',
+    'label',
+    'method',
+    'status',
+    'statusText',
+    'mimeType',
+    'fileId',
+    'fileName',
+    'sizeBytes',
+    'encodedDataLength',
+    'jobId',
+    'assignedJobId',
+    'state',
+    'version',
+    'queueDepth',
+    'reason',
+    'clickedSkip',
+    'choiceCleared',
+    'validatedFinalCount',
+    'preferenceButtonCount',
+    'asyncCount',
+    'fileDownloadCount',
+    'estuaryCount',
+    'error',
+    'url',
+    'startedAt',
+    'updatedAt',
+    'ackedAt'
+  ];
+  for (const key of keys) {
+    if (record[key] !== undefined) {
+      summary[key] = record[key];
+    }
+  }
+  if (record.body && typeof record.body === 'object') {
+    summary.body = sanitizeForLog(record.body);
+  }
+  if (record.pageStatus && typeof record.pageStatus === 'object') {
+    summary.pageStatus = sanitizeForLog({
+      composerFound: record.pageStatus.composerFound,
+      loginRequired: record.pageStatus.loginRequired,
+      busyGenerating: record.pageStatus.busyGenerating,
+      candidateChoiceVisible: record.pageStatus.candidateChoiceVisible,
+      preferenceButtonCount: record.pageStatus.preferenceButtonCount,
+      progressText: record.pageStatus.progressText,
+      title: record.pageStatus.title,
+      url: record.pageStatus.url
+    });
+  }
+  if (record.target && typeof record.target === 'object') {
+    summary.target = sanitizeForLog({
+      targetId: record.target.targetId,
+      title: record.target.title,
+      url: record.target.url
+    });
+  }
+  if (Array.isArray(record.initialCandidateFileIds) && record.initialCandidateFileIds.length) {
+    summary.initialCandidateFileIds = sanitizeForLog(record.initialCandidateFileIds);
+  }
+  if (Array.isArray(record.chosenFileIds) && record.chosenFileIds.length) {
+    summary.chosenFileIds = sanitizeForLog(record.chosenFileIds);
+  }
+  if (Array.isArray(record.preferredFileIds) && record.preferredFileIds.length) {
+    summary.preferredFileIds = sanitizeForLog(record.preferredFileIds);
+  }
+  return summary;
 }
 
 function createRun(runIndex, requestId, conversationId) {
@@ -446,8 +578,18 @@ class ObserverServer {
       session_id: this.serverSessionId,
       ...payload
     };
-    this.log.write(record);
-    this.recordDebug(record);
+    const safeRecord = sanitizeForLog(record);
+    this.log.write(safeRecord);
+    this.recordDebug(safeRecord);
+  }
+
+  listDebugEvents(limit = DEFAULT_DEBUG_EVENTS_LIMIT, eventName = '') {
+    const safeLimit = Math.max(1, Math.min(200, Number(limit) || DEFAULT_DEBUG_EVENTS_LIMIT));
+    const filter = String(eventName || '').trim();
+    const events = filter
+      ? this.debugEvents.filter((record) => record.event === filter)
+      : this.debugEvents;
+    return events.slice(-safeLimit).map((record) => summarizeDebugEvent(record));
   }
 
   snapshotJob(job) {
@@ -1691,6 +1833,22 @@ class ObserverServer {
         activeRun: this.snapshotRun(),
         jobs: Array.from(this.jobs.values()).map((job) => this.snapshotJob(job)),
         debugEvents: this.debugEvents
+      });
+      return;
+    }
+
+    if (req.method === 'GET' && pathname === '/debug/events') {
+      const limit = url.searchParams.get('limit') || DEFAULT_DEBUG_EVENTS_LIMIT;
+      const eventName = url.searchParams.get('event') || '';
+      const items = this.listDebugEvents(limit, eventName);
+      this.sendJson(res, 200, {
+        ok: true,
+        serverSessionId: this.serverSessionId,
+        filter: {
+          event: eventName || null
+        },
+        count: items.length,
+        items
       });
       return;
     }

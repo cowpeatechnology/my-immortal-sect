@@ -1,14 +1,28 @@
 .DS_Store
-*.pyc
+*.log
+*.tmp
 __pycache__/
-
-.claude/
 .playwright-cli/
-
 output/
 UI参考/
 
-node_modules/
-.venv/
-.idea/
-.vscode/
+# Cocos Creator runtime-generated directories
+client/**/.creator/
+client/**/[Ll]ibrary/
+client/**/[Tt]emp/
+client/**/[Ll]ocal/
+client/**/[Pp]rofiles/
+client/**/[Bb]uild/
+client/**/node_modules/
+
+# Server local outputs
+server/bin/
+server/.cache/
+
+# Coordex runtime state
+.coordex/runtime/
+
+# Ephemeral runtime evidence and harvest artifacts
+runtime/browser-broker-tests/
+runtime/knowledge-harvest/
+runtime/knowledge-vault/

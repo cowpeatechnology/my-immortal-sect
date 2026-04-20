@@ -1,0 +1,55 @@
+<svg width="256" height="192" viewBox="0 0 256 192" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <title>药圃</title>
+  <desc>低矮药圃、种植床、棚架与晾架，对齐 2x2 footprint。</desc>
+  <defs>
+    <filter id="herb_garden-drop" x="0" y="0" width="256" height="192" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feOffset dy="10"/>
+      <feGaussianBlur stdDeviation="8"/>
+      <feColorMatrix type="matrix" values="0 0 0 0 0.211765 0 0 0 0 0.152941 0 0 0 0 0.105882 0 0 0 0.18 0"/>
+      <feBlend in2="SourceGraphic" result="shape"/>
+    </filter>
+    <filter id="herb_garden-mist" x="0" y="0" width="256" height="192" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feGaussianBlur stdDeviation="6"/>
+    </filter>
+  </defs>
+  <ellipse cx="128" cy="160" rx="68" ry="12" fill="#3c2a1b" opacity="0.12" filter="url(#herb_garden-mist)"/>
+  <polygon points="25.6,122.72 131.84,175.84 131.84,183.84 25.6,130.72" fill="#cfa676" stroke="#4d392a" stroke-opacity="0.28" stroke-width="1.1"/>
+  <polygon points="230.4,126.56 131.84,175.84 131.84,183.84 230.4,134.56" fill="#9b7049" stroke="#4d392a" stroke-opacity="0.3" stroke-width="1.1"/>
+  <polygon points="124.16,73.44 230.4,126.56 131.84,175.84 25.6,122.72" fill="#eee1c5" stroke="#4d392a" stroke-opacity="0.36" stroke-width="1.1"/>
+  <polygon points="93.44,89.2 128,106.48 128,114.48 93.44,97.2" fill="#6f5033" stroke="#4d392a" stroke-opacity="0.28" stroke-width="1"/>
+  <polygon points="153.6,93.68 128,106.48 128,114.48 153.6,101.68" fill="#5b412b" stroke="#4d392a" stroke-opacity="0.3" stroke-width="1"/>
+  <polygon points="119.04,76.4 153.6,93.68 128,106.48 93.44,89.2" fill="#8f6a43" stroke="#4d392a" stroke-opacity="0.36" stroke-width="1"/>
+  <ellipse cx="114.21" cy="77.79" rx="12" ry="8" fill="#a9c77d" opacity="0.94"/>
+  <ellipse cx="132.21" cy="73.79" rx="14" ry="9" fill="#7ea660" opacity="0.94"/>
+  <ellipse cx="124.21" cy="63.79" rx="10" ry="7" fill="#7ea660" opacity="0.88"/>
+  <polygon points="126.72,114.8 162.56,132.72 162.56,140.72 126.72,122.8" fill="#6f5033" stroke="#4d392a" stroke-opacity="0.28" stroke-width="1"/>
+  <polygon points="189.44,119.28 162.56,132.72 162.56,140.72 189.44,127.28" fill="#5b412b" stroke="#4d392a" stroke-opacity="0.3" stroke-width="1"/>
+  <polygon points="153.6,101.36 189.44,119.28 162.56,132.72 126.72,114.8" fill="#8f6a43" stroke="#4d392a" stroke-opacity="0.36" stroke-width="1"/>
+  <ellipse cx="148.8" cy="103.4" rx="12" ry="8" fill="#a9c77d" opacity="0.94"/>
+  <ellipse cx="166.8" cy="99.4" rx="14" ry="9" fill="#7ea660" opacity="0.94"/>
+  <ellipse cx="158.8" cy="89.4" rx="10" ry="7" fill="#7ea660" opacity="0.88"/>
+  <polygon points="55.04,117.36 89.6,134.64 89.6,142.64 55.04,125.36" fill="#6f5033" stroke="#4d392a" stroke-opacity="0.28" stroke-width="1"/>
+  <polygon points="116.48,121.2 89.6,134.64 89.6,142.64 116.48,129.2" fill="#5b412b" stroke="#4d392a" stroke-opacity="0.3" stroke-width="1"/>
+  <polygon points="81.92,103.92 116.48,121.2 89.6,134.64 55.04,117.36" fill="#8f6a43" stroke="#4d392a" stroke-opacity="0.36" stroke-width="1"/>
+  <ellipse cx="76.45" cy="105.63" rx="12" ry="8" fill="#a9c77d" opacity="0.94"/>
+  <ellipse cx="94.45" cy="101.63" rx="14" ry="9" fill="#55763f" opacity="0.94"/>
+  <ellipse cx="86.45" cy="91.63" rx="10" ry="7" fill="#55763f" opacity="0.88"/>
+  <polygon points="98.56,137.84 130.56,153.84 130.56,161.84 98.56,145.84" fill="#6f5033" stroke="#4d392a" stroke-opacity="0.28" stroke-width="1"/>
+  <polygon points="154.88,141.68 130.56,153.84 130.56,161.84 154.88,149.68" fill="#5b412b" stroke="#4d392a" stroke-opacity="0.3" stroke-width="1"/>
+  <polygon points="122.88,125.68 154.88,141.68 130.56,153.84 98.56,137.84" fill="#8f6a43" stroke="#4d392a" stroke-opacity="0.36" stroke-width="1"/>
+  <ellipse cx="117.36" cy="126.08" rx="12" ry="8" fill="#a9c77d" opacity="0.94"/>
+  <ellipse cx="135.36" cy="122.08" rx="14" ry="9" fill="#7ea660" opacity="0.94"/>
+  <ellipse cx="127.36" cy="112.08" rx="10" ry="7" fill="#7ea660" opacity="0.88"/>
+  <line x1="135.68" y1="54.88" x2="135.68" y2="80.88" stroke="#96604a" stroke-width="4" stroke-linecap="round"/>
+  <line x1="175.36" y1="74.72" x2="175.36" y2="100.72" stroke="#96604a" stroke-width="4" stroke-linecap="round"/>
+  <line x1="172.8" y1="36.32" x2="172.8" y2="62.32" stroke="#96604a" stroke-width="4" stroke-linecap="round"/>
+  <line x1="212.48" y1="56.16" x2="212.48" y2="82.16" stroke="#96604a" stroke-width="4" stroke-linecap="round"/>
+  <polygon points="172.8,23.04 215.04,44.16 175.36,72 133.12,50.88" fill="#425960" stroke="#4d392a" stroke-opacity="0.32" stroke-width="1.3"/>
+  <line x1="99.84" y1="72.8" x2="121.6" y2="83.68" stroke="#6b4435" stroke-width="3"/>
+  <line x1="99.84" y1="72.8" x2="99.84" y2="90.8" stroke="#6b4435" stroke-width="2.2"/>
+  <line x1="121.6" y1="83.68" x2="121.6" y2="101.68" stroke="#6b4435" stroke-width="2.2"/>
+  <polygon points="102.84,77.8 119.6,86.68 125.6,95.68 107.84,86.8" fill="#d7c497" opacity="0.88"/>
+  <ellipse cx="122.88" cy="153.28" rx="10" ry="6" fill="#b98b4a"/>
+  <line x1="116.88" y1="151.28" x2="128.88" y2="151.28" stroke="#8a6332" stroke-width="1.4"/>
+  <path d="M 42.64 111.76 Q 38.64 99.76 48.64 95.76 Q 58.64 99.76 54.64 111.76 Q 48.64 117.76 42.64 111.76 Z" fill="#8cb7c6" stroke="#5f8594" stroke-opacity="0.34" stroke-width="1.2"/>
+</svg>

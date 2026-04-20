@@ -1,0 +1,56 @@
+<svg width="256" height="224" viewBox="0 0 256 224" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <title>仓库</title>
+  <desc>厚重储藏建筑，正屋加侧棚，前侧堆货，对齐 2x2 footprint。</desc>
+  <defs>
+    <filter id="warehouse-drop" x="0" y="0" width="256" height="224" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feOffset dy="10"/>
+      <feGaussianBlur stdDeviation="8"/>
+      <feColorMatrix type="matrix" values="0 0 0 0 0.211765 0 0 0 0 0.152941 0 0 0 0 0.105882 0 0 0 0.18 0"/>
+      <feBlend in2="SourceGraphic" result="shape"/>
+    </filter>
+    <filter id="warehouse-mist" x="0" y="0" width="256" height="224" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feGaussianBlur stdDeviation="6"/>
+    </filter>
+  </defs>
+  <ellipse cx="128" cy="192" rx="72" ry="14" fill="#3c2a1b" opacity="0.16" filter="url(#warehouse-mist)"/>
+  <polygon points="24.32,148.8 134.4,203.84 134.4,217.84 24.32,162.8" fill="#c79d6e" stroke="#4d392a" stroke-opacity="0.28" stroke-width="1.5"/>
+  <polygon points="235.52,153.28 134.4,203.84 134.4,217.84 235.52,167.28" fill="#936746" stroke="#4d392a" stroke-opacity="0.3" stroke-width="1.5"/>
+  <polygon points="125.44,98.24 235.52,153.28 134.4,203.84 24.32,148.8" fill="#eee1c5" stroke="#4d392a" stroke-opacity="0.36" stroke-width="1.5"/>
+  <polygon points="69.12,73.76 135.68,107.04 135.68,151.04 69.12,117.76" fill="#e8d1ac" stroke="#4d392a" stroke-opacity="0.28" stroke-width="1.5"/>
+  <polygon points="190.72,79.52 135.68,107.04 135.68,151.04 190.72,123.52" fill="#a47b4e" stroke="#4d392a" stroke-opacity="0.3" stroke-width="1.5"/>
+  <polygon points="124.16,46.24 190.72,79.52 135.68,107.04 69.12,73.76" fill="#f5ebd7" stroke="#4d392a" stroke-opacity="0.36" stroke-width="1.5"/>
+  <line x1="75.52" y1="50.96" x2="75.52" y2="118.96" stroke="#96604a" stroke-width="6" stroke-linecap="round"/>
+  <line x1="90.88" y1="58.64" x2="90.88" y2="126.64" stroke="#96604a" stroke-width="6" stroke-linecap="round"/>
+  <line x1="106.24" y1="66.32" x2="106.24" y2="134.32" stroke="#96604a" stroke-width="6" stroke-linecap="round"/>
+  <polygon points="93.44,105.36 115.2,116.24 115.2,170.24 93.44,159.36" fill="#59453a" stroke="#7b6148" stroke-opacity="0.3" stroke-width="1.2"/>
+  <polygon points="124.16,-0.56 218.88,46.8 157.72,35.87 102.02,8.02" fill="#5f7d84" stroke="#4d392a" stroke-opacity="0.42" stroke-width="1.6"/>
+  <polygon points="46.08,38.48 140.8,85.84 157.72,35.87 102.02,8.02" fill="#425960" stroke="#4d392a" stroke-opacity="0.42" stroke-width="1.6"/>
+  <polygon points="218.88,46.8 140.8,85.84 157.72,35.87" fill="#2b3d44" stroke="#4d392a" stroke-opacity="0.36" stroke-width="1.4"/>
+  <polygon points="124.16,-0.56 46.08,38.48 102.02,8.02" fill="#24343a" stroke="#4d392a" stroke-opacity="0.28" stroke-width="1.2"/>
+  <line x1="57.27" y1="32.39" x2="144.18" y2="75.85" stroke="#26373d" stroke-opacity="0.24" stroke-width="1"/>
+  <line x1="68.45" y1="26.3" x2="147.57" y2="65.85" stroke="#26373d" stroke-opacity="0.24" stroke-width="1"/>
+  <line x1="79.64" y1="20.2" x2="150.95" y2="55.86" stroke="#26373d" stroke-opacity="0.24" stroke-width="1"/>
+  <line x1="90.83" y1="14.11" x2="154.34" y2="45.87" stroke="#26373d" stroke-opacity="0.24" stroke-width="1"/>
+  <polygon points="122.88,122.24 148.48,135.04 148.48,163.04 122.88,150.24" fill="#d8b689" stroke="#4d392a" stroke-opacity="0.28" stroke-width="1.5"/>
+  <polygon points="177.92,120.32 148.48,135.04 148.48,163.04 177.92,148.32" fill="#b58d60" stroke="#4d392a" stroke-opacity="0.3" stroke-width="1.5"/>
+  <polygon points="152.32,107.52 177.92,120.32 148.48,135.04 122.88,122.24" fill="#f5ebd7" stroke="#4d392a" stroke-opacity="0.36" stroke-width="1.5"/>
+  <polygon points="151.04,73.84 193.28,94.96 161.1,90.12 136.73,77.93" fill="#5f7d84" stroke="#4d392a" stroke-opacity="0.42" stroke-width="1.6"/>
+  <polygon points="107.52,95.6 149.76,116.72 161.1,90.12 136.73,77.93" fill="#425960" stroke="#4d392a" stroke-opacity="0.42" stroke-width="1.6"/>
+  <polygon points="193.28,94.96 149.76,116.72 161.1,90.12" fill="#2b3d44" stroke="#4d392a" stroke-opacity="0.36" stroke-width="1.4"/>
+  <polygon points="151.04,73.84 107.52,95.6 136.73,77.93" fill="#24343a" stroke="#4d392a" stroke-opacity="0.28" stroke-width="1.2"/>
+  <line x1="113.36" y1="92.07" x2="152.03" y2="111.4" stroke="#26373d" stroke-opacity="0.24" stroke-width="1"/>
+  <line x1="119.2" y1="88.53" x2="154.3" y2="106.08" stroke="#26373d" stroke-opacity="0.24" stroke-width="1"/>
+  <line x1="125.05" y1="85" x2="156.56" y2="100.76" stroke="#26373d" stroke-opacity="0.24" stroke-width="1"/>
+  <line x1="130.89" y1="81.46" x2="158.83" y2="95.44" stroke="#26373d" stroke-opacity="0.24" stroke-width="1"/>
+  <polygon points="38.4,141.44 52.48,148.48 52.48,156.48 38.4,149.44" fill="#93673a" stroke="#4d392a" stroke-opacity="0.28" stroke-width="1"/>
+  <polygon points="66.56,141.44 52.48,148.48 52.48,156.48 66.56,149.44" fill="#875b2e" stroke="#4d392a" stroke-opacity="0.3" stroke-width="1"/>
+  <polygon points="52.48,134.4 66.56,141.44 52.48,148.48 38.4,141.44" fill="#9f7346" stroke="#4d392a" stroke-opacity="0.36" stroke-width="1"/>
+  <polygon points="46.08,156.24 60.16,163.28 60.16,171.28 46.08,164.24" fill="#a47541" stroke="#4d392a" stroke-opacity="0.28" stroke-width="1"/>
+  <polygon points="74.24,156.24 60.16,163.28 60.16,171.28 74.24,164.24" fill="#986935" stroke="#4d392a" stroke-opacity="0.3" stroke-width="1"/>
+  <polygon points="60.16,149.2 74.24,156.24 60.16,163.28 46.08,156.24" fill="#b0814d" stroke="#4d392a" stroke-opacity="0.36" stroke-width="1"/>
+  <polygon points="120.32,170.16 134.4,177.2 134.4,185.2 120.32,178.16" fill="#916133" stroke="#4d392a" stroke-opacity="0.28" stroke-width="1"/>
+  <polygon points="148.48,170.16 134.4,177.2 134.4,185.2 148.48,178.16" fill="#855527" stroke="#4d392a" stroke-opacity="0.3" stroke-width="1"/>
+  <polygon points="134.4,163.12 148.48,170.16 134.4,177.2 120.32,170.16" fill="#9d6d3f" stroke="#4d392a" stroke-opacity="0.36" stroke-width="1"/>
+  <ellipse cx="128" cy="187.12" rx="12" ry="7" fill="#d9c39a" stroke="#9b7a52" stroke-opacity="0.26" stroke-width="1.2"/>
+  <ellipse cx="129.28" cy="149.92" rx="5.2" ry="5.2" fill="#d9b06a" opacity="0.96"/>
+</svg>
