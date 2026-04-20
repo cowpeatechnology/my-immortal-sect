@@ -4,8 +4,8 @@ Record only accepted work here.
 
 ## Current Release Or Milestone
 
-- Name: `M1-C` 本地短会话收口
-- Goal: 在不接服务端的前提下，把贴图版宗门地图收口为一轮可从新档跑完的 `5~10` 分钟本地短会话，补齐 `place / upgrade / demolish`、首波敌袭、修复恢复与胜负节奏。
+- Name: `M1-D` 最小权威短会话接轨
+- Goal: 在保持 `Cocos Creator` 编译/预览为主要验证面的前提下，把当前宗门地图短会话从纯 client-local 推进到最小 `shared + Go + Hollywood` 权威路径，并确保根仓统一提交、推送与 durable record 已收口。
 - Acceptance owner: `supervisor`
 
 ## Accepted Deliveries
@@ -21,3 +21,5 @@ Record only accepted work here.
 | 2026-04-21 | `M1-C` 威胁识别与状态信号资源 | `F-004` 已回写 `bandit_scout_normal / injured` hostile 头像与 `building_signal_planned / supplied / constructing / damaged / disabled` 远距状态信号的 canonical SVG + runtime PNG/SpriteFrame 资源合同；该接受态仅覆盖资源与规格交付，不外推为 live runtime 接图、小游戏容器 smoke 或服务端权威路径已完成 | `supervisor` |
 | 2026-04-21 | `M1-C` 目标指向收口与宿主 smoke 结论 | `F-004` 已回写导向式 HUD、objective marker、建筑状态徽记与 hostile 头像贴图进入当前 runtime，并在专用 Chrome `http://localhost:7456/` 预览页确认短会话仍可跑通 `victory`；小游戏宿主 smoke 已推进到抖音开发者工具登录门槛，但受登录页与缺少抖音构建产物限制，当前结论保持 `partial`。该接受态仅覆盖目标指向收口与 blocker 明确化，不外推为宿主验证通过 | `supervisor` |
 | 2026-04-21 | `M1-C` client-local 可完成短会话里程碑 | `F-004` 已由主管补记里程碑验收结论：贴图版宗门地图在真实 Cocos 客户端路径中，已具备从新档完成一轮本地短会话的门槛，包含 `place / upgrade / demolish`、首波敌袭、防守、修复恢复、目标导向与胜负收口；专用 Chrome `http://localhost:7456/` 预览页已有约 `82.4s` 的 `victory` 证据。该接受态仅表述为 client-local 里程碑通过，小游戏宿主 smoke 仍为 `partial`，`Go + Hollywood` / `shared` 权威路径仍未完成 | `supervisor` |
+| 2026-04-21 | `M1-D` 最小 authority 短会话接轨 | `F-004` 已回写 `shared/contracts/m1-authority-short-session-v1.md`、`server/` 下的 Hollywood actor-backed authority session 与 HTTP gateway、客户端 authority snapshot/command 适配层，以及专用 Chrome 预览下 `clear_ruin -> ... -> raid_countdown` 的 authority 命令链验证；主管已确认该结果达到“最小 authority-backed 短会话”门槛，但不外推为完整敌袭/采集/守御链路已全部服务端权威化 | `supervisor` |
+| 2026-04-21 | `M1-D` 单仓清理与统一提交推送 | 项目已按单仓策略清理 `client/my-immortal-sect/.git` 与 `client/my-immortal-sect/extensions/cocos-mcp-server/.git` 两个错误嵌套仓，统一归并到根仓 `~/MyWork/SlgGame/.git`，并已将提交 `dfecf42ef80da2b54ff77d64da71c57480d06246` 与 `db028d3789eaab74b4f4d791526a9fbabd037191` 推送到 `origin/main` | `supervisor` |

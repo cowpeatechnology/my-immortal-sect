@@ -10,3 +10,4 @@ Record only decisions that change future work.
 - 2026-04-21: 当前阶段的验证顺序调整为“先确认 `Cocos Creator` 编译/预览链路，再决定是否切换到平台宿主”。微信/抖音开发者工具与真实小游戏容器测试后置，不再作为默认下一步或当前里程碑 blocker；只有在人类明确要求切换到对应工具验证时，才启动单独计划。
 - 2026-04-21: `M1-D` 的首轮 authority 竖切范围已冻结为“建造状态与资源结算”最小贯通：只覆盖 `place / upgrade / demolish`、资源扣减/返还与短会话关键快照的最小 `shared + Go + Hollywood` 路径；微信/抖音开发者工具、宿主 smoke、平台适配与新玩法扩写全部保持 out-of-scope。后续 `engineer` handoff 必须带回文档回写范围、提交 SHA 与远程分支信息，才可进入主管验收。
 - 2026-04-21: Git 拓扑已由人类重新裁定：`~/MyWork/SlgGame/.git` 是唯一 canonical 仓库，根目录下任何独立子仓库都视为配置错误，需被清理并归并到根仓。当前根仓已存在可用 `origin=git@github.com:cowpeatechnology/my-immortal-sect.git`，因此优先路径是删除嵌套 `.git` 并继续在根仓提交/推送，而不是默认整仓重建。
+- 2026-04-21: `M1-D` 已接受为最小 authority-backed 短会话里程碑。下一轮不再围绕“是否进入 authority 路径”争论，而应在“优先把敌袭/守御结算继续迁入 authority”与“优先把采集节点/资源刷新继续迁入 authority”之间，由人类按产品目标裁定优先级。

@@ -1138,6 +1138,31 @@ runtime raster path 继续保持：
 - `defend / recover / victory / defeat` 中的战斗判定尚未整体迁入 authority；当前只通过 `sync_session_progress` 做最小关键快照镜像
 - protobuf、持久化和正式网关协议仍未启动
 
+## 2026-04-21 Supervisor Acceptance Note - M1-D Minimal Authority Bridge
+
+主管确认：`M1-D` 已达到“最小 authority-backed 短会话”门槛，可作为当前大地图主线从纯 client-local 走向真实项目边界的已接受里程碑。
+
+本轮 accepted 内容：
+
+- `shared/contracts/m1-authority-short-session-v1.md` 已冻结最小 authority contract
+- `server/` 已提供本地可运行的 `Go + Hollywood` authority session actor 与 HTTP gateway
+- 真实 Cocos 客户端预览已改为消费 authority snapshot / command 结果，并已把 `place / upgrade / demolish`、资源扣减/返还与关键短会话快照从纯客户端推进到 authority 路径
+- 专用 Chrome 预览下，authority command 链已可把短会话从 `clear_ruin` 推进到 `raid_countdown`
+- 根仓已按单仓策略清理嵌套 `.git`，并在根仓 `origin/main` 完成统一提交/推送：
+  - `dfecf42ef80da2b54ff77d64da71c57480d06246`
+  - `db028d3789eaab74b4f4d791526a9fbabd037191`
+
+本轮接受但不外推的范围：
+
+- 不将当前结果表述为完整敌袭 / 采集 / 守御链路已整体 authority 化
+- 不将当前结果表述为 protobuf、持久化、正式网关协议或 `shared` 配置源已完成
+- 不将当前结果表述为微信 / 抖音开发者工具、真实小游戏容器或平台适配已完成
+
+因此，本轮 acceptance 的准确表述是：
+
+- `M1-D` 作为 **最小 authority-backed 短会话里程碑** 已通过
+- `F-004` 作为整个宗门地图玩法基础盘文档仍保持 `active`
+
 ## 2026-04-20 Code Audit Alignment
 
 基于本轮代码审计，`F-004` 的当前实现边界应明确写成：

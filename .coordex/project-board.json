@@ -122,14 +122,41 @@
         "title": "验收 `M1-D` 并收口文档台账",
         "description": "基于 engineer 回写证据判断 `M1-D` 是否达到“最小 authority-backed 短会话”门槛；验收通过后更新 `docs/project/delivery-ledger.md`、必要的 `docs/project/decision-log.md` 与当前计划，并确认提交/推送信息已进入 durable record。",
         "ownerRole": "supervisor",
-        "done": false,
+        "done": true,
         "runState": "idle",
-        "coordinations": [],
-        "updatedAt": "2026-04-21T01:52:44.000Z"
+        "coordinations": [
+          {
+            "id": "d50809ba-2ca6-43ae-88a2-2700b435b280",
+            "fromRole": "human",
+            "toRole": "supervisor",
+            "kind": "dispatch",
+            "summary": "验收 `M1-D` 并收口文档台账",
+            "input": "基于 engineer 回写证据判断 `M1-D` 是否达到“最小 authority-backed 短会话”门槛；验收通过后更新 `docs/project/delivery-ledger.md`、必要的 `docs/project/decision-log.md` 与当前计划，并确认提交/推送信息已进入 durable record。",
+            "expectedOutput": "A structured coordination response that keeps the subfunction moving until completion or failure.",
+            "output": "",
+            "status": "open",
+            "createdAt": "2026-04-20T18:36:39.913Z",
+            "updatedAt": "2026-04-20T18:36:39.913Z"
+          },
+          {
+            "id": "3424125e-bc08-4d95-9e08-f08867d39435",
+            "fromRole": "supervisor",
+            "toRole": "human",
+            "kind": "decision",
+            "summary": "`M1-D` 已接受为最小 authority-backed 短会话里程碑，阶段台账与计划已收口。",
+            "input": "基于 engineer 回写证据判断 `M1-D` 是否达到“最小 authority-backed 短会话”门槛；验收通过后更新 `docs/project/delivery-ledger.md`、必要的 `docs/project/decision-log.md` 与当前计划，并确认提交/推送信息已进入 durable record。",
+            "expectedOutput": "`M1-D` 验收结论明确，accepted ledger 与必要决策记录已更新，提交/推送信息已进入 durable record。",
+            "output": "已基于 `F-004` 中的 authority contract、`server` Hollywood actor + HTTP gateway、客户端 authority snapshot/command 适配层、专用 Chrome 预览验证，以及根仓统一提交/推送记录，接受 `M1-D` 为最小 authority-backed 短会话里程碑；并已补记 `delivery-ledger`、`decision-log` 与 `F-004` 的主管验收说明。",
+            "status": "done",
+            "createdAt": "2026-04-21T02:37:13.000Z",
+            "updatedAt": "2026-04-21T02:37:13.000Z"
+          }
+        ],
+        "updatedAt": "2026-04-21T02:37:13.000Z"
       }
     ],
     "createdAt": "2026-04-20T17:48:09.000Z",
-    "updatedAt": "2026-04-21T02:32:00.000Z",
+    "updatedAt": "2026-04-21T02:37:13.000Z",
     "archivedAt": null
   },
   "history": [

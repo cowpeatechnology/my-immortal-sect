@@ -1,7 +1,7 @@
 # Current Plan
 
 **Created**: `2026-04-20T17:48:09.000Z`  
-**Updated**: `2026-04-21T02:32:00.000Z`
+**Updated**: `2026-04-21T02:37:13.000Z`
 
 ## Goal
 
@@ -39,8 +39,8 @@
     - Expected Output: `shared` 中有最小 authority contract，`server` 中有可运行的 `Go + Hollywood` authority 入口，真实 Cocos 客户端预览改为消费 authority snapshot / command 结果并完成最小短会话回归，相关文档已回写，且代码已提交并推送远程。
     - Output: 已将该子功能在 durable records 中保留为 blocked：工程侧回报显示最小 `shared + Go + Hollywood` authority 竖切已本地打通并完成专用 Chrome 预览验证，相关文档也已回写；当前唯一未满足的交付项是 commit/push。阻塞原因不是 authority 实现本身，而是 `client/my-immortal-sect` 作为无远端的嵌套独立 git 仓库，无法按当前仓库拓扑产出可接受的统一提交 SHA 与远端推送结果。当前需要你裁定提交策略：1. 为 `client/my-immortal-sect` 补远端并允许分仓分别提交/推送；2. 调整本轮验收口径，允许分仓提交而非统一提交；3. 先整理仓库拓扑，再继续 `M1-D` 验收。
   - human -> supervisor [decision/answered]
-    - Summary: 根仓是唯一项目仓库；嵌套子仓库是配置错误，可清理归并。
-    - Input: 项目根目录是在 `~/MyWork/SlgGame`。如果这个根目录之下，还有独立仓库，说明设置错误，要删除掉错误消息。我可以接受清理掉所有Git记录，初始化一次之后创建并提交到远程仓库。
+    - Summary: 根仓是唯一 canonical 仓库；嵌套子仓库是配置错误，可清理归并。
+    - Input: 项目根目录是在 ~/MyWork/SlgGame。如果这个根目录之下，还有独立仓库，说明设置错误，要删除掉错误消息。我可以接受清理掉所有Git记录，初始化一次之后创建并提交到远程仓库。
     - Expected Output: 明确 canonical git 拓扑与后续 commit/push 策略，解除“允许保留嵌套仓库”的歧义。
     - Output: 已确认根仓 `~/MyWork/SlgGame/.git` 是唯一 canonical 仓库，当前真正错误的是 `client/my-immortal-sect/.git` 与 `client/my-immortal-sect/extensions/cocos-mcp-server/.git` 两个嵌套 `.git`。根仓现有 `origin=git@github.com:cowpeatechnology/my-immortal-sect.git` 可继续作为远端，因此优先动作是清掉嵌套 `.git` 并归并到根仓，而不是默认整仓重建。
   - supervisor -> human [result/answered]
@@ -48,7 +48,15 @@
     - Input: 请你执行单仓清理，并且继续完成提交/推送。
     - Expected Output: 根仓统一纳管客户端/服务端/共享合同与文档变更，提交成功并推送到 `origin/main`。
     - Output: 已将 `client/my-immortal-sect/.git` 与 `client/my-immortal-sect/extensions/cocos-mcp-server/.git` 移出项目树到 `/tmp/slggame-git-backups-20260421-023051/`，随后在根仓 `~/MyWork/SlgGame/.git` 统一纳管客户端、服务端、共享合同、文档与截图证据，并生成提交 `dfecf42ef80da2b54ff77d64da71c57480d06246`（`Land M1-D authority slice in single root repository`），已成功推送到 `origin/main`。
-  - Notes: 当前 blocker 已从“仓库拓扑不明”收敛为“等待按单仓策略清理嵌套 `.git` 并恢复根仓统一 commit/push”。
-  - Notes: 当前根仓与远端已重新一致，`feature-2` 的剩余工作已从“git 拓扑/推送阻塞”收口为“等待主管验收 authority 竖切是否达标”。
-- [ ] 验收 `M1-D` 并收口文档台账 (`supervisor`)
+- [x] 验收 `M1-D` 并收口文档台账 (`supervisor`)
   - Description: 基于 engineer 回写证据判断 `M1-D` 是否达到“最小 authority-backed 短会话”门槛；验收通过后更新 `docs/project/delivery-ledger.md`、必要的 `docs/project/decision-log.md` 与当前计划，并确认提交/推送信息已进入 durable record。
+  - Coordination:
+  - human -> supervisor [dispatch/open]
+    - Summary: 验收 `M1-D` 并收口文档台账
+    - Input: 基于 engineer 回写证据判断 `M1-D` 是否达到“最小 authority-backed 短会话”门槛；验收通过后更新 `docs/project/delivery-ledger.md`、必要的 `docs/project/decision-log.md` 与当前计划，并确认提交/推送信息已进入 durable record。
+    - Expected Output: A structured coordination response that keeps the subfunction moving until completion or failure.
+  - supervisor -> human [decision/done]
+    - Summary: `M1-D` 已接受为最小 authority-backed 短会话里程碑，阶段台账与计划已收口。
+    - Input: 基于 engineer 回写证据判断 `M1-D` 是否达到“最小 authority-backed 短会话”门槛；验收通过后更新 `docs/project/delivery-ledger.md`、必要的 `docs/project/decision-log.md` 与当前计划，并确认提交/推送信息已进入 durable record。
+    - Expected Output: `M1-D` 验收结论明确，accepted ledger 与必要决策记录已更新，提交/推送信息已进入 durable record。
+    - Output: 已基于 `F-004` 中的 authority contract、`server` Hollywood actor + HTTP gateway、客户端 authority snapshot/command 适配层、专用 Chrome 预览验证，以及根仓统一提交/推送记录，接受 `M1-D` 为最小 authority-backed 短会话里程碑；并已补记 `delivery-ledger`、`decision-log` 与 `F-004` 的主管验收说明。
