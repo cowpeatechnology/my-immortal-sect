@@ -1,7 +1,7 @@
 # Current Plan
 
 **Created**: `2026-04-20T17:48:09.000Z`  
-**Updated**: `2026-04-20T18:24:30.000Z`
+**Updated**: `2026-04-21T02:32:00.000Z`
 
 ## Goal
 
@@ -21,7 +21,7 @@
     - Input: 明确本轮只做“建造状态与资源结算”的最小 authority 竖切，不进入微信/抖音开发者工具验证，不扩写新玩法；冻结验收必须以 `Cocos Creator` 编译链路、专用 Chrome 预览与本地 authority runtime 证据为准，并要求工程 handoff 附带文档回写范围、提交 SHA 与远程分支信息。
     - Expected Output: `M1-D` 的 in-scope / out-of-scope、验证面与工程 handoff 合同被固定，可直接用于后续 `engineer` dispatch。
     - Output: 已冻结本轮只覆盖 `place / upgrade / demolish`、资源扣减/返还与短会话关键快照的最小 authority 竖切；微信/抖音开发者工具、宿主 smoke、容器适配与新玩法全部保持 out-of-scope。验收以 `Cocos Creator` 编译链路、专用 Chrome `http://127.0.0.1:9333` 预览复用与本地 `shared + Go + Hollywood` authority runtime 证据为准；工程 handoff 必须附带文档回写范围、提交 SHA 与远程分支信息。
-- [ ] 打通最小 `shared + Go + Hollywood` 权威短会话路径 (`engineer`)
+- [x] 打通最小 `shared + Go + Hollywood` 权威短会话路径 (`engineer`)
   - Description: 在 `shared/` 与 `server/` 中建立最小 authority contract 与 `Go + Hollywood` 处理入口，把 `place / upgrade / demolish`、资源扣减/返还与短会话关键快照接入权威路径，并让 `client/my-immortal-sect/` 改为消费 authority snapshot / command 结果；完成后回写 `F-004` 与必要技术文档，并提交代码、推送远程。
   - Coordination:
   - human -> engineer [dispatch/open]
@@ -43,6 +43,12 @@
     - Input: 项目根目录是在 `~/MyWork/SlgGame`。如果这个根目录之下，还有独立仓库，说明设置错误，要删除掉错误消息。我可以接受清理掉所有Git记录，初始化一次之后创建并提交到远程仓库。
     - Expected Output: 明确 canonical git 拓扑与后续 commit/push 策略，解除“允许保留嵌套仓库”的歧义。
     - Output: 已确认根仓 `~/MyWork/SlgGame/.git` 是唯一 canonical 仓库，当前真正错误的是 `client/my-immortal-sect/.git` 与 `client/my-immortal-sect/extensions/cocos-mcp-server/.git` 两个嵌套 `.git`。根仓现有 `origin=git@github.com:cowpeatechnology/my-immortal-sect.git` 可继续作为远端，因此优先动作是清掉嵌套 `.git` 并归并到根仓，而不是默认整仓重建。
+  - supervisor -> human [result/answered]
+    - Summary: 已按单仓策略清理嵌套 `.git`，并在根仓完成统一 commit/push。
+    - Input: 请你执行单仓清理，并且继续完成提交/推送。
+    - Expected Output: 根仓统一纳管客户端/服务端/共享合同与文档变更，提交成功并推送到 `origin/main`。
+    - Output: 已将 `client/my-immortal-sect/.git` 与 `client/my-immortal-sect/extensions/cocos-mcp-server/.git` 移出项目树到 `/tmp/slggame-git-backups-20260421-023051/`，随后在根仓 `~/MyWork/SlgGame/.git` 统一纳管客户端、服务端、共享合同、文档与截图证据，并生成提交 `dfecf42ef80da2b54ff77d64da71c57480d06246`（`Land M1-D authority slice in single root repository`），已成功推送到 `origin/main`。
   - Notes: 当前 blocker 已从“仓库拓扑不明”收敛为“等待按单仓策略清理嵌套 `.git` 并恢复根仓统一 commit/push”。
+  - Notes: 当前根仓与远端已重新一致，`feature-2` 的剩余工作已从“git 拓扑/推送阻塞”收口为“等待主管验收 authority 竖切是否达标”。
 - [ ] 验收 `M1-D` 并收口文档台账 (`supervisor`)
   - Description: 基于 engineer 回写证据判断 `M1-D` 是否达到“最小 authority-backed 短会话”门槛；验收通过后更新 `docs/project/delivery-ledger.md`、必要的 `docs/project/decision-log.md` 与当前计划，并确认提交/推送信息已进入 durable record。

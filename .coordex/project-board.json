@@ -46,8 +46,8 @@
         "title": "打通最小 `shared + Go + Hollywood` 权威短会话路径",
         "description": "在 `shared/` 与 `server/` 中建立最小 authority contract 与 `Go + Hollywood` 处理入口，把 `place / upgrade / demolish`、资源扣减/返还与短会话关键快照接入权威路径，并让 `client/my-immortal-sect/` 改为消费 authority snapshot / command 结果；完成后回写 `F-004` 与必要技术文档，并提交代码、推送远程。",
         "ownerRole": "engineer",
-        "done": false,
-        "runState": "running",
+        "done": true,
+        "runState": "idle",
         "coordinations": [
           {
             "id": "bc5cd87e-a516-44a3-a4b5-07720493a5bd",
@@ -100,9 +100,22 @@
             "status": "answered",
             "createdAt": "2026-04-20T18:24:30.000Z",
             "updatedAt": "2026-04-20T18:24:30.000Z"
+          },
+          {
+            "id": "8a0e5d15-0a0a-4d24-b645-8f78a7b28149",
+            "fromRole": "supervisor",
+            "toRole": "human",
+            "kind": "result",
+            "summary": "已按单仓策略清理嵌套 `.git`，并在根仓完成统一 commit/push。",
+            "input": "请你执行单仓清理，并且继续完成提交/推送。",
+            "expectedOutput": "根仓统一纳管客户端/服务端/共享合同与文档变更，提交成功并推送到 `origin/main`。",
+            "output": "已将 `client/my-immortal-sect/.git` 与 `client/my-immortal-sect/extensions/cocos-mcp-server/.git` 移出项目树到 `/tmp/slggame-git-backups-20260421-023051/`，随后在根仓 `~/MyWork/SlgGame/.git` 统一纳管客户端、服务端、共享合同、文档与截图证据，并生成提交 `dfecf42ef80da2b54ff77d64da71c57480d06246`（`Land M1-D authority slice in single root repository`），已成功推送到 `origin/main`。",
+            "status": "answered",
+            "createdAt": "2026-04-21T02:32:00.000Z",
+            "updatedAt": "2026-04-21T02:32:00.000Z"
           }
         ],
-        "updatedAt": "2026-04-20T18:24:30.000Z"
+        "updatedAt": "2026-04-21T02:32:00.000Z"
       },
       {
         "id": "feature-3-m1-d",
@@ -116,7 +129,7 @@
       }
     ],
     "createdAt": "2026-04-20T17:48:09.000Z",
-    "updatedAt": "2026-04-20T18:24:30.000Z",
+    "updatedAt": "2026-04-21T02:32:00.000Z",
     "archivedAt": null
   },
   "history": [
