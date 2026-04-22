@@ -14,3 +14,14 @@
 - Keep inputs, outputs, and runtime assumptions explicit.
 - Avoid coupling tool scripts to future `client/` or `server/` layouts that do not exist yet.
 - When a tool drives content creation, document how it serves the game roadmap rather than letting the tool become the roadmap.
+
+## Current subareas
+
+- `asset-pipeline/`: generation and transformation steps for game-ready assets
+- `browser/`: ChatGPT web, Chrome bridge, CDP capture, and related browser automation helpers
+
+## Directory hygiene
+
+- Keep `tools/` root shallow: subarea directories plus a small number of index docs only.
+- Do not reintroduce loose root-level scripts that belong to `browser/` or `asset-pipeline/`.
+- Keep caches, temporary captures, and generated outputs out of `tools/`; use `workspace/` instead.

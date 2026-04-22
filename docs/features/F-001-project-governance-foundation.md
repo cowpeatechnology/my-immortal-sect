@@ -35,7 +35,7 @@
 - `AGENTS.md`
 - `docs/process/engineering-standards.md`
 - `docs/vision/design-decisions.md`
-- `docs/architecture/agent-team-operating-model.md`
+- `docs/project/project-method.md`
 
 ## Acceptance Criteria
 
@@ -100,11 +100,11 @@
 
 | Loop | Date | Stage | Summary | Output | Decision |
 |---|---|---|---|---|---|
-| L-001 | 2026-04-16 | Design | 固化主管制、角色编制、常驻/临时智能体边界 | `AGENTS.md`、`agent-team-operating-model.md`、agent templates | continue |
+| L-001 | 2026-04-16 | Design | 固化主管制、角色编制、常驻/临时智能体边界 | `AGENTS.md`、角色规则文档、agent templates | continue |
 | L-002 | 2026-04-16 | Execute | 固化研发循环、台账、模板、Git 工作流，并切换正式项目名 | `docs/process/*`、`docs/project/delivery-ledger.md`、`docs/templates/*` | accepted |
-| L-003 | 2026-04-16 | Execute | 补强运行期治理：限制大日志读取、要求增量观测，并给 worker 增加 heartbeat / silence handling 默认规则 | `AGENTS.md`、`docs/process/engineering-standards.md`、`docs/architecture/agent-team-operating-model.md`、`docs/templates/*`、`docs/project/delivery-ledger.md` | accepted |
-| L-004 | 2026-04-16 | Execute | 重构 Codex hooks 分层，避免 SessionStart 与 UserPromptSubmit 重复注入完整项目上下文 | `.codex/hooks/*.py`、`docs/architecture/agent-team-operating-model.md` | accepted |
-| L-005 | 2026-04-18 | Execute | 新增“可见线程对话账本”治理层；该轮仍采用“默认 `Via: supervisor`”口径，后续已在 2026-04-19 被当前三角色直连规则取代 | `AGENTS.md`、`docs/process/thread-conversation-protocol.md`、`docs/project/thread-conversation-ledger.md`、`docs/templates/thread-message-template.md`、`docs/README.md`、`docs/architecture/agent-team-operating-model.md` | accepted |
+| L-003 | 2026-04-16 | Execute | 补强运行期治理：限制大日志读取、要求增量观测，并给 worker 增加 heartbeat / silence handling 默认规则 | `AGENTS.md`、`docs/process/engineering-standards.md`、角色协作规则、`docs/templates/*`、`docs/project/delivery-ledger.md` | accepted |
+| L-004 | 2026-04-16 | Execute | 重构 Codex hooks 分层，避免 SessionStart 与 UserPromptSubmit 重复注入完整项目上下文 | `.codex/hooks/*.py`、角色协作规则 | accepted |
+| L-005 | 2026-04-18 | Execute | 新增“可见线程对话账本”治理层；该轮仍采用“默认 `Via: supervisor`”口径，后续已在 2026-04-19 被当前三角色直连规则取代 | `AGENTS.md`、结构化协调协议、`docs/project/thread-conversation-ledger.md`、`docs/templates/thread-message-template.md`、`docs/README.md`、角色协作规则 | accepted |
 | L-006 | 2026-04-19 | Record | 将旧六角色 / 主线程主管模型收敛到当前 Coordex 三角色可见线程体系，并同步计划、协作协议、hooks 与本地 agent 配置 | `AGENTS.md`、`Agents/*`、`docs/process/*`、`docs/project/*`、`.codex/hooks/*` | accepted |
 
 ## Open Questions
@@ -115,7 +115,8 @@
 
 ## Related Issues / ADRs / Plans
 
-- `docs/architecture/agent-team-operating-model.md`
+- `AGENTS.md`
+- `docs/project/project-method.md`
 - `docs/process/development-loop.md`
-- `docs/process/github-workflow.md`
+- `docs/process/engineering-standards.md`
 - `docs/project/delivery-ledger.md`

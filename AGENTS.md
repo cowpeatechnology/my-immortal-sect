@@ -19,7 +19,8 @@ The repository is in transition from planning into real M0 implementation.
 
 Current top-level contents:
 - `docs/`: authority docs and plans
-- `hifi-prototype/`: early HTML/JS exploration artifact, preserve by default
+- `archive/`: archived prototypes and reference materials, preserve by default
+- `workspace/`: local outputs, validation artifacts, and temporary working files
 - `tools/`: art-generation and workflow tooling, preserve by default
 
 Current code worktrees:
@@ -34,7 +35,7 @@ Current Cocos runtime facts:
 - MCP extension source-of-truth: `client/my-immortal-sect/extensions/cocos-mcp-server/`
 
 Important clarification:
-- `hifi-prototype/` may be used for visual exploration or interaction sketching, but it does **not** satisfy a gameplay milestone by itself.
+- `archive/prototypes/hifi-prototype/` may be used for visual exploration or interaction sketching, but it does **not** satisfy a gameplay milestone by itself.
 - When the user asks for a map slice that is "really playable", that means a real stack implementation using the documented project stack, not an HTML-only prototype.
 - Real implementation for this project means: `Cocos Creator + TypeScript + Tiled/TiledMap` on the client and `Go + Hollywood + PostgreSQL/Redis` on the server side as applicable to the slice.
 - Repository initialization and scaffolding are now allowed when they are tied to an approved milestone or explicit supervisor work order.
@@ -70,11 +71,12 @@ If a required authority doc is missing, do not invent it. Draft the missing doc 
 ## 5. Protected areas
 
 Protected by default:
-- `hifi-prototype/`
+- `archive/prototypes/hifi-prototype/`
+- `archive/reference/ui/`
 - `tools/`
 
 Rules:
-- Do not modify either protected area unless the user explicitly asks for prototype or tools work.
+- Do not modify protected archival or tooling areas unless the user explicitly asks for prototype, reference, or tools work.
 - If a task touches a protected area and gameplay docs at the same time, split ownership and keep tool changes isolated.
 - `docs/` is authoritative, not disposable scratch space.
 
@@ -182,6 +184,19 @@ For iterative development work:
 - keep one feature loop doc under `docs/features/` per substantial feature or initiative
 - use templates under `docs/templates/` for supervisor work orders, worker handoffs, feature loop records, and thread messages
 
+Default document read path for ordinary work:
+- read this root `AGENTS.md` first
+- then read [docs/vision/design-decisions.md](/Users/mawei/MyWork/SlgGame/docs/vision/design-decisions.md)
+- then read [docs/project/development-plan.json](/Users/mawei/MyWork/SlgGame/docs/project/development-plan.json)
+- if a subfunction is active for your role, read [docs/project/development.active.json](/Users/mawei/MyWork/SlgGame/docs/project/development.active.json)
+- only then jump into ADRs, feature docs, architecture docs, or process docs that the current task actually needs
+
+Documentation simplification rule:
+- do not make `docs/README.md` a second North Star
+- do not keep two active planning systems in parallel
+- if a process or architecture note only restates the root rules, shorten it and point back here instead
+- if a doc is mainly historical, keep it accurate but clearly non-default
+
 ## 11. Engineering discipline
 
 - Use plan-first behavior for cross-module or architecture-affecting changes.
@@ -205,44 +220,44 @@ For iterative development work:
 ## Coordex Workflow
 
 <!-- COORDEX:PROJECT-WORKFLOW:START -->
-This block is maintained by Coordex from the `2d-cocos-creator-game-development` template. Keep project-specific identity facts elsewhere in the root file; keep repeatable coordination rules here or in the referenced durable docs.
+This block is maintained by Coordex from the `game-development-v2` template. Keep project-specific identity facts elsewhere in the root file; keep repeatable coordination rules here or in the referenced durable docs.
 
-- Template: `2D Cocos Creator Game Development`
+- Template: `Game Development V2`
 - Durable role threads live under `Agents/<role>/`.
-- The supervisor owns planning, routing, scope boundaries, and final acceptance.
-- The supervisor plans and routes by default; it does not absorb worker-owned implementation unless the human explicitly assigns that ownership.
-- Each active subfunction must have exactly one implementation owner role.
-- The human-readable current plan lives in `.coordex/current-plan.md`.
-- `.coordex/project-board.json` is the machine-consumed Coordex board state. Keep it schema-accurate if it must be repaired, but do not treat it as a free-form planning note.
-- Role-local durable context belongs in `docs/project/role-state/<role>.md` instead of long chat history.
-- When the same missing fact causes repeated mistakes, write it back into this file or another checked-in project doc.
+- Coordex owns execution mechanics, state transitions, and role routing.
+- Normal subfunctions should be owned by worker roles such as `engineer`, `art_asset_producer`, or another custom worker role.
+- `supervisor` is the default acceptance owner, not the default implementation owner.
+- The full execution snapshot lives in `docs/project/development-plan.json`.
+- The current active-work pointer lives in `docs/project/development.active.json`.
+- The append-only event log lives in `docs/project/development.log.jsonl`.
+- Roles should recover by reading `development.active.json` first, then only the referenced files needed for the current subfunction.
 
 ### Default Roles
 
-- `supervisor`: product owner, milestone planner, dispatcher, and final accepter.
-- `engineer`: technical architecture, implementation, integration, debugging, and technical validation.
-- `art_asset_producer`: visual direction, asset planning, and asset production for assigned scope.
+- `supervisor`: acceptance owner and review role.
+- `engineer`: technical execution role.
+- `art_asset_producer`: visual execution role.
 
 ### Required Durable Docs
 
-- `docs/project/project-method.md`
-- `docs/project/delivery-ledger.md`
-- `docs/project/thread-conversation-ledger.md`
-- `docs/project/decision-log.md`
+- `docs/project/development-plan.json`
+- `docs/project/development.active.json`
+- `docs/project/development.log.jsonl`
+- `docs/process/development-execution-manual.md`
+- `docs/process/minimal-role-rules.md`
+- `docs/process/development-event-protocol.md`
 - `docs/process/dedicated-browser-workflow.md`
-- `docs/process/cocos-mcp-workflow.md`
+- `docs/process/browser-runtime-workflow.md`
 - `docs/process/engineering-standards.md`
-- `docs/process/development-loop.md`
-- `docs/process/structured-agent-communication-protocol.md`
 
 ### Template-Specific Expectations
 
-- This template assumes a 2D Cocos Creator game workflow unless project-specific docs later narrow the stack further.
+- This template assumes a browser-playable game project with visible role threads and minimal execution-state files.
+- For engine, platform, framework, editor, build, or runtime questions, read official documentation first and freeze the external contract before implementation or acceptance.
+- Prefer existing documented engine, framework, platform, editor, or runtime capabilities before custom workaround code or speculative glue.
 - Browser validation is only valid when attached to the dedicated Chrome instance at `http://127.0.0.1:9333`.
-- Keep changing execution state in plan, ledger, and role-state files instead of bloating the root `AGENTS.md`.
-<!-- COORDEX:PROJECT-WORKFLOW:END -->
-
-## Coordex Agent Roles
+- Keep changing execution state in `development-plan.json`, `development.active.json`, and `development.log.jsonl` instead of bloating the root `AGENTS.md`.
+<!-- COORDEX:PROJECT-WORKFLOW:END -->## Coordex Agent Roles
 
 <!-- COORDEX:AGENT-ROSTER:START -->
 This block is maintained by Coordex and keeps active role agents aligned across the local role directories under `Agents/`, the Codex threads started from those directories, and this project-level roster.
@@ -253,8 +268,8 @@ Root chats created from Coordex remain project-root conversations and are intent
 
 | Role | Directory | Thread | Responsibility |
 | --- | --- | --- | --- |
-| `art_asset_producer` | `Agents/art_asset_producer/` | `art_asset_producer` | Visual direction, asset planning, and SVG or image production for assigned milestones. |
-| `engineer` | `Agents/engineer/` | `engineer` | Technical architecture, implementation, integration, debugging, and technical validation. |
-| `supervisor` | `Agents/supervisor/` | `supervisor` | Product owner and project coordinator. Owns milestone planning, routing, and final acceptance. |
+| `art_asset_producer` | `Agents/art_asset_producer/` | `art_asset_producer` | Primary execution role for visual deliverables and bounded evidence submission. |
+| `engineer` | `Agents/engineer/` | `engineer` | Primary execution role for technical implementation and bounded evidence submission. |
+| `supervisor` | `Agents/supervisor/` | `supervisor` | Acceptance owner. Reviews submitted subfunctions and emits accept or reject events. |
 
 <!-- COORDEX:AGENT-ROSTER:END -->

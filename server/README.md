@@ -5,7 +5,7 @@ This directory is the reserved home for the real Go server runtime of `My Immort
 Current status:
 - `Go + Hollywood` 最小 authority runtime 已初始化
 - `cmd/gameserver/` 可启动本地 `M1-D` authority HTTP 入口
-- 当前 authority slice 仅覆盖 `M1-C` 宗门地图中的建造状态、资源结算与短会话关键快照
+- 当前 authority slice 已覆盖 `M1-E` 所需的建造状态、资源结算与短会话战斗收口状态机
 
 Expected ownership:
 - `cmd/gameserver/`: runtime entrypoint
@@ -46,7 +46,10 @@ The current actor-backed session is intentionally narrow:
   - `complete_building_work`
   - `complete_demolition`
   - `complete_repair`
-  - `sync_session_progress`
+  - `trigger_first_raid`
+  - `resolve_first_raid`
+  - `expire_session`
+  - `report_building_damage`
 - out of scope for this loop:
   - full pathfinding authority
   - hostile AI authority

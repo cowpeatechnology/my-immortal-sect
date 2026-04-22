@@ -1,0 +1,243 @@
+{
+  "config_id": "config.m1.sect_map_short_session",
+  "schema_version": 1,
+  "resource_kinds": [
+    {
+      "config_id": "res.spirit_wood",
+      "runtime_key": "spirit_wood",
+      "title": "灵木",
+      "visual_asset_id": "resource.spirit_wood",
+      "node_rule": {
+        "max_charges": 3,
+        "regen_seconds": 9
+      },
+      "seed_tiles": [
+        { "col": 2, "row": 4 },
+        { "col": 3, "row": 5 }
+      ]
+    },
+    {
+      "config_id": "res.spirit_stone",
+      "runtime_key": "spirit_stone",
+      "title": "灵石",
+      "visual_asset_id": "resource.spirit_stone",
+      "node_rule": {
+        "max_charges": 2,
+        "regen_seconds": 12
+      },
+      "seed_tiles": [
+        { "col": 10, "row": 3 },
+        { "col": 11, "row": 4 }
+      ]
+    },
+    {
+      "config_id": "res.herb",
+      "runtime_key": "herb",
+      "title": "药草",
+      "visual_asset_id": "resource.herb",
+      "node_rule": {
+        "max_charges": 3,
+        "regen_seconds": 8
+      },
+      "seed_tiles": [
+        { "col": 3, "row": 10 },
+        { "col": 4, "row": 11 }
+      ]
+    }
+  ],
+  "building_types": [
+    {
+      "config_id": "building.main_hall",
+      "runtime_key": "main_hall",
+      "title": "主殿",
+      "visual_asset_id": "building.main_hall",
+      "footprint": {
+        "width": 3,
+        "height": 2
+      },
+      "base_cost": {
+        "spirit_wood": 0,
+        "spirit_stone": 0,
+        "herb": 0
+      },
+      "base_max_hp": 18,
+      "repair_cost": {
+        "spirit_wood": 0,
+        "spirit_stone": 0,
+        "herb": 0
+      },
+      "bootstrap_seed": {
+        "origin": { "col": 6, "row": 5 },
+        "level": 1,
+        "state": "active",
+        "role": "main_hall"
+      }
+    },
+    {
+      "config_id": "building.disciple_quarters",
+      "runtime_key": "disciple_quarters",
+      "title": "弟子居",
+      "visual_asset_id": "building.disciple_quarters",
+      "footprint": {
+        "width": 2,
+        "height": 2
+      },
+      "base_cost": {
+        "spirit_wood": 2,
+        "spirit_stone": 0,
+        "herb": 1
+      },
+      "base_max_hp": 12,
+      "repair_cost": {
+        "spirit_wood": 1,
+        "spirit_stone": 0,
+        "herb": 0
+      }
+    },
+    {
+      "config_id": "building.warehouse",
+      "runtime_key": "warehouse",
+      "title": "仓库",
+      "visual_asset_id": "building.warehouse",
+      "footprint": {
+        "width": 2,
+        "height": 2
+      },
+      "base_cost": {
+        "spirit_wood": 2,
+        "spirit_stone": 1,
+        "herb": 0
+      },
+      "base_max_hp": 14,
+      "repair_cost": {
+        "spirit_wood": 1,
+        "spirit_stone": 1,
+        "herb": 0
+      },
+      "bootstrap_seed": {
+        "origin": { "col": 8, "row": 8 },
+        "level": 1,
+        "state": "damaged",
+        "hp": 0,
+        "role": "initial_ruin"
+      }
+    },
+    {
+      "config_id": "building.herb_garden",
+      "runtime_key": "herb_garden",
+      "title": "药圃",
+      "visual_asset_id": "building.herb_garden",
+      "footprint": {
+        "width": 2,
+        "height": 1
+      },
+      "base_cost": {
+        "spirit_wood": 1,
+        "spirit_stone": 0,
+        "herb": 1
+      },
+      "base_max_hp": 10,
+      "repair_cost": {
+        "spirit_wood": 1,
+        "spirit_stone": 0,
+        "herb": 1
+      }
+    },
+    {
+      "config_id": "building.guard_tower",
+      "runtime_key": "guard_tower",
+      "title": "护山台",
+      "visual_asset_id": "building.guard_tower",
+      "footprint": {
+        "width": 1,
+        "height": 2
+      },
+      "base_cost": {
+        "spirit_wood": 2,
+        "spirit_stone": 1,
+        "herb": 0
+      },
+      "base_max_hp": 16,
+      "repair_cost": {
+        "spirit_wood": 1,
+        "spirit_stone": 1,
+        "herb": 0
+      }
+    }
+  ],
+  "session": {
+    "target_seconds": 600,
+    "first_raid_prep_seconds": 24,
+    "phase_order": [
+      "clear_ruin",
+      "place_guard_tower",
+      "upgrade_guard_tower",
+      "raid_countdown",
+      "defend",
+      "recover",
+      "second_cycle_ready",
+      "victory",
+      "defeat"
+    ],
+    "phase_rules": [
+      {
+        "runtime_key": "clear_ruin",
+        "objective": "长按废弃仓房并拆除，为护山台腾出位置",
+        "enter_when": "initial_ruin remains in the authoritative building set",
+        "next_phase_hint": "place_guard_tower"
+      },
+      {
+        "runtime_key": "place_guard_tower",
+        "objective": "在空地上放下第一座护山台",
+        "enter_when": "initial_ruin is removed and no guard tower exists",
+        "next_phase_hint": "upgrade_guard_tower"
+      },
+      {
+        "runtime_key": "upgrade_guard_tower",
+        "objective": "把护山台升到 Lv.2，为首波敌袭做准备",
+        "enter_when": "guard tower exists but is not yet active at level 2",
+        "next_phase_hint": "raid_countdown"
+      },
+      {
+        "runtime_key": "raid_countdown",
+        "objective": "护山台已就位，准备迎接第一波敌袭",
+        "enter_when": "guard tower is active at level 2 and the first raid is not yet triggered",
+        "next_phase_hint": "defend"
+      },
+      {
+        "runtime_key": "defend",
+        "objective": "守住首波敌袭，不要让主殿瘫痪",
+        "enter_when": "first raid has been triggered and not yet resolved",
+        "next_phase_hint": "recover"
+      },
+      {
+        "runtime_key": "recover",
+        "objective": "首波敌袭已退去，修复受损建筑并恢复运转",
+        "enter_when": "first raid is resolved and at least one building still needs repair",
+        "next_phase_hint": "recover"
+      },
+      {
+        "runtime_key": "recover",
+        "objective": "首波敌袭已守住，等待采空资源点恢复后进入下一轮筹备",
+        "enter_when": "all damaged buildings are repaired but at least one resource node is still regenerating",
+        "next_phase_hint": "second_cycle_ready"
+      },
+      {
+        "runtime_key": "second_cycle_ready",
+        "objective": "资源点与库存保持当前 authority 状态，可继续准备下一轮",
+        "enter_when": "all damaged buildings are repaired and no resource node is regenerating",
+        "next_phase_hint": "raid_countdown"
+      },
+      {
+        "runtime_key": "victory",
+        "objective": "短会话目标完成",
+        "enter_when": "session target time is reached while the main hall remains operational"
+      },
+      {
+        "runtime_key": "defeat",
+        "objective": "短会话失败，请重新开局再试",
+        "enter_when": "session target expires in a failed state or the main hall is destroyed"
+      }
+    ]
+  }
+}

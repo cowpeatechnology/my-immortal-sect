@@ -3,34 +3,53 @@
 These instructions apply to every Codex thread started under this directory. The project root `AGENTS.md` still applies first.
 
 - Directory: `Agents`
-- Template: `2d-cocos-creator-game-development`
-- Purpose: Visible role threads for a 2D Cocos Creator game project. Keep one role per subdirectory under this folder.
+- Template: `game-development-v2`
+- Purpose: Visible role threads for a game project. Keep one role per subdirectory under this folder.
 - Use English directory names that are stable and machine-safe.
 - Put role-local behavior in `AGENTS.md` inside the role directory instead of overloading this shared layer.
 
 ## Shared Coordination Rules
 
 - Durable role threads under this directory are visible project assets, not disposable hidden workers.
-- The human operator or the supervisor starts the active subfunction owner. Once a subfunction is active, peer roles may coordinate directly only inside that subfunction's scope.
-- Use the structured coordination contract in `docs/process/structured-agent-communication-protocol.md` for role-to-role, role-to-supervisor, and completion messages whenever that doc exists.
-- Do not widen task scope during peer coordination. Route scope, priority, or acceptance changes back to the supervisor or human.
-- Keep task-specific scope in chat messages, work orders, plans, or ledgers instead of rewriting it into persistent `AGENTS.md` files.
-- Before non-trivial work, read the stable project docs relevant to your role instead of guessing the current stack, milestone, or workflow.
-- For tasks that depend on external platform, engine, editor, or build rules, read the official docs and follow `docs/process/engineering-standards.md` instead of guessing from memory.
-- If the session has gone long enough that earlier constraints may be stale or compacted, re-read `.coordex/current-plan.md`, the relevant role-state file, and the project method before changing direction.
-- If a project fact becomes repeatedly necessary, ask for it to be written into the project docs rather than relying on thread memory alone.
-- Keep handoffs auditable by reporting touched artifacts, validation, blockers, and the recommended next owner.
+- Coordex owns activation, routing, and state-file updates. Roles do not decide who should be activated next.
+- Read `docs/project/development.active.json` first after startup, resume, or compaction.
+- If `owner_role` in `development.active.json` does not match your role, stop and wait.
+- If `owner_role` matches your role, read only the files listed in `must_read` before acting.
+- Do not replay large project history by default. Jump into `docs/project/development-plan.json` only when the active file is insufficient.
+- Use the event contract in `docs/process/development-event-protocol.md` when writing a durable result.
+- Do not widen task scope. Act only inside the current subfunction objective.
+- Do not decide acceptance or the next role unless your role explicitly owns that responsibility.
+
+## Shared Read Policy
+
+This project uses a lightweight resident set plus on-demand reads.
+
+Resident set:
+
+- `docs/project/development.active.json`
+- `docs/process/development-execution-manual.md`
+- `docs/process/development-event-protocol.md`
+
+On-demand set:
+
+- `docs/project/development-plan.json`
+- feature docs
+- architecture docs
+- browser or engine workflow docs
+- ADRs
+
+Only read on-demand files when:
+
+- `must_read` explicitly lists them
+- the active subfunction cannot be executed or reviewed without them
+- a bounded validation or architecture question requires them
 
 ## Shared Startup Docs
 
 Read these before non-trivial work if they exist:
 
-- `docs/project/project-method.md`
-- `.coordex/current-plan.md`
-- `docs/project/decision-log.md`
-- `docs/process/structured-agent-communication-protocol.md`
-- `docs/process/engineering-standards.md`
-- `docs/process/development-loop.md`
-- `docs/project/delivery-ledger.md`
+- `docs/project/development.active.json`
+- `docs/process/development-execution-manual.md`
+- `docs/process/development-event-protocol.md`
 
 If a listed file is missing, continue with the files that do exist.

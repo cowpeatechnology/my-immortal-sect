@@ -3,8 +3,8 @@
 *.tmp
 __pycache__/
 .playwright-cli/
-output/
-UI参考/
+workspace/output/
+archive/reference/ui/
 
 # Cocos Creator runtime-generated directories
 client/**/.creator/
@@ -18,11 +18,3 @@ client/**/node_modules/
 # Server local outputs
 server/bin/
 server/.cache/
-
-# Coordex runtime state
-.coordex/runtime/
-
-# Ephemeral runtime evidence and harvest artifacts
-runtime/browser-broker-tests/
-runtime/knowledge-harvest/
-runtime/knowledge-vault/

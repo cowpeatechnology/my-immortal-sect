@@ -4,9 +4,22 @@ Record only accepted work here.
 
 ## Current Release Or Milestone
 
-- Name: `M1-D` 最小权威短会话接轨
-- Goal: 在保持 `Cocos Creator` 编译/预览为主要验证面的前提下，把当前宗门地图短会话从纯 client-local 推进到最小 `shared + Go + Hollywood` 权威路径，并确保根仓统一提交、推送与 durable record 已收口。
+- Name: `Authority Runtime Rebuild`
+- Goal: 把当前宗门地图短会话从 hybrid preview/runtime 重构为 authority-only 主线，彻底收回 disciple assignment、build/repair completion、raid damage closure 与 post-raid continuity，并建立 engineer/supervisor 双重独立 replay 验收门槛。
 - Acceptance owner: `supervisor`
+
+### Current Acceptance Boundary
+
+- Hybrid preview success, fallback-assisted continuity, or isolated subfunction green checks are not sufficient evidence that the sect-map mainline is established.
+- Validation surface: 复用专用 Chrome `http://127.0.0.1:9333` 下已有 `http://localhost:7456/` 预览页，并启动本地 authority server `go run ./cmd/gameserver`。
+- Required flow:
+  1. `reset` 新档 mainline replay：`clear_ruin -> place_guard_tower -> upgrade_guard_tower -> raid_countdown -> defend -> recover -> repair closure -> second-cycle continuity`。
+  2. `restore_latest` replay：恢复后的 preview / authority snapshot 关键字段保持一致，且主链可继续推进。
+  3. 如果当前任务涉及 authority reject，则必须补一条 rejection recovery replay，证明不会无限重试旧命令。
+  4. 上述 replay 必须证明主链是在 authority-only 条件下推进，而不是被 client-local fallback 或 hybrid 补丁偷偷接管。
+- Keep only bounded evidence: `authority.mode`、`authority.connected`、`authority.sessionId`、`authority.lastEvent`、`authority.lastError`、`authority.pendingCommands`、`session.phase`、`session.outcome`、`session.objective`、`session.firstRaidTriggered`、`session.firstRaidResolved`、至少一个关键 `buildings[*].state/level/hp`、当前 worker/disciple assignment、`stockpile`、至少一个关键 `resourceNodes[*].remainingCharges/state/regenTimerSeconds` 对照。
+- Fail closed when: `authority.lastError != null` 出现在主链 checkpoint、preview / authority drift、client-local fallback 参与主链、同一 authority reject 被重复触发、需要刷新/reset 才能继续流程、或证据只能证明 hybrid/fallback success 而不能证明 authority-only mainline。
+- Exclude from acceptance notes: oversized runtime logs、完整 network traces、逐帧路径细节、小游戏容器结论、以及任何超出 authority runtime rebuild 范围的后续平台/扩张项。
 
 ## Accepted Deliveries
 

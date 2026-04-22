@@ -1,0 +1,286 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "shared/configs/m1/sect_map_short_session.schema.json",
+  "title": "M1 Sect Map Short Session Shared Config",
+  "type": "object",
+  "required": [
+    "config_id",
+    "schema_version",
+    "resource_kinds",
+    "building_types",
+    "session"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "config_id": {
+      "const": "config.m1.sect_map_short_session"
+    },
+    "schema_version": {
+      "type": "integer",
+      "const": 1
+    },
+    "resource_kinds": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/resource_kind"
+      }
+    },
+    "building_types": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/building_type"
+      }
+    },
+    "session": {
+      "$ref": "#/$defs/session"
+    }
+  },
+  "$defs": {
+    "tile": {
+      "type": "object",
+      "required": [
+        "col",
+        "row"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "col": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "row": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "stockpile": {
+      "type": "object",
+      "required": [
+        "spirit_wood",
+        "spirit_stone",
+        "herb"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "spirit_wood": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "spirit_stone": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "herb": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "resource_kind": {
+      "type": "object",
+      "required": [
+        "config_id",
+        "runtime_key",
+        "title",
+        "visual_asset_id",
+        "node_rule",
+        "seed_tiles"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "config_id": {
+          "type": "string",
+          "pattern": "^res\\.[a-z0-9_]+$"
+        },
+        "runtime_key": {
+          "type": "string",
+          "pattern": "^[a-z0-9_]+$"
+        },
+        "title": {
+          "type": "string"
+        },
+        "visual_asset_id": {
+          "type": "string",
+          "pattern": "^[a-z0-9_.]+$"
+        },
+        "node_rule": {
+          "type": "object",
+          "required": [
+            "max_charges",
+            "regen_seconds"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "max_charges": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "regen_seconds": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        },
+        "seed_tiles": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/tile"
+          }
+        }
+      }
+    },
+    "building_type": {
+      "type": "object",
+      "required": [
+        "config_id",
+        "runtime_key",
+        "title",
+        "visual_asset_id",
+        "footprint",
+        "base_cost",
+        "base_max_hp",
+        "repair_cost"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "config_id": {
+          "type": "string",
+          "pattern": "^building\\.[a-z0-9_]+$"
+        },
+        "runtime_key": {
+          "type": "string",
+          "pattern": "^[a-z0-9_]+$"
+        },
+        "title": {
+          "type": "string"
+        },
+        "visual_asset_id": {
+          "type": "string",
+          "pattern": "^[a-z0-9_.]+$"
+        },
+        "footprint": {
+          "type": "object",
+          "required": [
+            "width",
+            "height"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "width": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "height": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        },
+        "base_cost": {
+          "$ref": "#/$defs/stockpile"
+        },
+        "base_max_hp": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "repair_cost": {
+          "$ref": "#/$defs/stockpile"
+        },
+        "bootstrap_seed": {
+          "type": "object",
+          "required": [
+            "origin",
+            "level",
+            "state"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "origin": {
+              "$ref": "#/$defs/tile"
+            },
+            "level": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "state": {
+              "type": "string",
+              "pattern": "^[a-z0-9_]+$"
+            },
+            "hp": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "role": {
+              "type": "string",
+              "pattern": "^[a-z0-9_]+$"
+            }
+          }
+        }
+      }
+    },
+    "phase_rule": {
+      "type": "object",
+      "required": [
+        "runtime_key",
+        "objective",
+        "enter_when"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "runtime_key": {
+          "type": "string",
+          "pattern": "^[a-z0-9_]+$"
+        },
+        "objective": {
+          "type": "string"
+        },
+        "enter_when": {
+          "type": "string"
+        },
+        "next_phase_hint": {
+          "type": "string",
+          "pattern": "^[a-z0-9_]+$"
+        }
+      }
+    },
+    "session": {
+      "type": "object",
+      "required": [
+        "target_seconds",
+        "first_raid_prep_seconds",
+        "phase_order",
+        "phase_rules"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "target_seconds": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "first_raid_prep_seconds": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "phase_order": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z0-9_]+$"
+          }
+        },
+        "phase_rules": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/phase_rule"
+          }
+        }
+      }
+    }
+  }
+}

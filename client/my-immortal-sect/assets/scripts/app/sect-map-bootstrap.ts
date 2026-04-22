@@ -27,14 +27,25 @@ import {
 } from './local-unit-model';
 import { getRuntimeScreenMetrics } from './runtime-screen-metrics';
 import type { RuntimeScreenMetrics } from './runtime-screen-metrics';
+import {
+    SECT_MAP_SHARED_BUILDING_BY_ID,
+    SECT_MAP_SHARED_BUILDING_CORE_DEFINITIONS,
+    SECT_MAP_SHARED_INITIAL_RUIN_TILE,
+    SECT_MAP_SHARED_MAIN_HALL_TILE,
+    SECT_MAP_SHARED_RESOURCE_RULES,
+    buildSectMapRasterSpriteFramePath,
+} from './sect-map-shared-config';
 import { SectMapAuthorityClient } from '../net/sect-map-authority-client';
 import type {
+    AuthorityBootstrapMode,
     AuthorityBuildingSnapshot,
+    AuthorityDiscipleSnapshot,
+    AuthorityHostileSnapshot,
+    AuthorityResourceNodeSnapshot,
     AuthorityBuildingType,
     AuthorityCommandEnvelope,
     AuthorityResourceKind,
-    AuthoritySessionOutcome,
-    AuthoritySessionPhase,
+    AuthoritySessionRecoverReason,
     AuthoritySessionResponse,
     AuthoritySnapshot,
     AuthorityStockpile,
@@ -58,6 +69,7 @@ const HUD_ROOT = 'HudRoot';
 const TOOLBAR_ROOT = 'ToolbarRoot';
 const BUILD_PANEL_ROOT = 'BuildPanelRoot';
 const RADIAL_MENU_ROOT = 'RadialMenuRoot';
+const SESSION_ACTION_ROOT = 'SessionActionRoot';
 
 const DRAG_THRESHOLD = 12;
 const LONG_PRESS_SECONDS = 0.48;
@@ -73,19 +85,29 @@ const BUILDING_HIT_FLASH_SECONDS = 0.42;
 const UNIT_HIT_FLASH_SECONDS = 0.3;
 const SESSION_TARGET_SECONDS = 600;
 const FIRST_RAID_PREP_SECONDS = 24;
-const RUIN_WAREHOUSE_PREFERRED_TILE: TileCoord = { col: 8, row: 8 };
+const AUTHORITY_SNAPSHOT_POLL_SECONDS = 1;
+const RESOURCE_REFRESH_HIGHLIGHT_SECONDS = 4;
+const DEFAULT_AUTHORITY_BOOTSTRAP_MODE: AuthorityBootstrapMode = 'restore_latest';
+const AUTHORITY_BOOTSTRAP_QUERY_KEY = 'authorityBootstrap';
+const AUTHORITY_PLAYER_ID_QUERY_KEY = 'playerId';
+const AUTHORITY_PLAYER_ID_STORAGE_KEY = 'mis.authority.playerId';
+const AUTHORITY_PLAYER_TOKEN_STORAGE_KEY = 'mis.authority.playerToken';
+const INITIAL_MAIN_HALL_TILE: TileCoord = { ...SECT_MAP_SHARED_MAIN_HALL_TILE };
+const RUIN_WAREHOUSE_PREFERRED_TILE: TileCoord = { ...SECT_MAP_SHARED_INITIAL_RUIN_TILE };
 
-const SECT_MAP_VISUAL_ASSET_PATHS = {
-    'building.main_hall': 'generated-buildings/sect-map-raster/main_hall/spriteFrame',
-    'building.disciple_quarters': 'generated-buildings/sect-map-raster/disciple_quarters/spriteFrame',
-    'building.warehouse': 'generated-buildings/sect-map-raster/warehouse/spriteFrame',
-    'building.herb_garden': 'generated-buildings/sect-map-raster/herb_garden/spriteFrame',
-    'building.guard_tower': 'generated-buildings/sect-map-raster/guard_tower/spriteFrame',
+const SECT_MAP_VISUAL_ASSET_PATHS: Record<string, string> = {
+    ...Object.fromEntries(
+        SECT_MAP_SHARED_BUILDING_CORE_DEFINITIONS.map((entry) => [entry.visualAssetId, buildSectMapRasterSpriteFramePath(entry.visualAssetId)]),
+    ),
+    ...Object.values(SECT_MAP_SHARED_RESOURCE_RULES).reduce<Record<string, string>>((paths, entry) => {
+        const path = buildSectMapRasterSpriteFramePath(entry.visualAssetId);
+        if (path) {
+            paths[entry.visualAssetId] = path;
+        }
+        return paths;
+    }, {}),
     'hostile.normal': 'generated-buildings/sect-map-raster/bandit_scout_normal/spriteFrame',
     'hostile.injured': 'generated-buildings/sect-map-raster/bandit_scout_injured/spriteFrame',
-    'resource.spirit_wood': 'generated-buildings/sect-map-raster/spirit_wood/spriteFrame',
-    'resource.spirit_stone': 'generated-buildings/sect-map-raster/spirit_stone/spriteFrame',
-    'resource.herb': 'generated-buildings/sect-map-raster/herb/spriteFrame',
     'disciple.normal': 'generated-buildings/sect-map-raster/sect_disciple_normal/spriteFrame',
     'disciple.injured': 'generated-buildings/sect-map-raster/sect_disciple_injured/spriteFrame',
     'disciple.dying': 'generated-buildings/sect-map-raster/sect_disciple_dying/spriteFrame',
@@ -95,7 +117,7 @@ const SECT_MAP_VISUAL_ASSET_PATHS = {
     'signal.constructing': 'generated-buildings/sect-map-raster/building_signal_constructing/spriteFrame',
     'signal.damaged': 'generated-buildings/sect-map-raster/building_signal_damaged/spriteFrame',
     'signal.disabled': 'generated-buildings/sect-map-raster/building_signal_disabled/spriteFrame',
-} as const;
+};
 
 type TileCoord = {
     col: number;
@@ -108,8 +130,17 @@ type InputMode = 'browse' | 'gather' | 'build_select' | 'build_place' | 'demolis
 type BuildingState = 'planned' | 'supplied' | 'constructing' | 'active' | 'damaged';
 type BuildingWorkKind = 'build' | 'upgrade';
 type UnitVisualState = 'idle' | 'moving' | 'working' | 'carrying' | 'guarding' | 'attacking' | 'injured';
-type SectMapVisualAssetId = keyof typeof SECT_MAP_VISUAL_ASSET_PATHS;
-type SessionPhase = 'clear_ruin' | 'place_guard_tower' | 'upgrade_guard_tower' | 'raid_countdown' | 'defend' | 'recover' | 'victory' | 'defeat';
+type SectMapVisualAssetId = string;
+type SessionPhase =
+    | 'clear_ruin'
+    | 'place_guard_tower'
+    | 'upgrade_guard_tower'
+    | 'raid_countdown'
+    | 'defend'
+    | 'recover'
+    | 'second_cycle_ready'
+    | 'victory'
+    | 'defeat';
 type SessionOutcome = 'in_progress' | 'victory' | 'defeat';
 
 type Stockpile = Record<ResourceKind, number>;
@@ -117,6 +148,7 @@ type Stockpile = Record<ResourceKind, number>;
 type ResourceRule = {
     maxCharges: number;
     regenSeconds: number;
+    visualAssetId: SectMapVisualAssetId;
 };
 
 type GuardProfile = {
@@ -131,6 +163,7 @@ type BuildingDefinition = {
     width: number;
     height: number;
     cost: Stockpile;
+    visualAssetId: SectMapVisualAssetId;
     activeColor: Color;
     maxHp: number;
     repairCost: Stockpile;
@@ -153,6 +186,8 @@ type BuildingEntity = {
     pendingLevel: number | null;
 };
 
+type BuildingRenderViewModel = BuildingEntity;
+
 type ResourceNode = {
     kind: ResourceKind;
     tile: TileCoord;
@@ -162,6 +197,7 @@ type ResourceNode = {
     maxCharges: number;
     regenSeconds: number;
     regenTimerSeconds: number;
+    refreshHighlightSeconds: number;
 };
 
 type BuildPlacement = {
@@ -393,6 +429,34 @@ type SessionGuidance = {
     focusBuildingId: string | null;
 };
 
+type SessionRenderViewModel = {
+    phase: SessionPhase;
+    outcome: SessionOutcome;
+    objective: string;
+    guardTowerId: string | null;
+    ruinBuildingId: string | null;
+    firstRaidTriggered: boolean;
+    firstRaidResolved: boolean;
+    raidCountdownSeconds: number;
+    defendRemainingSeconds: number;
+    recoverReason: AuthoritySessionRecoverReason;
+    damagedBuildingCount: number;
+    regeneratingNodeCount: number;
+};
+
+type DiscipleRenderViewModel = {
+    assignmentKind: AuthorityDiscipleSnapshot['assignmentKind'] | 'idle';
+    targetTile: TileCoord | null;
+    targetBuildingId: string | null;
+    targetResourceKind: ResourceKind | null;
+    carrying: ResourceKind | null;
+    visualState: UnitVisualState;
+    desiredTile: TileCoord | null;
+    taskText: string | null;
+    workProgressTicks: number;
+    expectedNextTransition: string | null;
+};
+
 type RuntimeSnapshot = {
     mapReady: boolean;
     inputMode: InputMode;
@@ -422,10 +486,14 @@ type RuntimeSnapshot = {
         markerText: string | null;
         focusBuildingId: string | null;
         raidCountdownSeconds: number;
+        defendRemainingSeconds: number;
         guardTowerId: string | null;
         ruinBuildingId: string | null;
         firstRaidTriggered: boolean;
         firstRaidResolved: boolean;
+        recoverReason: AuthoritySessionRecoverReason;
+        damagedBuildingCount: number;
+        regeneratingNodeCount: number;
     };
     disciple: {
         tile: string;
@@ -438,10 +506,28 @@ type RuntimeSnapshot = {
     };
     hostiles: RuntimeHostileSnapshot[];
     authority: {
-        mode: 'authority' | 'local_fallback';
+        mode: 'authority' | 'authority_required';
         connected: boolean;
+        playerId: string;
+        playerTokenBound: boolean;
         sessionId: string;
+        gameTick: number;
         baseUrl: string;
+        renderSource: 'authority_snapshot' | 'authority_blocked';
+        lastBootstrapMode: AuthorityBootstrapMode;
+        combat: {
+            phase: SessionPhase;
+            outcome: SessionOutcome;
+            objective: string;
+            raidCountdownSeconds: number;
+            defendRemainingSeconds: number;
+            firstRaidTriggered: boolean;
+            firstRaidResolved: boolean;
+            recoverReason: AuthoritySessionRecoverReason;
+            damagedBuildingCount: number;
+            regeneratingNodeCount: number;
+            activeHostiles: number;
+        };
         pendingCommands: string[];
         lastEvent: string | null;
         lastError: string | null;
@@ -452,6 +538,16 @@ type RuntimeDebugBridge = {
     getRecentLogs: (limit?: number) => RuntimeLogEntry[];
     clearLogs: () => void;
     getSnapshot: () => RuntimeSnapshot;
+    bootstrapAuthoritySession: (options?: { mode?: AuthorityBootstrapMode }) => Promise<RuntimeSnapshot>;
+    restoreAuthoritySession: () => Promise<RuntimeSnapshot>;
+    resetAuthoritySession: () => Promise<RuntimeSnapshot>;
+    fetchAuthoritySnapshot: () => Promise<RuntimeSnapshot>;
+    executeAuthorityCommand: <TPayload>(
+        command: AuthorityCommandEnvelope<TPayload>,
+        options?: {
+            commandKey?: string;
+        },
+    ) => Promise<RuntimeSnapshot>;
 };
 
 type RuntimeDebugGlobal = typeof globalThis & {
@@ -464,136 +560,54 @@ const EMPTY_STOCKPILE = (): Stockpile => ({
     herb: 0,
 });
 
-const INITIAL_MAIN_HALL_TILE: TileCoord = { col: 6, row: 5 };
 const INITIAL_DISCIPLE_TILE: TileCoord = { col: 5, row: 6 };
 
 const RESOURCE_DISPLAY: Record<ResourceKind, { short: string; color: Color; title: string }> = {
     spirit_wood: {
         short: '木',
         color: new Color(76, 160, 92, 255),
-        title: '灵木',
+        title: SECT_MAP_SHARED_RESOURCE_RULES.spirit_wood.label,
     },
     spirit_stone: {
         short: '石',
         color: new Color(123, 138, 170, 255),
-        title: '灵石',
+        title: SECT_MAP_SHARED_RESOURCE_RULES.spirit_stone.label,
     },
     herb: {
         short: '药',
         color: new Color(118, 208, 122, 255),
-        title: '药草',
+        title: SECT_MAP_SHARED_RESOURCE_RULES.herb.label,
     },
 };
 
-const RESOURCE_RULES: Record<ResourceKind, ResourceRule> = {
-    spirit_wood: {
-        maxCharges: 3,
-        regenSeconds: 9,
-    },
-    spirit_stone: {
-        maxCharges: 2,
-        regenSeconds: 12,
-    },
-    herb: {
-        maxCharges: 3,
-        regenSeconds: 8,
-    },
-};
+const RESOURCE_RULES: Record<ResourceKind, ResourceRule> = SECT_MAP_SHARED_RESOURCE_RULES as Record<ResourceKind, ResourceRule>;
 
-const BUILDING_DEFINITIONS: BuildingDefinition[] = [
+const BUILDING_PRESENTATION: Record<
+    string,
     {
-        id: 'main_hall',
-        label: '主殿',
-        width: 3,
-        height: 3,
-        cost: {
-            spirit_wood: 0,
-            spirit_stone: 0,
-            herb: 0,
-        },
+        activeColor: Color;
+        structureDefense: number;
+        guardProfile?: GuardProfile;
+    }
+> = {
+    main_hall: {
         activeColor: new Color(186, 126, 72, 220),
-        maxHp: 28,
-        repairCost: {
-            spirit_wood: 2,
-            spirit_stone: 1,
-            herb: 0,
-        },
         structureDefense: 1.6,
     },
-    {
-        id: 'disciple_quarters',
-        label: '弟子居',
-        width: 2,
-        height: 3,
-        cost: {
-            spirit_wood: 2,
-            spirit_stone: 1,
-            herb: 0,
-        },
+    disciple_quarters: {
         activeColor: new Color(92, 144, 210, 220),
-        maxHp: 16,
-        repairCost: {
-            spirit_wood: 1,
-            spirit_stone: 1,
-            herb: 0,
-        },
         structureDefense: 1.1,
     },
-    {
-        id: 'warehouse',
-        label: '仓库',
-        width: 2,
-        height: 2,
-        cost: {
-            spirit_wood: 2,
-            spirit_stone: 2,
-            herb: 0,
-        },
+    warehouse: {
         activeColor: new Color(198, 156, 78, 220),
-        maxHp: 20,
-        repairCost: {
-            spirit_wood: 1,
-            spirit_stone: 1,
-            herb: 0,
-        },
         structureDefense: 1.3,
     },
-    {
-        id: 'herb_garden',
-        label: '药圃',
-        width: 2,
-        height: 2,
-        cost: {
-            spirit_wood: 1,
-            spirit_stone: 0,
-            herb: 1,
-        },
+    herb_garden: {
         activeColor: new Color(82, 176, 114, 220),
-        maxHp: 14,
-        repairCost: {
-            spirit_wood: 1,
-            spirit_stone: 0,
-            herb: 1,
-        },
         structureDefense: 0.9,
     },
-    {
-        id: 'guard_tower',
-        label: '护山台',
-        width: 1,
-        height: 2,
-        cost: {
-            spirit_wood: 1,
-            spirit_stone: 2,
-            herb: 0,
-        },
+    guard_tower: {
         activeColor: new Color(176, 92, 96, 220),
-        maxHp: 18,
-        repairCost: {
-            spirit_wood: 1,
-            spirit_stone: 1,
-            herb: 0,
-        },
         structureDefense: 1.4,
         guardProfile: {
             attackPower: 4.4,
@@ -601,7 +615,29 @@ const BUILDING_DEFINITIONS: BuildingDefinition[] = [
             attackInterval: 1.2,
         },
     },
-];
+};
+
+const BUILDING_DEFINITIONS: BuildingDefinition[] = SECT_MAP_SHARED_BUILDING_CORE_DEFINITIONS.map((definition) => ({
+    id: definition.id,
+    label: definition.label,
+    width: definition.width,
+    height: definition.height,
+    cost: {
+        spirit_wood: definition.cost.spirit_wood,
+        spirit_stone: definition.cost.spirit_stone,
+        herb: definition.cost.herb,
+    },
+    visualAssetId: definition.visualAssetId,
+    activeColor: BUILDING_PRESENTATION[definition.id].activeColor,
+    maxHp: definition.maxHp,
+    repairCost: {
+        spirit_wood: definition.repairCost.spirit_wood,
+        spirit_stone: definition.repairCost.spirit_stone,
+        herb: definition.repairCost.herb,
+    },
+    structureDefense: BUILDING_PRESENTATION[definition.id].structureDefense,
+    guardProfile: BUILDING_PRESENTATION[definition.id].guardProfile,
+}));
 
 const TOOLBAR_BUTTONS: ToolbarButtonConfig[] = [
     { key: 'browse', label: '查看', positionX: -240 },
@@ -628,6 +664,7 @@ export class SectMapBootstrap extends Component {
     private toolbarRoot: Node | null = null;
     private buildPanelRoot: Node | null = null;
     private radialMenuRoot: Node | null = null;
+    private sessionActionRoot: Node | null = null;
     private statusLabel: Label | null = null;
 
     private groundLayer: TiledLayer | null = null;
@@ -640,6 +677,7 @@ export class SectMapBootstrap extends Component {
     private blockedTiles = new Set<string>();
     private resourceNodes = new Map<string, ResourceNode>();
     private buildingEntities = new Map<string, BuildingEntity>();
+    private authorityBuildingViewModels = new Map<string, BuildingRenderViewModel>();
     private visualAssetFrames: Partial<Record<SectMapVisualAssetId, SpriteFrame>> = {};
     private toolbarButtons = new Map<string, Node>();
     private buildButtons = new Map<string, Node>();
@@ -675,15 +713,32 @@ export class SectMapBootstrap extends Component {
     private sessionRuinBuildingId: string | null = null;
     private firstRaidTriggered = false;
     private firstRaidResolved = false;
+    private authorityRaidCountdownSeconds = 0;
+    private authorityDefendRemainingSeconds = 0;
+    private authoritySessionRecoverReason: AuthoritySessionRecoverReason = 'none';
+    private authoritySessionDamagedBuildingCount = 0;
+    private authoritySessionRegeneratingNodeCount = 0;
     private sessionBuildPanelPrompted = false;
     private authorityClient = new SectMapAuthorityClient();
     private authoritySessionId = 'preview-local';
+    private authorityPlayerId = 'preview-player';
+    private authorityPlayerToken: string | null = null;
     private authorityConnected = false;
-    private authorityMode: 'authority' | 'local_fallback' = 'local_fallback';
+    private authorityMode: 'authority' | 'authority_required' = 'authority_required';
+    private authorityGameTick = 0;
     private authorityHydratingSnapshot = false;
     private authorityPendingCommands = new Set<string>();
     private authorityLastEvent: string | null = null;
     private authorityLastError: string | null = null;
+    private authorityRenderSource: 'authority_snapshot' | 'authority_blocked' = 'authority_blocked';
+    private authorityLastBootstrapMode: AuthorityBootstrapMode = DEFAULT_AUTHORITY_BOOTSTRAP_MODE;
+    private authoritySnapshotPollSeconds = AUTHORITY_SNAPSHOT_POLL_SECONDS;
+    private authorityPollingSnapshot = false;
+    private authorityDiscipleSnapshot: AuthorityDiscipleSnapshot | null = null;
+    private authorityDiscipleViewModel: DiscipleRenderViewModel | null = null;
+    private authoritySessionViewModel: SessionRenderViewModel | null = null;
+    private authorityGatherFactTimerSeconds = 0;
+    private authorityGatherFactKey: string | null = null;
 
     private activePointerId: number | null = null;
     private pointerStart = v3();
@@ -734,6 +789,7 @@ export class SectMapBootstrap extends Component {
         const scene = director.getScene();
         this.canvas = scene?.getChildByName('Canvas') ?? null;
         this.statusLabel = this.canvas?.getChildByName(STATUS_LABEL)?.getComponent(Label) ?? null;
+        this.resolveAuthorityIdentity();
         this.attachRuntimeDebugBridge();
 
         this.mapRoot = this.ensureChild(MAP_ROOT);
@@ -859,6 +915,7 @@ export class SectMapBootstrap extends Component {
         this.spawnInitialWorld();
         this.buildToolbar();
         this.buildBuildPanel();
+        this.buildSessionActions();
         this.registerInput();
 
         const discipleCenter = this.getTileCenter(this.disciple.tile);
@@ -879,36 +936,378 @@ export class SectMapBootstrap extends Component {
             blockedCount: this.blockedTiles.size,
         });
         this.setMessage('M1 地图底座已加载：拖图、双指缩放预留、工具栏标记、长按环形快捷操作已启用');
-        void this.bootstrapAuthoritySession();
+        void this.bootstrapAuthoritySession({
+            mode: this.resolveInitialAuthorityBootstrapMode(),
+        });
     }
 
-    private async bootstrapAuthoritySession(): Promise<void> {
+    private resolveInitialAuthorityBootstrapMode(): AuthorityBootstrapMode {
+        const locationSearch = globalThis.location?.search;
+        if (!locationSearch) {
+            return DEFAULT_AUTHORITY_BOOTSTRAP_MODE;
+        }
+
+        const requestedMode = new URLSearchParams(locationSearch).get(AUTHORITY_BOOTSTRAP_QUERY_KEY);
+        if (requestedMode === 'reset' || requestedMode === 'restore_latest') {
+            return requestedMode;
+        }
+        return DEFAULT_AUTHORITY_BOOTSTRAP_MODE;
+    }
+
+    private resolveAuthorityIdentity(): void {
+        const locationSearch = globalThis.location?.search ?? '';
+        const queryPlayerId = locationSearch ? new URLSearchParams(locationSearch).get(AUTHORITY_PLAYER_ID_QUERY_KEY) : null;
+        const storedPlayerId = globalThis.localStorage?.getItem(AUTHORITY_PLAYER_ID_STORAGE_KEY);
+        const chosenPlayerId = queryPlayerId ?? storedPlayerId ?? this.promptAuthorityPlayerId();
+        this.authorityPlayerId = chosenPlayerId || 'preview-player';
+        this.authorityPlayerToken = globalThis.localStorage?.getItem(AUTHORITY_PLAYER_TOKEN_STORAGE_KEY);
+        this.persistAuthorityIdentity();
+    }
+
+    private promptAuthorityPlayerId(): string {
+        const prompted = globalThis.prompt?.('输入当前测试玩家 ID，用于恢复该玩家的 authority 会话', 'preview-player');
+        if (!prompted) {
+            return 'preview-player';
+        }
+        const trimmed = prompted.trim();
+        return trimmed.length > 0 ? trimmed : 'preview-player';
+    }
+
+    private persistAuthorityIdentity(): void {
+        globalThis.localStorage?.setItem(AUTHORITY_PLAYER_ID_STORAGE_KEY, this.authorityPlayerId);
+        if (this.authorityPlayerToken) {
+            globalThis.localStorage?.setItem(AUTHORITY_PLAYER_TOKEN_STORAGE_KEY, this.authorityPlayerToken);
+        }
+    }
+
+    private applyAuthorityIdentity(identity: AuthoritySessionResponse['identity']): void {
+        this.authorityPlayerId = identity.playerId;
+        this.authorityPlayerToken = identity.playerToken || null;
+        this.authoritySessionId = identity.playerSessionId;
+        this.persistAuthorityIdentity();
+    }
+
+    private async bootstrapAuthoritySession(options?: { mode?: AuthorityBootstrapMode }): Promise<void> {
+        const mode = options?.mode ?? DEFAULT_AUTHORITY_BOOTSTRAP_MODE;
+        this.authorityLastBootstrapMode = mode;
         try {
-            const response = await this.authorityClient.bootstrapSession(this.authoritySessionId);
-            this.applyAuthorityResponse(response, 'bootstrap');
+            const response = await this.authorityClient.bootstrapSession(
+                this.authoritySessionId,
+                {
+                    playerId: this.authorityPlayerId,
+                    playerToken: this.authorityPlayerToken,
+                },
+                { mode },
+            );
             this.authorityConnected = true;
             this.authorityMode = 'authority';
+            this.applyAuthorityResponse(response, 'bootstrap');
             this.authorityLastError = null;
+            this.authorityRenderSource = 'authority_snapshot';
+            this.authoritySnapshotPollSeconds = AUTHORITY_SNAPSHOT_POLL_SECONDS;
             this.logRuntime('INFO', 'BOOT', 'authority.bootstrap_ready', 'M1 authority snapshot 已接入当前预览会话', {
                 sessionId: this.authoritySessionId,
+                playerId: this.authorityPlayerId,
                 baseUrl: this.authorityClient.getBaseUrl(),
+                mode,
             });
-            this.setMessage('M1 authority 短会话已接管建造与资源结算路径');
+            this.setMessage(
+                mode === 'reset'
+                    ? 'M1 authority 短会话已重置为干净测试会话'
+                    : 'M1 authority 短会话已恢复最近一次保存并接管建造与资源结算路径',
+            );
         } catch (error) {
             const message = error instanceof Error ? error.message : 'authority_bootstrap_failed';
-            this.authorityConnected = false;
-            this.authorityMode = 'local_fallback';
-            this.authorityLastError = message;
-            this.logRuntime('WARN', 'BOOT', 'authority.bootstrap_failed', 'authority server 不可用，当前预览回退到本地会话', {
+            this.enterAuthorityBlockedState(
+                message,
+                'authority.bootstrap_blocked',
+                'authority server 不可用，主预览已停止本地玩法兜底',
+                {
+                    sessionId: this.authoritySessionId,
+                    playerId: this.authorityPlayerId,
+                    baseUrl: this.authorityClient.getBaseUrl(),
+                    mode,
+                },
+            );
+            this.logRuntime('ERROR', 'BOOT', 'authority.bootstrap_failed', 'authority server 不可用，主预览无法继续主线验证', {
                 sessionId: this.authoritySessionId,
+                playerId: this.authorityPlayerId,
                 baseUrl: this.authorityClient.getBaseUrl(),
+                mode,
                 error: message,
             });
-            this.setMessage(`authority 未连接，当前回退为本地预览：${message}`);
+        }
+    }
+
+    private enterAuthorityBlockedState(
+        reason: string,
+        event: string,
+        message: string,
+        payload?: RuntimeLogPayload,
+    ): void {
+        const stateChanged =
+            this.authorityConnected ||
+            this.authorityMode !== 'authority_required' ||
+            this.authorityRenderSource !== 'authority_blocked' ||
+            this.authorityLastError !== reason;
+
+        this.authorityConnected = false;
+        this.authorityMode = 'authority_required';
+        this.authorityLastError = reason;
+        this.authorityRenderSource = 'authority_blocked';
+        this.authorityDiscipleSnapshot = null;
+        this.authorityPendingCommands.clear();
+        this.authorityPollingSnapshot = false;
+        this.disciple.currentTask = null;
+        this.disciple.carrying = null;
+        this.disciple.path = [];
+        this.disciple.pathIndex = 0;
+        this.closeBuildPanel();
+        this.closeRadialMenu();
+        this.clearBuildPlacement();
+        this.refreshDiscipleToken();
+
+        if (!stateChanged) {
+            return;
+        }
+
+        this.logRuntime('ERROR', 'BOOT', event, message, {
+            ...payload,
+            error: reason,
+        });
+        this.setMessage(`authority 必需，主预览已停止玩法推进：${reason}`);
+    }
+
+    private ensureAuthorityMainlineAvailable(action: string): boolean {
+        if (this.authorityConnected) {
+            return true;
+        }
+
+        this.enterAuthorityBlockedState(
+            this.authorityLastError ?? 'authority_not_connected',
+            'authority.mainline_blocked',
+            'authority 未连接，已阻止主预览继续本地玩法推进',
+            {
+                action,
+                sessionId: this.authoritySessionId,
+            },
+        );
+        return false;
+    }
+
+    private async fetchAuthoritySnapshotNow(): Promise<RuntimeSnapshot> {
+        if (!this.authorityConnected) {
+            throw new Error('authority_not_connected');
+        }
+
+        const response = await this.authorityClient.getSnapshot(this.authoritySessionId, {
+            playerId: this.authorityPlayerId,
+            playerToken: this.authorityPlayerToken,
+        });
+        this.applyAuthorityResponse(response, 'debug_fetch');
+        this.authorityLastError = null;
+        return this.getRuntimeSnapshot();
+    }
+
+    private shouldUseAuthorityRenderViewModels(): boolean {
+        return this.authorityBuildingViewModels.size > 0 && (this.authorityConnected || this.authorityRenderSource === 'authority_blocked');
+    }
+
+    private getRenderBuildings(): BuildingRenderViewModel[] {
+        if (this.shouldUseAuthorityRenderViewModels()) {
+            return [...this.authorityBuildingViewModels.values()];
+        }
+        return [...this.buildingEntities.values()];
+    }
+
+    private getRenderBuildingByID(buildingID: string | null): BuildingRenderViewModel | BuildingEntity | null {
+        if (!buildingID) {
+            return null;
+        }
+
+        if (this.shouldUseAuthorityRenderViewModels()) {
+            return this.authorityBuildingViewModels.get(buildingID) ?? null;
+        }
+
+        return this.buildingEntities.get(buildingID) ?? null;
+    }
+
+    private getCurrentSessionViewModel(): SessionRenderViewModel {
+        if (this.authoritySessionViewModel && (this.authorityConnected || this.authorityRenderSource === 'authority_blocked')) {
+            return this.authoritySessionViewModel;
+        }
+
+        return {
+            phase: this.sessionPhase,
+            outcome: this.sessionOutcome,
+            objective: this.sessionObjectiveText,
+            guardTowerId: this.sessionGuardTowerId,
+            ruinBuildingId: this.sessionRuinBuildingId,
+            firstRaidTriggered: this.firstRaidTriggered,
+            firstRaidResolved: this.firstRaidResolved,
+            raidCountdownSeconds: this.authorityRaidCountdownSeconds,
+            defendRemainingSeconds: this.authorityDefendRemainingSeconds,
+            recoverReason: this.authoritySessionRecoverReason,
+            damagedBuildingCount: this.authoritySessionDamagedBuildingCount,
+            regeneratingNodeCount: this.authoritySessionRegeneratingNodeCount,
+        };
+    }
+
+    private buildAuthoritySessionViewModel(snapshot: AuthoritySnapshot): SessionRenderViewModel {
+        return {
+            phase: snapshot.session.phase as SessionPhase,
+            outcome: snapshot.session.outcome as SessionOutcome,
+            objective: snapshot.session.objective,
+            guardTowerId: snapshot.session.guardTowerId,
+            ruinBuildingId: snapshot.session.ruinBuildingId,
+            firstRaidTriggered: snapshot.session.firstRaidTriggered,
+            firstRaidResolved: snapshot.session.firstRaidResolved,
+            raidCountdownSeconds: snapshot.session.raidCountdownSeconds,
+            defendRemainingSeconds: snapshot.session.defendRemainingSeconds,
+            recoverReason: snapshot.session.recoverReason,
+            damagedBuildingCount: snapshot.session.damagedBuildingCount,
+            regeneratingNodeCount: snapshot.session.regeneratingNodeCount,
+        };
+    }
+
+    private buildAuthorityDiscipleViewModel(
+        assignment: AuthorityDiscipleSnapshot | null,
+    ): DiscipleRenderViewModel | null {
+        if (!assignment) {
+            return null;
+        }
+
+        const desiredTile = this.resolveAuthorityDiscipleDesiredTile(assignment);
+        return {
+            assignmentKind: assignment.assignmentKind,
+            targetTile: assignment.targetTile ? { ...assignment.targetTile } : null,
+            targetBuildingId: assignment.targetBuildingId,
+            targetResourceKind: assignment.targetResourceKind as ResourceKind | null,
+            carrying: (assignment.carrying.kind as ResourceKind | null) ?? null,
+            visualState: this.resolveAuthorityDiscipleVisualState(assignment, desiredTile),
+            desiredTile,
+            taskText: this.describeAuthorityAssignment(assignment),
+            workProgressTicks: assignment.workProgressTicks,
+            expectedNextTransition: assignment.expectedNextTransition,
+        };
+    }
+
+    private resolveAuthorityDiscipleDesiredTile(assignment: AuthorityDiscipleSnapshot): TileCoord | null {
+        if (assignment.targetTile) {
+            return { ...assignment.targetTile };
+        }
+
+        if (assignment.assignmentKind === 'guard' && this.hostileNpc.active) {
+            return this.findStandTileAroundTile(this.hostileNpc.tile, this.disciple.tile) ?? { ...this.hostileNpc.tile };
+        }
+
+        if (assignment.targetBuildingId) {
+            const building = this.authorityBuildingViewModels.get(assignment.targetBuildingId) ?? this.buildingEntities.get(assignment.targetBuildingId);
+            if (building) {
+                return this.findBuildingStandTileFromTile(building, this.disciple.tile);
+            }
+        }
+
+        return null;
+    }
+
+    private resolveAuthorityDiscipleVisualState(
+        assignment: AuthorityDiscipleSnapshot,
+        desiredTile: TileCoord | null,
+    ): UnitVisualState {
+        switch (assignment.assignmentKind) {
+            case 'gather':
+            case 'haul':
+                return assignment.carrying.kind ? 'carrying' : desiredTile ? 'moving' : 'working';
+            case 'build':
+            case 'repair':
+            case 'demolish':
+                return assignment.workProgressTicks > 0 ? 'working' : 'moving';
+            case 'guard':
+                return assignment.workProgressTicks > 0 ? 'attacking' : 'guarding';
+            case 'idle':
+            default:
+                return assignment.carrying.kind ? 'carrying' : 'idle';
+        }
+    }
+
+    private describeAuthorityAssignment(assignment: AuthorityDiscipleSnapshot | null): string | null {
+        if (!assignment || assignment.assignmentKind === 'idle') {
+            return null;
+        }
+
+        const nextTransition = assignment.expectedNextTransition ? `:${assignment.expectedNextTransition}` : '';
+        return `${assignment.assignmentKind}${nextTransition}`;
+    }
+
+    private syncAuthorityRenderViewModels(snapshot: AuthoritySnapshot): void {
+        this.authorityBuildingViewModels.clear();
+
+        let highestBuildingNumericID = 0;
+        for (const snapshotBuilding of snapshot.buildings) {
+            const viewModel = this.buildEntityFromAuthority(snapshotBuilding);
+            this.authorityBuildingViewModels.set(viewModel.id, viewModel);
+            const numericID = Number(viewModel.id.replace('building-', ''));
+            if (Number.isFinite(numericID)) {
+                highestBuildingNumericID = Math.max(highestBuildingNumericID, numericID);
+            }
+        }
+        this.nextBuildingId = highestBuildingNumericID + 1;
+
+        this.authoritySessionViewModel = this.buildAuthoritySessionViewModel(snapshot);
+        this.authorityDiscipleSnapshot =
+            snapshot.disciples.find((disciple) => disciple.id === this.disciple.id) ??
+            snapshot.disciples[0] ??
+            null;
+        this.authorityDiscipleViewModel = this.buildAuthorityDiscipleViewModel(this.authorityDiscipleSnapshot);
+    }
+
+    private syncAuthorityHostilesFromSnapshot(hostiles: AuthorityHostileSnapshot[]): void {
+        const hostile = hostiles[0] ?? null;
+        if (!hostile || !hostile.active) {
+            this.hostileNpc.active = false;
+            this.hostileNpc.path = [];
+            this.hostileNpc.pathIndex = 0;
+            this.hostileNpc.targetBuildingId = null;
+            this.hostileNpc.attackCooldownSeconds = 0;
+            this.hostileNpc.visualState = 'idle';
+            this.hostileNpc.respawnTimerSeconds = 0;
+            this.refreshHostileNpcToken();
+            return;
+        }
+
+        if (this.hostileNpc.id !== hostile.id || this.hostileNpc.model.archetypeId !== hostile.archetypeId) {
+            this.hostileNpc.id = hostile.id;
+            this.hostileNpc.name = hostile.name;
+            this.hostileNpc.model = createLocalUnitModel(hostile.archetypeId, hostile.name);
+        }
+
+        const previousHP = this.hostileNpc.currentHp;
+        this.hostileNpc.active = true;
+        this.hostileNpc.tile = { ...hostile.tile };
+        this.hostileNpc.worldPosition = this.getTileCenter(hostile.tile);
+        this.hostileNpc.path = [];
+        this.hostileNpc.pathIndex = 0;
+        this.hostileNpc.visualState = hostile.visualState;
+        this.hostileNpc.currentHp = hostile.hp;
+        this.hostileNpc.targetBuildingId = hostile.targetBuildingId;
+        this.hostileNpc.respawnTimerSeconds = 0;
+        if (hostile.hp < previousHP) {
+            this.hostileNpc.hitFlashSeconds = UNIT_HIT_FLASH_SECONDS;
+        }
+        this.refreshHostileNpcToken();
+    }
+
+    private syncLocalBuildingEntitiesFromAuthority(snapshot: AuthoritySnapshot): void {
+        this.buildingEntities.clear();
+        for (const snapshotBuilding of snapshot.buildings) {
+            const entity = this.buildEntityFromAuthority(snapshotBuilding);
+            this.buildingEntities.set(entity.id, entity);
         }
     }
 
     private applyAuthorityResponse(response: AuthoritySessionResponse, reason: string): void {
+        this.applyAuthorityIdentity(response.identity);
         this.applyAuthoritySnapshot(response.snapshot, reason);
         if (response.result) {
             this.authorityLastEvent = response.result.event;
@@ -922,20 +1321,15 @@ export class SectMapBootstrap extends Component {
     private applyAuthoritySnapshot(snapshot: AuthoritySnapshot, reason: string): void {
         this.authorityHydratingSnapshot = true;
         try {
+            const previousPhase = this.sessionPhase;
+            const previousOutcome = this.sessionOutcome;
             this.authoritySessionId = snapshot.sessionId;
+            this.authorityGameTick = snapshot.gameTick;
             this.stockpile = this.fromAuthorityStockpile(snapshot.stockpile);
-            this.buildingEntities.clear();
-
-            let highestBuildingNumericID = 0;
-            for (const snapshotBuilding of snapshot.buildings) {
-                const entity = this.buildEntityFromAuthority(snapshotBuilding);
-                this.buildingEntities.set(entity.id, entity);
-                const numericID = Number(entity.id.replace('building-', ''));
-                if (Number.isFinite(numericID)) {
-                    highestBuildingNumericID = Math.max(highestBuildingNumericID, numericID);
-                }
-            }
-            this.nextBuildingId = highestBuildingNumericID + 1;
+            this.syncResourceNodesFromAuthority(snapshot.resourceNodes);
+            this.syncAuthorityRenderViewModels(snapshot);
+            this.syncAuthorityHostilesFromSnapshot(snapshot.hostiles);
+            this.syncLocalBuildingEntitiesFromAuthority(snapshot);
 
             this.sessionPhase = snapshot.session.phase as SessionPhase;
             this.sessionOutcome = snapshot.session.outcome as SessionOutcome;
@@ -944,6 +1338,13 @@ export class SectMapBootstrap extends Component {
             this.sessionRuinBuildingId = snapshot.session.ruinBuildingId;
             this.firstRaidTriggered = snapshot.session.firstRaidTriggered;
             this.firstRaidResolved = snapshot.session.firstRaidResolved;
+            this.authorityRaidCountdownSeconds = snapshot.session.raidCountdownSeconds;
+            this.authorityDefendRemainingSeconds = snapshot.session.defendRemainingSeconds;
+            this.authoritySessionRecoverReason = snapshot.session.recoverReason;
+            this.authoritySessionDamagedBuildingCount = snapshot.session.damagedBuildingCount;
+            this.authoritySessionRegeneratingNodeCount = snapshot.session.regeneratingNodeCount;
+            this.authorityRenderSource = 'authority_snapshot';
+            this.applyAuthoritySessionPresentation(previousPhase, previousOutcome);
 
             if (this.sessionPhase === 'place_guard_tower' && !this.sessionBuildPanelPrompted) {
                 this.sessionBuildPanelPrompted = true;
@@ -955,38 +1356,66 @@ export class SectMapBootstrap extends Component {
                     this.openBuildPanel(focusTile);
                 }
             }
-
-            if (this.disciple.currentTask) {
-                switch (this.disciple.currentTask.kind) {
-                    case 'build':
-                    case 'haul':
-                    case 'repair':
-                    case 'demolish':
-                        if (!this.buildingEntities.has(this.disciple.currentTask.buildingId)) {
-                            this.disciple.currentTask = null;
-                            this.disciple.path = [];
-                            this.disciple.pathIndex = 0;
-                            this.disciple.carrying = null;
-                        }
-                        break;
-                    default:
-                        break;
-                }
-            }
+            this.disciple.currentTask = null;
+            this.disciple.path = [];
+            this.disciple.pathIndex = 0;
+            this.disciple.carrying = this.authorityDiscipleViewModel?.carrying ?? null;
 
             this.refreshBuildings();
+            this.refreshHostileNpcToken();
+            this.refreshDiscipleToken();
             this.refreshObjectiveMarker();
             this.renderStatus();
-            this.logRuntime('INFO', 'BOOT', 'authority.snapshot_applied', 'authority snapshot 已写回当前 runtime', {
-                reason,
-                buildingCount: this.buildingEntities.size,
-                stockpile: this.summarizeStockpile(),
-                phase: this.sessionPhase,
-                outcome: this.sessionOutcome,
-            });
+            if (reason !== 'poll') {
+                this.logRuntime('INFO', 'BOOT', 'authority.snapshot_applied', 'authority snapshot 已写回当前 runtime', {
+                    reason,
+                    buildingCount: this.authorityBuildingViewModels.size,
+                    stockpile: this.summarizeStockpile(),
+                    phase: this.sessionPhase,
+                    outcome: this.sessionOutcome,
+                });
+            }
         } finally {
             this.authorityHydratingSnapshot = false;
         }
+    }
+
+    private applyAuthoritySessionPresentation(previousPhase: SessionPhase, previousOutcome: SessionOutcome): void {
+        if (this.authorityConnected) {
+            this.hostileNpc.respawnTimerSeconds = this.sessionPhase === 'raid_countdown' ? this.authorityRaidCountdownSeconds : 0;
+        }
+
+        if (previousPhase !== this.sessionPhase && this.sessionPhase === 'second_cycle_ready') {
+            this.hostileNpc.active = false;
+            this.hostileNpc.path = [];
+            this.hostileNpc.pathIndex = 0;
+            this.hostileNpc.targetBuildingId = null;
+            this.hostileNpc.attackCooldownSeconds = 0;
+            this.setMessage('authority 判定资源节点已恢复，宗门进入下一轮筹备态');
+            this.refreshHostileNpcToken();
+        }
+
+        if (previousOutcome === this.sessionOutcome || this.sessionOutcome === 'in_progress') {
+            return;
+        }
+
+        this.hostileNpc.active = false;
+        this.hostileNpc.path = [];
+        this.hostileNpc.pathIndex = 0;
+        this.hostileNpc.targetBuildingId = null;
+        this.hostileNpc.attackCooldownSeconds = 0;
+        this.disciple.currentTask = null;
+        this.disciple.path = [];
+        this.disciple.pathIndex = 0;
+        this.closeBuildPanel();
+        this.clearBuildPlacement();
+        this.refreshHostileNpcToken();
+        this.refreshDiscipleToken();
+        if (this.sessionOutcome === 'victory') {
+            this.setMessage('authority 判定本轮短会话已达成');
+            return;
+        }
+        this.setMessage('authority 判定本轮短会话失败');
     }
 
     private buildEntityFromAuthority(snapshotBuilding: AuthorityBuildingSnapshot): BuildingEntity {
@@ -1019,57 +1448,289 @@ export class SectMapBootstrap extends Component {
         };
     }
 
+    private syncResourceNodesFromAuthority(resourceNodes: AuthorityResourceNodeSnapshot[]): void {
+        const nextKeys = new Set<string>();
+
+        for (const snapshotNode of resourceNodes) {
+            const key = this.getTileKey(snapshotNode.tile.col, snapshotNode.tile.row);
+            nextKeys.add(key);
+            const existing = this.resourceNodes.get(key);
+            const refreshHighlightSeconds = this.shouldShowResourceRefreshHighlight(
+                existing,
+                snapshotNode.state as ResourceNodeState,
+                snapshotNode.remainingCharges,
+            )
+                ? RESOURCE_REFRESH_HIGHLIGHT_SECONDS
+                : Math.max(0, existing?.refreshHighlightSeconds ?? 0);
+            this.resourceNodes.set(key, {
+                kind: snapshotNode.kind as ResourceKind,
+                tile: { ...snapshotNode.tile },
+                designated: existing?.designated ?? false,
+                state: snapshotNode.state as ResourceNodeState,
+                remainingCharges: snapshotNode.remainingCharges,
+                maxCharges: snapshotNode.maxCharges,
+                regenSeconds: snapshotNode.regenSeconds,
+                regenTimerSeconds: snapshotNode.regenTimerSeconds,
+                refreshHighlightSeconds,
+            });
+        }
+
+        for (const key of [...this.resourceNodes.keys()]) {
+            if (!nextKeys.has(key)) {
+                this.resourceNodes.delete(key);
+            }
+        }
+
+        this.refreshResourceMarkers();
+    }
+
+    private pollAuthoritySnapshot(deltaTime: number): void {
+        if (!this.authorityConnected || this.authorityPollingSnapshot || this.authorityPendingCommands.size > 0) {
+            return;
+        }
+
+        this.authoritySnapshotPollSeconds = Math.max(0, this.authoritySnapshotPollSeconds - deltaTime);
+        if (this.authoritySnapshotPollSeconds > 0) {
+            return;
+        }
+
+        this.authoritySnapshotPollSeconds = AUTHORITY_SNAPSHOT_POLL_SECONDS;
+        this.authorityPollingSnapshot = true;
+        void this.authorityClient
+            .getSnapshot(this.authoritySessionId, {
+                playerId: this.authorityPlayerId,
+                playerToken: this.authorityPlayerToken,
+            })
+            .then((response) => {
+                this.applyAuthorityResponse(response, 'poll');
+                this.authorityLastError = null;
+            })
+            .catch((error) => {
+                const message = error instanceof Error ? error.message : 'authority_snapshot_poll_failed';
+                this.enterAuthorityBlockedState(
+                    message,
+                    'authority.snapshot_poll_failed',
+                    'authority snapshot 轮询失败，主预览已停止本地玩法兜底',
+                    {
+                        sessionId: this.authoritySessionId,
+                    },
+                );
+            })
+            .finally(() => {
+                this.authorityPollingSnapshot = false;
+            });
+    }
+
     private executeAuthorityCommand<TPayload>(
         command: AuthorityCommandEnvelope<TPayload>,
         options?: {
             commandKey?: string;
             onAccepted?: () => void;
+            onRejected?: (error: Error) => void | Promise<void>;
         },
     ): void {
+        void this.executeAuthorityCommandAsync(command, options).catch(() => undefined);
+    }
+
+    private async executeAuthorityCommandAsync<TPayload>(
+        command: AuthorityCommandEnvelope<TPayload>,
+        options?: {
+            commandKey?: string;
+            onAccepted?: () => void;
+            onRejected?: (error: Error) => void | Promise<void>;
+        },
+    ): Promise<RuntimeSnapshot> {
         const commandKey = options?.commandKey ?? command.name;
-        if (!this.authorityConnected || this.authorityPendingCommands.has(commandKey)) {
-            return;
+        if (!this.authorityConnected) {
+            throw new Error('authority_not_connected');
+        }
+        if (this.authorityPendingCommands.has(commandKey)) {
+            throw new Error(`authority_command_pending:${commandKey}`);
         }
 
         this.authorityPendingCommands.add(commandKey);
-        void this.authorityClient
-            .executeCommand(this.authoritySessionId, command)
-            .then((response) => {
-                this.applyAuthorityResponse(response, command.name);
-                options?.onAccepted?.();
-            })
-            .catch((error) => {
-                const message = error instanceof Error ? error.message : `${command.name}_failed`;
-                this.authorityLastError = message;
-                this.logRuntime('ERROR', 'BUILD', 'authority.command_failed', 'authority command 执行失败', {
-                    command: command.name,
-                    error: message,
-                });
-                this.setMessage(`authority 命令失败：${message}`);
-            })
-            .finally(() => {
-                this.authorityPendingCommands.delete(commandKey);
+        try {
+            const response = await this.authorityClient.executeCommand(
+                this.authoritySessionId,
+                {
+                    playerId: this.authorityPlayerId,
+                    playerToken: this.authorityPlayerToken,
+                },
+                command,
+            );
+            this.applyAuthorityResponse(response, command.name);
+            options?.onAccepted?.();
+            return this.getRuntimeSnapshot();
+        } catch (error) {
+            const message = error instanceof Error ? error.message : `${command.name}_failed`;
+            this.authorityLastError = message;
+            this.logRuntime('ERROR', 'BUILD', 'authority.command_failed', 'authority command 执行失败', {
+                command: command.name,
+                error: message,
             });
+            this.setMessage(`authority 命令失败：${message}`);
+            if (error instanceof Error) {
+                await options?.onRejected?.(error);
+            }
+            throw error;
+        } finally {
+            this.authorityPendingCommands.delete(commandKey);
+        }
     }
 
-    private syncSessionProgressToAuthority(trigger: string): void {
+    private async refreshAuthoritySnapshotAfterCommandReject(
+        commandName: string,
+        context: RuntimeLogPayload,
+        fallbackMessage: string,
+    ): Promise<void> {
+        try {
+            const response = await this.authorityClient.getSnapshot(this.authoritySessionId, {
+                playerId: this.authorityPlayerId,
+                playerToken: this.authorityPlayerToken,
+            });
+            this.applyAuthorityResponse(response, `${commandName}_reject_recovery`);
+            this.authorityLastError = null;
+            this.logRuntime('WARN', 'TASK', `${commandName}.reject_recovered`, fallbackMessage, context);
+        } catch (snapshotError) {
+            const snapshotMessage =
+                snapshotError instanceof Error ? snapshotError.message : `${commandName}_reject_snapshot_failed`;
+            this.authorityLastError = snapshotMessage;
+            this.logRuntime('WARN', 'TASK', `${commandName}.reject_snapshot_failed`, 'authority 拒绝命令后未能刷新最新快照', {
+                ...context,
+                error: snapshotMessage,
+            });
+        }
+    }
+
+    private clearAuthorityHaulTaskAfterReject(task: Extract<DiscipleTask, { kind: 'haul' }>): void {
+        this.disciple.carrying = null;
+        this.disciple.currentTask = null;
+        this.disciple.path = [];
+        this.disciple.pathIndex = 0;
+        this.logRuntime('WARN', 'TASK', 'task.haul_cleared_after_reject', 'authority 已拒绝陈旧搬运任务，弟子将重新分配工作', {
+            buildingId: task.buildingId,
+            resourceKind: task.resourceKind,
+        });
+    }
+
+    private advanceAuthorityPresentation(deltaTime: number): void {
+        this.disciple.currentTask = null;
+        this.disciple.carrying = this.authorityDiscipleViewModel?.carrying ?? null;
+
+        const viewModel = this.authorityDiscipleViewModel;
+        if (!viewModel) {
+            this.resetAuthorityGatherFactState();
+            this.disciple.path = [];
+            this.disciple.pathIndex = 0;
+            this.disciple.visualState = this.disciple.carrying ? 'carrying' : 'idle';
+            this.refreshDiscipleToken();
+            return;
+        }
+
+        this.disciple.visualState = viewModel.visualState;
+        if (!viewModel.desiredTile) {
+            this.resetAuthorityGatherFactState();
+            this.disciple.path = [];
+            this.disciple.pathIndex = 0;
+            this.refreshDiscipleToken();
+            return;
+        }
+
+        const needsPath =
+            this.disciple.path.length === 0 ||
+            this.disciple.pathIndex >= this.disciple.path.length ||
+            !this.isPathStillLeadingToTile(this.disciple.path, viewModel.desiredTile);
+
+        if (needsPath) {
+            const path = this.findPath(this.disciple.tile, viewModel.desiredTile);
+            if (path) {
+                this.disciple.path = path;
+                this.disciple.pathIndex = 0;
+            } else {
+                this.disciple.path = [];
+                this.disciple.pathIndex = 0;
+            }
+        }
+
+        this.advancePathingUnit(this.disciple, deltaTime, viewModel.desiredTile);
+        if (viewModel.assignmentKind === 'gather' && this.isSameTile(this.disciple.tile, viewModel.desiredTile)) {
+            this.disciple.visualState = 'working';
+        }
+        this.refreshDiscipleToken();
+        this.advanceAuthorityGatherFact(viewModel, deltaTime);
+    }
+
+    private advanceAuthorityGatherFact(viewModel: DiscipleRenderViewModel, deltaTime: number): void {
+        if (
+            !this.authorityConnected ||
+            this.authorityHydratingSnapshot ||
+            viewModel.assignmentKind !== 'gather' ||
+            !viewModel.targetResourceKind ||
+            !viewModel.targetTile
+        ) {
+            this.resetAuthorityGatherFactState();
+            return;
+        }
+
+        const commandKey = `collect_stockpile:${viewModel.targetResourceKind}:${viewModel.targetTile.col},${viewModel.targetTile.row}`;
+        if (this.authorityGatherFactKey !== commandKey) {
+            this.authorityGatherFactKey = commandKey;
+            this.authorityGatherFactTimerSeconds = 0;
+        }
+
+        if (!this.isSameTile(this.disciple.tile, viewModel.targetTile)) {
+            this.authorityGatherFactTimerSeconds = 0;
+            return;
+        }
+
+        if (this.authorityPendingCommands.has(commandKey)) {
+            return;
+        }
+
+        this.authorityGatherFactTimerSeconds += deltaTime;
+        if (
+            this.authorityGatherFactTimerSeconds <
+            getActionDurationSeconds(BASE_HARVEST_SECONDS, this.disciple.model.stats.harvestSpeed)
+        ) {
+            return;
+        }
+
+        this.authorityGatherFactTimerSeconds = 0;
+        this.executeAuthorityCommand(
+            {
+                name: 'collect_stockpile',
+                payload: {
+                    resourceKind: viewModel.targetResourceKind as AuthorityResourceKind,
+                    amount: 1,
+                    resourceTile: {
+                        col: viewModel.targetTile.col,
+                        row: viewModel.targetTile.row,
+                    },
+                },
+            },
+            {
+                commandKey,
+            },
+        );
+    }
+
+    private resetAuthorityGatherFactState(): void {
+        this.authorityGatherFactKey = null;
+        this.authorityGatherFactTimerSeconds = 0;
+    }
+
+    private syncAuthoritySessionExpired(): void {
         if (!this.authorityConnected || this.authorityHydratingSnapshot) {
             return;
         }
 
         this.executeAuthorityCommand(
             {
-                name: 'sync_session_progress',
-                payload: {
-                    phase: this.sessionPhase as AuthoritySessionPhase,
-                    outcome: this.sessionOutcome as AuthoritySessionOutcome,
-                    objective: this.sessionObjectiveText,
-                    firstRaidTriggered: this.firstRaidTriggered,
-                    firstRaidResolved: this.firstRaidResolved,
-                },
+                name: 'expire_session',
+                payload: {},
             },
             {
-                commandKey: `sync_session_progress:${trigger}`,
+                commandKey: 'expire_session',
             },
         );
     }
@@ -1080,8 +1741,27 @@ export class SectMapBootstrap extends Component {
         }
 
         this.advanceLongPress(deltaTime);
+        this.pollAuthoritySnapshot(deltaTime);
+        if (!this.ensureAuthorityMainlineAvailable('frame_update')) {
+            this.advanceResourceHighlightTimers(deltaTime);
+            this.advanceCombatFeedback(deltaTime);
+            this.refreshObjectiveMarker();
+            this.renderStatus();
+            return;
+        }
+
+        if (this.authorityConnected) {
+            this.advanceResourceHighlightTimers(deltaTime);
+            this.advanceCombatFeedback(deltaTime);
+            this.advanceAuthorityPresentation(deltaTime);
+            this.refreshObjectiveMarker();
+            this.renderStatus();
+            return;
+        }
+
         this.advanceSessionLoop(deltaTime);
         this.advanceResourceRespawns(deltaTime);
+        this.advanceResourceHighlightTimers(deltaTime);
         this.advanceCombatFeedback(deltaTime);
         this.advanceHostileNpc(deltaTime);
         this.advanceGuardTowers(deltaTime);
@@ -1156,19 +1836,7 @@ export class SectMapBootstrap extends Component {
     }
 
     private getBuildingVisualAssetId(buildingId: BuildingDefinition['id']): SectMapVisualAssetId {
-        switch (buildingId) {
-            case 'disciple_quarters':
-                return 'building.disciple_quarters';
-            case 'warehouse':
-                return 'building.warehouse';
-            case 'herb_garden':
-                return 'building.herb_garden';
-            case 'guard_tower':
-                return 'building.guard_tower';
-            case 'main_hall':
-            default:
-                return 'building.main_hall';
-        }
+        return SECT_MAP_SHARED_BUILDING_BY_ID[buildingId]?.visualAssetId ?? SECT_MAP_SHARED_BUILDING_BY_ID.main_hall.visualAssetId;
     }
 
     private getBuildingMaxLevel(building: BuildingEntity): number {
@@ -1244,15 +1912,7 @@ export class SectMapBootstrap extends Component {
     }
 
     private getResourceVisualAssetId(resourceKind: ResourceKind): SectMapVisualAssetId {
-        switch (resourceKind) {
-            case 'spirit_stone':
-                return 'resource.spirit_stone';
-            case 'herb':
-                return 'resource.herb';
-            case 'spirit_wood':
-            default:
-                return 'resource.spirit_wood';
-        }
+        return RESOURCE_RULES[resourceKind]?.visualAssetId ?? RESOURCE_RULES.spirit_wood.visualAssetId;
     }
 
     private getDisciplePortraitAssetId(unit: DiscipleEntity): SectMapVisualAssetId {
@@ -1326,6 +1986,9 @@ export class SectMapBootstrap extends Component {
     }
 
     private getResourceArtColor(resource: ResourceNode, isHarvestable: boolean): Color {
+        if (resource.refreshHighlightSeconds > 0 && isHarvestable) {
+            return new Color(255, 255, 255, 255);
+        }
         if (!isHarvestable) {
             return new Color(150, 158, 172, 178);
         }
@@ -1344,13 +2007,16 @@ export class SectMapBootstrap extends Component {
         this.toolbarRoot = this.ensureChild(TOOLBAR_ROOT, this.hudRoot);
         this.buildPanelRoot = this.ensureChild(BUILD_PANEL_ROOT, this.hudRoot);
         this.radialMenuRoot = this.ensureChild(RADIAL_MENU_ROOT, this.hudRoot);
+        this.sessionActionRoot = this.ensureChild(SESSION_ACTION_ROOT, this.hudRoot);
 
         this.configureNodeSize(this.hudRoot, view.getVisibleSize().width, view.getVisibleSize().height);
         this.configureNodeSize(this.toolbarRoot, 760, 88);
         this.configureNodeSize(this.buildPanelRoot, 640, 128);
         this.configureNodeSize(this.radialMenuRoot, 320, 320);
+        this.configureNodeSize(this.sessionActionRoot, 220, 64);
         this.toolbarRoot.setPosition(0, -286, 0);
         this.buildPanelRoot.setPosition(0, -168, 0);
+        this.sessionActionRoot.setPosition(0, 0, 0);
         this.radialMenuRoot.active = false;
         this.buildPanelRoot.active = false;
     }
@@ -1434,6 +2100,8 @@ export class SectMapBootstrap extends Component {
         const statusWidth = Math.max(300, visibleWidth - horizontalPaddingLeft - horizontalPaddingRight);
         const toolbarWidth = Math.max(420, Math.min(640, visibleWidth - horizontalPaddingLeft - horizontalPaddingRight));
         const buildPanelWidth = Math.max(420, Math.min(580, visibleWidth - horizontalPaddingLeft - horizontalPaddingRight));
+        const sessionActionX = visibleWidth * 0.5 - horizontalPaddingRight - 82;
+        const sessionActionY = topAnchorY - 34;
         const statusY = topAnchorY - 56;
         const toolbarY = bottomAnchorY + 72;
         const buildPanelY = bottomAnchorY + 188;
@@ -1452,6 +2120,11 @@ export class SectMapBootstrap extends Component {
         if (this.buildPanelRoot) {
             this.configureNodeSize(this.buildPanelRoot, buildPanelWidth, 128);
             this.buildPanelRoot.setPosition(safeCenterX, buildPanelY, 0);
+        }
+
+        if (this.sessionActionRoot) {
+            this.configureNodeSize(this.sessionActionRoot, 164, 56);
+            this.sessionActionRoot.setPosition(sessionActionX, sessionActionY, 0);
         }
 
         this.portraitBaselineSnapshot = {
@@ -1554,6 +2227,25 @@ export class SectMapBootstrap extends Component {
             node.setParent(this.buildPanelRoot!);
             this.buildButtons.set(definition.id, node);
         });
+    }
+
+    private buildSessionActions(): void {
+        if (!this.sessionActionRoot) {
+            return;
+        }
+
+        for (const child of [...this.sessionActionRoot.children]) {
+            child.destroy();
+        }
+
+        const resetNode = this.createScreenButton('新局', 148, 52, () => {
+            this.closeBuildPanel();
+            this.clearBuildPlacement();
+            this.closeRadialMenu();
+            void this.bootstrapAuthoritySession({ mode: 'reset' });
+        }, 22);
+        resetNode.name = 'NewGameButton';
+        resetNode.setParent(this.sessionActionRoot);
     }
 
     private createScreenButton(labelText: string, width: number, height: number, onClick: () => void, fontSize = 24): Node {
@@ -2053,35 +2745,34 @@ export class SectMapBootstrap extends Component {
             return;
         }
 
-        if (this.authorityConnected) {
-            this.executeAuthorityCommand(
-                {
-                    name: 'request_upgrade',
-                    payload: {
-                        buildingId: building.id,
-                    },
-                },
-                {
-                    commandKey: `request_upgrade:${building.id}`,
-                },
-            );
+        if (!this.ensureAuthorityMainlineAvailable('request_upgrade')) {
             return;
         }
 
-        building.pendingAction = 'upgrade';
-        building.pendingLevel = building.level + 1;
-        building.supplied = EMPTY_STOCKPILE();
-        building.markedForDemolition = false;
-        this.setBuildingState(building, 'planned', 'upgrade_requested');
-        this.refreshBuildings();
-        this.logRuntime('INFO', 'BUILD', 'build.upgrade_requested', '已下达建筑升级指令', {
-            buildingId: building.id,
-            buildingType: building.definition.id,
-            fromLevel: building.level,
-            toLevel: building.pendingLevel,
-            cost: this.getCostText(upgradeCost),
-        });
-        this.setMessage(`${building.definition.label} 已进入升级筹备，等待补足 ${this.getCostText(upgradeCost)}`);
+        this.executeAuthorityCommand(
+            {
+                name: 'request_upgrade',
+                payload: {
+                    buildingId: building.id,
+                },
+            },
+            {
+                commandKey: `request_upgrade:${building.id}`,
+            },
+        );
+    }
+
+    private getAuthorityBlockedGuidance(): SessionGuidance {
+        return {
+            headline: 'Authority 必需',
+            detail: '主预览已禁用客户端本地玩法兜底。请恢复 authority 连接后使用 restore/reset 继续验证。',
+            threat: `authority offline: ${this.authorityLastError ?? 'not_connected'}`,
+            markerText: null,
+            markerTile: null,
+            markerPosition: null,
+            markerTone: 'failure',
+            focusBuildingId: null,
+        };
     }
 
     private getTileContextTitle(tile: TileCoord): string {
@@ -2164,6 +2855,7 @@ export class SectMapBootstrap extends Component {
                         maxCharges: RESOURCE_RULES[kind].maxCharges,
                         regenSeconds: RESOURCE_RULES[kind].regenSeconds,
                         regenTimerSeconds: 0,
+                        refreshHighlightSeconds: 0,
                     });
                 }
             }
@@ -2199,7 +2891,7 @@ export class SectMapBootstrap extends Component {
         );
         mainHall.level = 1;
 
-        const ruinOrigin = this.findNearestBuildableTile(RUIN_WAREHOUSE_PREFERRED_TILE) ?? { col: 8, row: 8 };
+        const ruinOrigin = this.findNearestBuildableTile(RUIN_WAREHOUSE_PREFERRED_TILE) ?? { ...RUIN_WAREHOUSE_PREFERRED_TILE };
         const ruinWarehouse = this.addBuildingEntity(
             BUILDING_DEFINITIONS.find((definition) => definition.id === 'warehouse')!,
             ruinOrigin,
@@ -2256,6 +2948,11 @@ export class SectMapBootstrap extends Component {
         this.sessionRuinBuildingId = null;
         this.firstRaidTriggered = false;
         this.firstRaidResolved = false;
+        this.authorityRaidCountdownSeconds = 0;
+        this.authorityDefendRemainingSeconds = 0;
+        this.authoritySessionRecoverReason = 'none';
+        this.authoritySessionDamagedBuildingCount = 0;
+        this.authoritySessionRegeneratingNodeCount = 0;
         this.sessionBuildPanelPrompted = false;
         this.closeBuildPanel();
         this.closeRadialMenu();
@@ -2275,17 +2972,21 @@ export class SectMapBootstrap extends Component {
 
         this.sessionElapsedSeconds += deltaTime;
         if (this.sessionElapsedSeconds >= SESSION_TARGET_SECONDS) {
-            this.finishSession('defeat', '超过 10 分钟仍未完成本轮收口，短会话失败');
+            if (this.authorityConnected) {
+                this.syncAuthoritySessionExpired();
+            } else {
+                this.finishSession('defeat', '超过 10 分钟仍未完成本轮收口，短会话失败');
+            }
             return;
         }
 
         const mainHall = [...this.buildingEntities.values()].find((building) => building.definition.id === 'main_hall') ?? null;
-        if (mainHall && mainHall.currentHp <= 0) {
+        if (!this.authorityConnected && mainHall && mainHall.currentHp <= 0) {
             this.finishSession('defeat', '主殿已失守，本轮短会话失败');
             return;
         }
 
-        if (this.disciple.currentHp <= 0) {
+        if (!this.authorityConnected && this.disciple.currentHp <= 0) {
             this.finishSession('defeat', '弟子已倒下，本轮短会话失败');
             return;
         }
@@ -2295,7 +2996,7 @@ export class SectMapBootstrap extends Component {
 
         switch (this.sessionPhase) {
             case 'clear_ruin':
-                if (!ruinBuilding) {
+                if (!this.authorityConnected && !ruinBuilding) {
                     this.setSessionPhase(
                         'place_guard_tower',
                         '在清出的地块放置并建成护山台',
@@ -2308,7 +3009,7 @@ export class SectMapBootstrap extends Component {
                     return;
                 }
 
-                if (guardTower.state === 'active' && guardTower.level >= 1) {
+                if (!this.authorityConnected && guardTower.state === 'active' && guardTower.level >= 1) {
                     this.setSessionPhase(
                         'upgrade_guard_tower',
                         '长按护山台执行升级，升到 Lv.2 后准备敌袭',
@@ -2318,15 +3019,17 @@ export class SectMapBootstrap extends Component {
                 return;
             case 'upgrade_guard_tower':
                 if (!guardTower) {
-                    this.setSessionPhase(
-                        'place_guard_tower',
-                        '重新放置并建成护山台',
-                        '护山台不存在，请重新放置一座护山台',
-                    );
+                    if (!this.authorityConnected) {
+                        this.setSessionPhase(
+                            'place_guard_tower',
+                            '重新放置并建成护山台',
+                            '护山台不存在，请重新放置一座护山台',
+                        );
+                    }
                     return;
                 }
 
-                if (guardTower.level >= 2 && guardTower.state === 'active') {
+                if (!this.authorityConnected && guardTower.level >= 2 && guardTower.state === 'active') {
                     this.hostileNpc.respawnTimerSeconds = FIRST_RAID_PREP_SECONDS;
                     this.setSessionPhase(
                         'raid_countdown',
@@ -2336,21 +3039,25 @@ export class SectMapBootstrap extends Component {
                 }
                 return;
             case 'raid_countdown':
-                this.hostileNpc.respawnTimerSeconds = Math.max(0, this.hostileNpc.respawnTimerSeconds - deltaTime);
-                if (this.hostileNpc.respawnTimerSeconds <= 0 && !this.hostileNpc.active && !this.firstRaidTriggered) {
+                if (this.authorityConnected) {
+                    this.hostileNpc.respawnTimerSeconds = this.authorityRaidCountdownSeconds;
+                } else {
+                    this.hostileNpc.respawnTimerSeconds = Math.max(0, this.hostileNpc.respawnTimerSeconds - deltaTime);
+                }
+                if (!this.authorityConnected && this.hostileNpc.respawnTimerSeconds <= 0 && !this.hostileNpc.active && !this.firstRaidTriggered) {
                     this.firstRaidTriggered = true;
                     this.spawnHostileNpc();
                     this.setSessionPhase('defend', '守住首波敌袭，不要让主殿瘫痪', '首波敌袭已到达，守住主殿与护山台');
                 }
                 return;
             case 'defend':
-                if (this.firstRaidTriggered && !this.hostileNpc.active) {
+                if (!this.authorityConnected && this.firstRaidTriggered && !this.hostileNpc.active) {
                     this.firstRaidResolved = true;
                     this.setSessionPhase('recover', '修复受损建筑并恢复宗门运转', '首波敌袭已被击退，尽快修复受损建筑');
                 }
                 return;
             case 'recover': {
-                if (!guardTower) {
+                if (!this.authorityConnected && !guardTower) {
                     this.finishSession('defeat', '护山台已不复存在，本轮短会话失败');
                     return;
                 }
@@ -2360,6 +3067,7 @@ export class SectMapBootstrap extends Component {
                 );
 
                 if (
+                    !this.authorityConnected &&
                     this.firstRaidResolved &&
                     damagedBuildings.length === 0 &&
                     guardTower.state === 'active' &&
@@ -2370,6 +3078,7 @@ export class SectMapBootstrap extends Component {
                 }
                 return;
             }
+            case 'second_cycle_ready':
             case 'victory':
             case 'defeat':
             default:
@@ -2403,7 +3112,6 @@ export class SectMapBootstrap extends Component {
         this.setMessage(message);
         this.refreshHostileNpcToken();
         this.refreshDiscipleToken();
-        this.syncSessionProgressToAuthority('finish_session');
     }
 
     private setSessionPhase(phase: SessionPhase, objective: string, message?: string): void {
@@ -2430,23 +3138,29 @@ export class SectMapBootstrap extends Component {
         if (message) {
             this.setMessage(message);
         }
-        this.syncSessionProgressToAuthority('phase_change');
     }
 
-    private getSessionRuinBuilding(): BuildingEntity | null {
-        return this.sessionRuinBuildingId ? this.buildingEntities.get(this.sessionRuinBuildingId) ?? null : null;
+    private getSessionRuinBuilding(): BuildingRenderViewModel | BuildingEntity | null {
+        return this.getRenderBuildingByID(this.getCurrentSessionViewModel().ruinBuildingId);
     }
 
-    private getSessionGuardTower(): BuildingEntity | null {
-        return this.sessionGuardTowerId ? this.buildingEntities.get(this.sessionGuardTowerId) ?? null : null;
+    private getSessionGuardTower(): BuildingRenderViewModel | BuildingEntity | null {
+        const session = this.getCurrentSessionViewModel();
+        const guardTower = this.getRenderBuildingByID(session.guardTowerId);
+        if (guardTower) {
+            return guardTower;
+        }
+
+        return this.getRenderBuildings().find((building) => building.definition.id === 'guard_tower') ?? null;
     }
 
     private isSessionRuinBuilding(building: BuildingEntity): boolean {
-        return building.id === this.sessionRuinBuildingId;
+        return building.id === this.getCurrentSessionViewModel().ruinBuildingId;
     }
 
-    private getSessionPriorityBuilding(): BuildingEntity | null {
-        if (this.sessionPhase === 'place_guard_tower' || this.sessionPhase === 'upgrade_guard_tower') {
+    private getSessionPriorityBuilding(): BuildingRenderViewModel | BuildingEntity | null {
+        const session = this.getCurrentSessionViewModel();
+        if (session.phase === 'place_guard_tower' || session.phase === 'upgrade_guard_tower') {
             return this.getSessionGuardTower();
         }
 
@@ -2481,14 +3195,59 @@ export class SectMapBootstrap extends Component {
             resource.state = 'available';
             resource.remainingCharges = resource.maxCharges;
             resource.regenTimerSeconds = 0;
+            resource.refreshHighlightSeconds = 0;
         }
     }
 
+    private isResourceStateHarvestable(state: ResourceNodeState, remainingCharges: number): boolean {
+        return state === 'available' && remainingCharges > 0;
+    }
+
     private isResourceHarvestable(resource: ResourceNode): boolean {
-        return resource.state === 'available' && resource.remainingCharges > 0;
+        return this.isResourceStateHarvestable(resource.state, resource.remainingCharges);
+    }
+
+    private shouldShowResourceRefreshHighlight(
+        previousResource: ResourceNode | undefined,
+        nextState: ResourceNodeState,
+        nextRemainingCharges: number,
+    ): boolean {
+        if (!previousResource) {
+            return false;
+        }
+
+        const wasHarvestable = this.isResourceStateHarvestable(previousResource.state, previousResource.remainingCharges);
+        const isHarvestable = this.isResourceStateHarvestable(nextState, nextRemainingCharges);
+        return !wasHarvestable && isHarvestable;
+    }
+
+    private advanceResourceHighlightTimers(deltaTime: number): void {
+        let needsRefresh = false;
+
+        for (const resource of this.resourceNodes.values()) {
+            if (resource.refreshHighlightSeconds <= 0) {
+                continue;
+            }
+
+            const nextSeconds = Math.max(0, resource.refreshHighlightSeconds - deltaTime);
+            if (nextSeconds === resource.refreshHighlightSeconds) {
+                continue;
+            }
+
+            resource.refreshHighlightSeconds = nextSeconds;
+            needsRefresh ||= nextSeconds <= 0;
+        }
+
+        if (needsRefresh) {
+            this.refreshResourceMarkers();
+        }
     }
 
     private advanceResourceRespawns(deltaTime: number): void {
+        if (this.authorityConnected) {
+            return;
+        }
+
         let needsRefresh = false;
 
         for (const resource of this.resourceNodes.values()) {
@@ -2511,6 +3270,7 @@ export class SectMapBootstrap extends Component {
             resource.state = 'available';
             resource.remainingCharges = resource.maxCharges;
             resource.regenTimerSeconds = 0;
+            resource.refreshHighlightSeconds = RESOURCE_REFRESH_HIGHLIGHT_SECONDS;
             needsRefresh = true;
             this.logRuntime('INFO', 'RESOURCE', 'resource.regenerated', '资源节点已刷新，可重新采集', {
                 tile: this.formatTile(resource.tile),
@@ -2746,9 +3506,12 @@ export class SectMapBootstrap extends Component {
     private applyDamageToBuilding(building: BuildingEntity, rawDamage: number, source: string): number {
         const maxHp = this.getBuildingMaxHp(building);
         const damage = getMitigatedDamage(rawDamage, this.getBuildingStructureDefense(building));
-        building.currentHp = Math.max(0, building.currentHp - damage);
+        const nextHp = Math.max(0, building.currentHp - damage);
         building.damageFlashSeconds = BUILDING_HIT_FLASH_SECONDS;
-        if (building.state === 'active' && building.currentHp < maxHp) {
+        if (!this.authorityConnected) {
+            building.currentHp = nextHp;
+        }
+        if (!this.authorityConnected && building.state === 'active' && building.currentHp < maxHp) {
             this.setBuildingState(building, 'damaged', 'combat_damage_taken');
         }
         this.logRuntime('INFO', 'COMBAT', 'combat.building_damaged', '建筑承受袭击', {
@@ -2756,21 +3519,26 @@ export class SectMapBootstrap extends Component {
             buildingType: building.definition.id,
             source,
             damage,
-            hp: `${Math.ceil(building.currentHp)}/${maxHp}`,
+            hp: `${Math.ceil(nextHp)}/${maxHp}`,
         });
         this.refreshBuildings();
         this.setMessage(
-            building.currentHp <= 0
+            nextHp <= 0
                 ? `${building.definition.label} 被${source}打至瘫痪，待修复`
-                : `${building.definition.label} 受击 -${damage}，HP ${Math.ceil(building.currentHp)}/${maxHp}`,
+                : `${building.definition.label} 受击 -${damage}，HP ${Math.ceil(nextHp)}/${maxHp}`,
         );
         return damage;
     }
 
     private applyDamageToHostile(hostile: HostileNpcEntity, rawDamage: number, source: string): number {
         const damage = getMitigatedDamage(rawDamage, hostile.model.stats.defense);
-        hostile.currentHp = Math.max(0, hostile.currentHp - damage);
         hostile.hitFlashSeconds = UNIT_HIT_FLASH_SECONDS;
+        if (this.authorityConnected) {
+            hostile.currentHp = Math.max(1, hostile.currentHp - damage);
+            return damage;
+        }
+
+        hostile.currentHp = Math.max(0, hostile.currentHp - damage);
 
         if (hostile.currentHp <= 0) {
             this.logRuntime('INFO', 'COMBAT', 'combat.hostile_defeated', '外敌已被击退', {
@@ -2863,30 +3631,21 @@ export class SectMapBootstrap extends Component {
             return;
         }
 
-        if (this.authorityConnected) {
-            this.executeAuthorityCommand(
-                {
-                    name: 'toggle_demolition',
-                    payload: {
-                        buildingId: building.id,
-                    },
-                },
-                {
-                    commandKey: `toggle_demolition:${building.id}`,
-                },
-            );
+        if (!this.ensureAuthorityMainlineAvailable('toggle_demolition')) {
             return;
         }
 
-        building.markedForDemolition = !building.markedForDemolition;
-        this.refreshBuildings();
-        this.logRuntime('INFO', 'BUILD', 'build.demolition_toggle', '建筑拆除标记已切换', {
-            tile: this.formatTile(tile),
-            buildingId: building.id,
-            buildingType: building.definition.id,
-            markedForDemolition: building.markedForDemolition,
-        });
-        this.setMessage(building.markedForDemolition ? `已标记拆除 ${building.definition.label}` : `已取消拆除 ${building.definition.label}`);
+        this.executeAuthorityCommand(
+            {
+                name: 'toggle_demolition',
+                payload: {
+                    buildingId: building.id,
+                },
+            },
+            {
+                commandKey: `toggle_demolition:${building.id}`,
+            },
+        );
     }
 
     private confirmBuildPlacement(): void {
@@ -2904,40 +3663,26 @@ export class SectMapBootstrap extends Component {
             return;
         }
 
-        if (this.authorityConnected) {
-            this.executeAuthorityCommand(
-                {
-                    name: 'place_building',
-                    payload: {
-                        buildingType: definition.id as AuthorityBuildingType,
-                        origin,
-                    },
-                },
-                {
-                    commandKey: `place_building:${definition.id}:${origin.col},${origin.row}`,
-                    onAccepted: () => {
-                        this.clearBuildPlacement();
-                        this.setMode('browse');
-                    },
-                },
-            );
+        if (!this.ensureAuthorityMainlineAvailable('place_building')) {
             return;
         }
 
-        const building = this.addBuildingEntity(definition, origin, 'planned');
-        if (definition.id === 'guard_tower' && !this.sessionGuardTowerId) {
-            this.sessionGuardTowerId = building.id;
-        }
-        this.refreshBuildings();
-        this.logRuntime('INFO', 'BUILD', 'build.confirmed', '已下达建筑蓝图', {
-            buildingId: building.id,
-            buildingType: definition.id,
-            origin: this.formatTile(origin),
-            cost: this.getCostText(definition.cost),
-        });
-        this.setMessage(`已下达 ${definition.label} 蓝图，等待弟子备料和施工`);
-        this.clearBuildPlacement();
-        this.setMode('browse');
+        this.executeAuthorityCommand(
+            {
+                name: 'place_building',
+                payload: {
+                    buildingType: definition.id as AuthorityBuildingType,
+                    origin,
+                },
+            },
+            {
+                commandKey: `place_building:${definition.id}:${origin.col},${origin.row}`,
+                onAccepted: () => {
+                    this.clearBuildPlacement();
+                    this.setMode('browse');
+                },
+            },
+        );
     }
 
     private refreshResourceMarkers(): void {
@@ -2947,6 +3692,7 @@ export class SectMapBootstrap extends Component {
 
         for (const resource of this.resourceNodes.values()) {
             const isHarvestable = this.isResourceHarvestable(resource);
+            const isRefreshed = resource.refreshHighlightSeconds > 0 && isHarvestable;
             const center = this.getTileCenter(resource.tile);
             const spriteFrame = this.getVisualAssetFrame(this.getResourceVisualAssetId(resource.kind));
             const root = new Node(`Resource-${resource.kind}-${resource.tile.col}-${resource.tile.row}`);
@@ -2962,6 +3708,21 @@ export class SectMapBootstrap extends Component {
                 markerWidth = Math.max(96, width + 18);
                 markerHeight = Math.max(96, height + 30);
                 this.configureNodeSize(root, markerWidth, markerHeight);
+
+                if (isRefreshed) {
+                    graphics.fillColor = new Color(96, 182, 126, 40);
+                    graphics.circle(0, -this.halfTileHeight + 18, 30);
+                    graphics.fill();
+                    graphics.strokeColor = new Color(205, 255, 214, 240);
+                    graphics.lineWidth = 2;
+                    graphics.circle(0, -this.halfTileHeight + 18, 26);
+                    graphics.stroke();
+                    graphics.fillColor = new Color(225, 255, 228, 220);
+                    graphics.circle(-22, -this.halfTileHeight + 30, 4);
+                    graphics.circle(22, -this.halfTileHeight + 24, 3);
+                    graphics.circle(0, -this.halfTileHeight + 42, 3);
+                    graphics.fill();
+                }
 
                 const artNode = new Node('Art');
                 artNode.setParent(root);
@@ -2986,6 +3747,16 @@ export class SectMapBootstrap extends Component {
                 graphics.roundRect(-(width * 0.5 + 6), -this.halfTileHeight - 4, width + 12, height + 8, 18);
                 graphics.fill();
                 graphics.stroke();
+
+                if (!isHarvestable) {
+                    graphics.strokeColor = new Color(216, 222, 230, 214);
+                    graphics.lineWidth = 2;
+                    graphics.moveTo(-18, -this.halfTileHeight + 36);
+                    graphics.lineTo(18, -this.halfTileHeight + 4);
+                    graphics.moveTo(-18, -this.halfTileHeight + 4);
+                    graphics.lineTo(18, -this.halfTileHeight + 36);
+                    graphics.stroke();
+                }
             } else {
                 this.configureNodeSize(root, 72, 72);
                 markerHeight = 72;
@@ -3007,6 +3778,13 @@ export class SectMapBootstrap extends Component {
                 graphics.circle(0, 0, isHarvestable ? (resource.designated ? 24 : 20) : 16);
                 graphics.fill();
                 graphics.stroke();
+
+                if (isRefreshed) {
+                    graphics.strokeColor = new Color(212, 255, 220, 255);
+                    graphics.lineWidth = 3;
+                    graphics.circle(0, 0, 30);
+                    graphics.stroke();
+                }
 
                 if (resource.designated) {
                     graphics.strokeColor = new Color(255, 235, 168, 255);
@@ -3040,14 +3818,42 @@ export class SectMapBootstrap extends Component {
             statusNode.setParent(root);
             statusNode.setPosition(0, -(markerHeight * 0.5) + 12, 0);
             const statusTransform = statusNode.addComponent(UITransform);
-            statusTransform.setContentSize(68, 22);
-            const statusLabel = statusNode.addComponent(Label);
-            statusLabel.string = isHarvestable
-                ? `${resource.remainingCharges}/${resource.maxCharges}`
-                : `待${Math.ceil(resource.regenTimerSeconds)}s`;
+            const statusWidth = isRefreshed ? 80 : 72;
+            statusTransform.setContentSize(statusWidth, 24);
+            const statusBackdrop = statusNode.addComponent(Graphics);
+            statusBackdrop.fillColor = isRefreshed
+                ? new Color(52, 88, 62, 214)
+                : isHarvestable
+                  ? new Color(44, 50, 58, 204)
+                  : new Color(66, 74, 86, 214);
+            statusBackdrop.strokeColor = isRefreshed
+                ? new Color(214, 255, 220, 255)
+                : isHarvestable
+                  ? new Color(255, 231, 176, 214)
+                  : new Color(210, 218, 228, 220);
+            statusBackdrop.lineWidth = 2;
+            statusBackdrop.roundRect(-statusWidth * 0.5, -12, statusWidth, 24, 12);
+            statusBackdrop.fill();
+            statusBackdrop.stroke();
+            const statusLabelNode = new Node('StatusLabel');
+            statusLabelNode.setParent(statusNode);
+            const statusLabelTransform = statusLabelNode.addComponent(UITransform);
+            statusLabelTransform.setContentSize(statusWidth, 24);
+            const statusLabel = statusLabelNode.addComponent(Label);
+            statusLabel.string = isRefreshed
+                ? '已刷新'
+                : isHarvestable
+                  ? resource.remainingCharges === resource.maxCharges
+                    ? '可采'
+                    : `${resource.remainingCharges}/${resource.maxCharges}`
+                  : `待${Math.ceil(resource.regenTimerSeconds)}s`;
             statusLabel.fontSize = 14;
             statusLabel.lineHeight = 16;
-            statusLabel.color = isHarvestable ? new Color(255, 247, 208, 255) : new Color(214, 220, 228, 255);
+            statusLabel.color = isRefreshed
+                ? new Color(236, 255, 238, 255)
+                : isHarvestable
+                  ? new Color(255, 247, 208, 255)
+                  : new Color(214, 220, 228, 255);
         }
     }
 
@@ -3057,7 +3863,7 @@ export class SectMapBootstrap extends Component {
         }
 
         const objectiveBuildingId = this.getSessionGuidance().focusBuildingId;
-        const buildings = [...this.buildingEntities.values()].sort((left, right) => {
+        const buildings = this.getRenderBuildings().sort((left, right) => {
             const leftDepth = left.origin.col + left.origin.row + left.definition.height;
             const rightDepth = right.origin.col + right.origin.row + right.definition.height;
             return leftDepth - rightDepth;
@@ -3133,6 +3939,43 @@ export class SectMapBootstrap extends Component {
                     4,
                 );
             }
+        }
+
+        const phaseAccent = this.getBuildingPhaseAccent(building);
+        if (phaseAccent) {
+            for (const tile of tiles) {
+                const center = this.getTileCenter(tile);
+                this.drawDiamond(
+                    graphics,
+                    center.x - frame.center.x,
+                    center.y - frame.center.y,
+                    withAlpha(phaseAccent.fill, 44),
+                    phaseAccent.stroke,
+                    2,
+                );
+            }
+
+            graphics.lineWidth = 3;
+            graphics.strokeColor = phaseAccent.stroke;
+            graphics.roundRect(-(frame.width * 0.5) - 6, -(frame.height * 0.5) + 6, frame.width + 12, frame.height + 18, 18);
+            graphics.stroke();
+
+            const phaseNode = new Node('PhaseAccent');
+            phaseNode.setParent(root);
+            phaseNode.setPosition(-(frame.width * 0.5) + 18, frame.height * 0.5 + 16, 0);
+            this.configureNodeSize(phaseNode, 44, 26);
+            const phaseBackdrop = phaseNode.addComponent(Graphics);
+            phaseBackdrop.fillColor = phaseAccent.fill;
+            phaseBackdrop.strokeColor = phaseAccent.stroke;
+            phaseBackdrop.lineWidth = 2;
+            phaseBackdrop.roundRect(-22, -13, 44, 26, 12);
+            phaseBackdrop.fill();
+            phaseBackdrop.stroke();
+            const phaseLabel = phaseNode.addComponent(Label);
+            phaseLabel.string = phaseAccent.badge;
+            phaseLabel.fontSize = 14;
+            phaseLabel.lineHeight = 16;
+            phaseLabel.color = new Color(248, 250, 253, 255);
         }
 
         const signalFrame = this.getBuildingSignalFrame(building);
@@ -3234,6 +4077,32 @@ export class SectMapBootstrap extends Component {
             default:
                 return null;
         }
+    }
+
+    private getBuildingPhaseAccent(
+        building: BuildingEntity,
+    ): { fill: Color; stroke: Color; badge: string } | null {
+        if (this.sessionPhase === 'recover' && building.state === 'damaged') {
+            return {
+                fill: new Color(98, 66, 40, 214),
+                stroke: new Color(255, 220, 164, 255),
+                badge: '修',
+            };
+        }
+
+        if (
+            this.sessionPhase === 'second_cycle_ready' &&
+            building.id === this.sessionGuardTowerId &&
+            building.state === 'active'
+        ) {
+            return {
+                fill: new Color(48, 90, 66, 214),
+                stroke: new Color(210, 255, 220, 255),
+                badge: '备',
+            };
+        }
+
+        return null;
     }
 
     private getBuildingLabel(building: BuildingEntity): string {
@@ -3583,16 +4452,8 @@ export class SectMapBootstrap extends Component {
         }
     }
 
-    private getSessionGuardTower(): BuildingEntity | null {
-        if (this.sessionGuardTowerId) {
-            return this.buildingEntities.get(this.sessionGuardTowerId) ?? null;
-        }
-
-        return [...this.buildingEntities.values()].find((building) => building.definition.id === 'guard_tower') ?? null;
-    }
-
-    private getPrimaryDamagedBuilding(): BuildingEntity | null {
-        const damagedBuildings = [...this.buildingEntities.values()].filter((building) => building.state === 'damaged');
+    private getPrimaryDamagedBuilding(): BuildingRenderViewModel | BuildingEntity | null {
+        const damagedBuildings = this.getRenderBuildings().filter((building) => building.state === 'damaged');
         if (damagedBuildings.length === 0) {
             return null;
         }
@@ -3629,19 +4490,85 @@ export class SectMapBootstrap extends Component {
         );
     }
 
+    private getAuthorityPostRaidThreatText(): string {
+        if (this.authoritySessionDamagedBuildingCount > 0 && this.authoritySessionRegeneratingNodeCount > 0) {
+            return `首袭已退，仍有 ${this.authoritySessionDamagedBuildingCount} 处战损与 ${this.authoritySessionRegeneratingNodeCount} 个资源点待恢复`;
+        }
+        if (this.authoritySessionDamagedBuildingCount > 0) {
+            return `首袭已退，仍有 ${this.authoritySessionDamagedBuildingCount} 处战损待 authority 修复收口`;
+        }
+        if (this.authoritySessionRegeneratingNodeCount > 0) {
+            return `首袭已退，仍有 ${this.authoritySessionRegeneratingNodeCount} 个资源点待 authority 刷新`;
+        }
+        return `首袭已退，authority tick ${this.authorityGameTick} 已允许进入下一轮筹备`;
+    }
+
+    private getAuthorityCombatStatusText(): string {
+        if (!this.firstRaidTriggered) {
+            return `首袭${Math.ceil(this.authorityRaidCountdownSeconds)}s`;
+        }
+        if (!this.firstRaidResolved) {
+            return `守御${Math.ceil(this.authorityDefendRemainingSeconds)}s`;
+        }
+        return '已退';
+    }
+
+    private getRecoverGuidanceHeadline(damagedBuilding: BuildingEntity | null): string {
+        if (!this.authorityConnected) {
+            return damagedBuilding ? '先修受损建筑' : '补平战损';
+        }
+
+        switch (this.authoritySessionRecoverReason) {
+            case 'damaged_buildings_and_resource_regeneration':
+                return '先修战损并等节点恢复';
+            case 'damaged_buildings':
+                return '先修受损建筑';
+            case 'resource_regeneration':
+                return '等待资源点恢复';
+            case 'none':
+            default:
+                return '等待 authority 收口';
+        }
+    }
+
+    private getRecoverGuidanceDetail(damagedBuilding: BuildingEntity | null): string {
+        if (!this.authorityConnected) {
+            return damagedBuilding
+                ? '修好全部受损或瘫痪建筑后，authority 会继续结算资源恢复'
+                : '若地图已无受损建筑，authority 会在资源点恢复后切到下一轮筹备';
+        }
+
+        switch (this.authoritySessionRecoverReason) {
+            case 'damaged_buildings_and_resource_regeneration':
+                return `authority 仍在处理 ${this.authoritySessionDamagedBuildingCount} 处战损，且有 ${this.authoritySessionRegeneratingNodeCount} 个资源点尚未恢复。`;
+            case 'damaged_buildings':
+                return `authority 仍在处理 ${this.authoritySessionDamagedBuildingCount} 处战损，修复完成后才会继续下一轮管理。`;
+            case 'resource_regeneration':
+                return `建筑已修复完毕，authority 还在等待 ${this.authoritySessionRegeneratingNodeCount} 个采空资源点刷新。`;
+            case 'none':
+            default:
+                return 'authority 已接近完成战后收口，等待下一次快照切入后续状态。';
+        }
+    }
+
     private getSessionGuidance(): SessionGuidance {
+        if (!this.authorityConnected) {
+            return this.getAuthorityBlockedGuidance();
+        }
+
+        const session = this.getCurrentSessionViewModel();
         const guardTower = this.getSessionGuardTower();
         const damagedBuilding = this.getPrimaryDamagedBuilding();
-        const ruinBuilding = this.sessionRuinBuildingId ? this.buildingEntities.get(this.sessionRuinBuildingId) ?? null : null;
+        const ruinBuilding = this.getSessionRuinBuilding();
         const threatText = this.hostileNpc.active
             ? `${this.hostileNpc.name} ${Math.ceil(this.hostileNpc.currentHp)}/${this.hostileNpc.model.stats.maxHp} 正在袭扰`
-            : this.sessionPhase === 'raid_countdown'
-              ? `首袭 ${Math.ceil(this.hostileNpc.respawnTimerSeconds)}s 后抵达`
-              : this.firstRaidResolved
-                ? '首袭已退，等待修复收口'
+            : session.phase === 'raid_countdown'
+              ? `首袭 ${Math.ceil(this.authorityRaidCountdownSeconds)}s 后抵达`
+              : session.firstRaidResolved
+                ? this.getAuthorityPostRaidThreatText()
                 : '暂无外敌贴脸';
 
-        switch (this.sessionPhase) {
+        switch (session.phase) {
             case 'clear_ruin':
                 return {
                     headline: '先清旧仓',
@@ -3692,8 +4619,8 @@ export class SectMapBootstrap extends Component {
                 return {
                     headline: this.hostileNpc.active ? '击退外敌' : '守住首袭',
                     detail: this.hostileNpc.active
-                        ? '护山台与弟子会自动守御，优先保住正在受击的建筑'
-                        : '等待守御收尾，不要让关键建筑继续掉到瘫痪',
+                        ? `authority 正在结算守御窗口，剩余约 ${Math.ceil(this.authorityDefendRemainingSeconds)}s`
+                        : '等待 authority 快照结束守御窗口并切入 recover',
                     threat: threatText,
                     markerText: this.hostileNpc.active ? '迎敌' : damagedBuilding ? '稳住' : null,
                     markerTile: this.hostileNpc.active
@@ -3711,16 +4638,30 @@ export class SectMapBootstrap extends Component {
                 };
             case 'recover':
                 return {
-                    headline: damagedBuilding ? '先修受损建筑' : '补平战损',
-                    detail: damagedBuilding
-                        ? '修好全部受损或瘫痪建筑后，本轮短会话即可成功收口'
-                        : '若地图已无受损建筑，本轮短会话会自动达成',
+                    headline: this.getRecoverGuidanceHeadline(damagedBuilding),
+                    detail: this.getRecoverGuidanceDetail(damagedBuilding),
                     threat: threatText,
-                    markerText: damagedBuilding ? '先修复' : null,
+                    markerText:
+                        this.authoritySessionDamagedBuildingCount === 0
+                            ? null
+                            : damagedBuilding
+                              ? '先修复'
+                              : null,
                     markerTile: damagedBuilding ? { ...damagedBuilding.origin } : null,
                     markerPosition: damagedBuilding ? this.getMarkerPositionForBuilding(damagedBuilding) : null,
                     markerTone: 'goal',
                     focusBuildingId: damagedBuilding?.id ?? null,
+                };
+            case 'second_cycle_ready':
+                return {
+                    headline: '准备下一轮',
+                    detail: 'authority 已确认战后修复与资源刷新完成，可继续采集与筹备下一轮敌袭',
+                    threat: `authority tick ${this.authorityGameTick} 已清空战损与刷新等待，可继续管理循环`,
+                    markerText: guardTower ? '再筹备' : null,
+                    markerTile: guardTower ? { ...guardTower.origin } : null,
+                    markerPosition: guardTower ? this.getMarkerPositionForBuilding(guardTower) : null,
+                    markerTone: 'success',
+                    focusBuildingId: guardTower?.id ?? null,
                 };
             case 'victory':
                 return {
@@ -3747,7 +4688,7 @@ export class SectMapBootstrap extends Component {
             default:
                 return {
                     headline: this.getSessionPhaseLabel(),
-                    detail: this.sessionObjectiveText || '等待下一步目标同步',
+                    detail: session.objective || '等待下一步目标同步',
                     threat: threatText,
                     markerText: null,
                     markerTile: null,
@@ -3843,7 +4784,7 @@ export class SectMapBootstrap extends Component {
         }
 
         if (!this.disciple.currentTask) {
-            this.disciple.visualState = 'idle';
+            this.disciple.visualState = this.disciple.carrying ? 'carrying' : 'idle';
             this.refreshDiscipleToken();
             return;
         }
@@ -3929,6 +4870,10 @@ export class SectMapBootstrap extends Component {
             }
         } else {
             this.disciple.visualState = task.kind === 'gather' || task.kind === 'haul' ? 'carrying' : 'working';
+            if (this.authorityConnected && (task.kind === 'build' || task.kind === 'repair')) {
+                this.refreshDiscipleToken();
+                return;
+            }
             task.timer -= deltaTime;
             if (task.timer <= 0) {
                 this.completeCurrentTaskPhase();
@@ -4053,36 +4998,41 @@ export class SectMapBootstrap extends Component {
                         return;
                     }
 
-                    resource.remainingCharges = Math.max(0, resource.remainingCharges - 1);
-                    const depleted = resource.remainingCharges <= 0;
-                    if (depleted) {
-                        resource.state = 'regenerating';
-                        resource.regenTimerSeconds = resource.regenSeconds;
-                        this.logRuntime('INFO', 'RESOURCE', 'resource.depleted', '资源节点已被采空，进入刷新计时', {
-                            tile: this.formatTile(resource.tile),
-                            resourceKind: resource.kind,
-                            regenSeconds: resource.regenSeconds,
-                            designated: resource.designated,
-                        });
-                    } else {
-                        this.logRuntime('INFO', 'RESOURCE', 'resource.harvested', '资源节点已产出一次，剩余储量减少', {
-                            tile: this.formatTile(resource.tile),
-                            resourceKind: resource.kind,
-                            remainingCharges: resource.remainingCharges,
-                            maxCharges: resource.maxCharges,
-                            designated: resource.designated,
-                        });
+                    let depleted = false;
+                    if (!this.authorityConnected) {
+                        resource.remainingCharges = Math.max(0, resource.remainingCharges - 1);
+                        depleted = resource.remainingCharges <= 0;
+                        if (depleted) {
+                            resource.state = 'regenerating';
+                            resource.regenTimerSeconds = resource.regenSeconds;
+                            this.logRuntime('INFO', 'RESOURCE', 'resource.depleted', '资源节点已被采空，进入刷新计时', {
+                                tile: this.formatTile(resource.tile),
+                                resourceKind: resource.kind,
+                                regenSeconds: resource.regenSeconds,
+                                designated: resource.designated,
+                            });
+                        } else {
+                            this.logRuntime('INFO', 'RESOURCE', 'resource.harvested', '资源节点已产出一次，剩余储量减少', {
+                                tile: this.formatTile(resource.tile),
+                                resourceKind: resource.kind,
+                                remainingCharges: resource.remainingCharges,
+                                maxCharges: resource.maxCharges,
+                                designated: resource.designated,
+                            });
+                        }
+                        this.refreshResourceMarkers();
                     }
 
-                    this.refreshResourceMarkers();
                     this.disciple.carrying = task.resourceKind;
                     task.phase = 'move-to-dropoff';
                     task.targetTile = this.getDropoffTile();
                     task.timer = 0;
                     this.setMessage(
-                        depleted
-                            ? `${RESOURCE_DISPLAY[task.resourceKind].title} 已枯竭，等待 ${Math.ceil(resource.regenSeconds)}s 刷新`
-                            : `${RESOURCE_DISPLAY[task.resourceKind].title} 已采集，剩余 ${resource.remainingCharges}/${resource.maxCharges}`,
+                        this.authorityConnected
+                            ? `${RESOURCE_DISPLAY[task.resourceKind].title} 已采出，等待 authority 在入库时结算节点储量`
+                            : depleted
+                              ? `${RESOURCE_DISPLAY[task.resourceKind].title} 已枯竭，等待 ${Math.ceil(resource.regenSeconds)}s 刷新`
+                              : `${RESOURCE_DISPLAY[task.resourceKind].title} 已采集，剩余 ${resource.remainingCharges}/${resource.maxCharges}`,
                     );
                     this.disciple.path = this.findPath(this.disciple.tile, task.targetTile) ?? [];
                     this.disciple.pathIndex = 0;
@@ -4105,6 +5055,10 @@ export class SectMapBootstrap extends Component {
                                 payload: {
                                     resourceKind: resourceKind as AuthorityResourceKind,
                                     amount: 1,
+                                    resourceTile: {
+                                        col: task.resourceTile.col,
+                                        row: task.resourceTile.row,
+                                    },
                                 },
                             },
                             {
@@ -4170,6 +5124,21 @@ export class SectMapBootstrap extends Component {
                                         authority: true,
                                     });
                                 },
+                                onRejected: async (error) => {
+                                    if (error.message !== 'building no longer needs this resource') {
+                                        return;
+                                    }
+                                    this.clearAuthorityHaulTaskAfterReject(task);
+                                    await this.refreshAuthoritySnapshotAfterCommandReject(
+                                        'deliver_build_resource',
+                                        {
+                                            buildingId: task.buildingId,
+                                            resourceKind: task.resourceKind,
+                                        },
+                                        'authority 已拒绝多余搬运，当前任务将按最新快照重新分配',
+                                    );
+                                    this.setMessage('authority 已拒绝多余运料，弟子将按最新工地需求重新分配');
+                                },
                             },
                         );
                         return;
@@ -4215,27 +5184,6 @@ export class SectMapBootstrap extends Component {
             case 'build': {
                 if (task.phase === 'construct') {
                     if (this.authorityConnected) {
-                        this.executeAuthorityCommand(
-                            {
-                                name: 'complete_building_work',
-                                payload: {
-                                    buildingId: task.buildingId,
-                                },
-                            },
-                            {
-                                commandKey: `complete_building_work:${task.buildingId}`,
-                                onAccepted: () => {
-                                    this.disciple.currentTask = null;
-                                    this.disciple.path = [];
-                                    this.disciple.pathIndex = 0;
-                                    this.logRuntime('INFO', 'TASK', 'task.completed', '施工任务已完成', {
-                                        taskKind: task.kind,
-                                        buildingId: task.buildingId,
-                                        authority: true,
-                                    });
-                                },
-                            },
-                        );
                         return;
                     }
                     const building = this.buildingEntities.get(task.buildingId);
@@ -4267,27 +5215,6 @@ export class SectMapBootstrap extends Component {
             case 'repair': {
                 if (task.phase === 'repair') {
                     if (this.authorityConnected) {
-                        this.executeAuthorityCommand(
-                            {
-                                name: 'complete_repair',
-                                payload: {
-                                    buildingId: task.buildingId,
-                                },
-                            },
-                            {
-                                commandKey: `complete_repair:${task.buildingId}`,
-                                onAccepted: () => {
-                                    this.disciple.currentTask = null;
-                                    this.disciple.path = [];
-                                    this.disciple.pathIndex = 0;
-                                    this.logRuntime('INFO', 'TASK', 'task.completed', '修复任务已完成', {
-                                        taskKind: task.kind,
-                                        buildingId: task.buildingId,
-                                        authority: true,
-                                    });
-                                },
-                            },
-                        );
                         return;
                     }
                     const building = this.buildingEntities.get(task.buildingId);
@@ -4388,6 +5315,10 @@ export class SectMapBootstrap extends Component {
     }
 
     private promoteReadyBlueprints(): void {
+        if (this.authorityConnected) {
+            return;
+        }
+
         for (const building of this.buildingEntities.values()) {
             if (building.state !== 'planned') {
                 continue;
@@ -4401,6 +5332,11 @@ export class SectMapBootstrap extends Component {
     }
 
     private assignNextTask(): void {
+        if (this.authorityConnected) {
+            this.disciple.visualState = this.disciple.carrying ? 'carrying' : 'idle';
+            return;
+        }
+
         if (this.sessionOutcome !== 'in_progress') {
             this.disciple.visualState = 'idle';
             return;
@@ -4740,20 +5676,9 @@ export class SectMapBootstrap extends Component {
             return;
         }
 
-        this.setBuildingState(building, 'constructing', 'disciple_started_construction');
-        this.refreshBuildings();
-        if (this.authorityConnected) {
-            this.executeAuthorityCommand(
-                {
-                    name: 'start_building_work',
-                    payload: {
-                        buildingId: building.id,
-                    },
-                },
-                {
-                    commandKey: `start_building_work:${building.id}`,
-                },
-            );
+        if (!this.authorityConnected) {
+            this.setBuildingState(building, 'constructing', 'disciple_started_construction');
+            this.refreshBuildings();
         }
         this.disciple.currentTask = {
             kind: 'build',
@@ -5094,7 +6019,7 @@ export class SectMapBootstrap extends Component {
 
     private isTileOccupied(tile: TileCoord): boolean {
         const key = this.getTileKey(tile.col, tile.row);
-        for (const building of this.buildingEntities.values()) {
+        for (const building of this.getRenderBuildings()) {
             const footprint = this.getFootprintTiles(building.origin, building.definition.width, building.definition.height);
             if (footprint.some((entry) => this.getTileKey(entry.col, entry.row) === key)) {
                 return true;
@@ -5103,9 +6028,9 @@ export class SectMapBootstrap extends Component {
         return false;
     }
 
-    private getBuildingAtTile(tile: TileCoord): BuildingEntity | null {
+    private getBuildingAtTile(tile: TileCoord): BuildingRenderViewModel | BuildingEntity | null {
         const key = this.getTileKey(tile.col, tile.row);
-        for (const building of this.buildingEntities.values()) {
+        for (const building of this.getRenderBuildings()) {
             const footprint = this.getFootprintTiles(building.origin, building.definition.width, building.definition.height);
             if (footprint.some((entry) => this.getTileKey(entry.col, entry.row) === key)) {
                 return building;
@@ -5281,6 +6206,7 @@ export class SectMapBootstrap extends Component {
 
     private renderStatus(): void {
         const guidance = this.getSessionGuidance();
+        const session = this.getCurrentSessionViewModel();
         const modeText =
             this.inputMode === 'build_select'
                 ? '建造-选型'
@@ -5294,18 +6220,34 @@ export class SectMapBootstrap extends Component {
 
         const stockText = `木 ${this.stockpile.spirit_wood} / 石 ${this.stockpile.spirit_stone} / 药 ${this.stockpile.herb}`;
         const buildingCounts = this.getBuildingStateCounts();
-        const discipleTask = this.describeTask(this.disciple.currentTask) ?? '待命';
-        const elapsedMinutes = Math.floor(this.sessionElapsedSeconds / 60);
-        const elapsedSeconds = Math.floor(this.sessionElapsedSeconds % 60);
-        const limitMinutes = Math.floor(SESSION_TARGET_SECONDS / 60);
-        const limitSeconds = Math.floor(SESSION_TARGET_SECONDS % 60);
-        const authorityText = this.authorityConnected ? `权威 ${this.authoritySessionId}` : `本地回退 ${this.authorityLastError ?? 'offline'}`;
+        const discipleTask =
+            this.authorityConnected || this.authorityRenderSource === 'authority_blocked'
+                ? this.authorityDiscipleViewModel?.taskText ?? '待命'
+                : this.describeTask(this.disciple.currentTask) ?? '待命';
+        const elapsedText = this.authorityConnected
+            ? `tick ${this.authorityGameTick}`
+            : `${Math.floor(this.sessionElapsedSeconds / 60)
+                  .toString()
+                  .padStart(2, '0')}:${Math.floor(this.sessionElapsedSeconds % 60)
+                  .toString()
+                  .padStart(2, '0')}/${Math.floor(SESSION_TARGET_SECONDS / 60)
+                  .toString()
+                  .padStart(2, '0')}:${Math.floor(SESSION_TARGET_SECONDS % 60)
+                  .toString()
+                  .padStart(2, '0')}`;
+        const authorityText = this.authorityConnected
+            ? `权威 ${this.authorityPlayerId} ${this.authoritySessionId} ${this.authorityRenderSource === 'authority_snapshot' ? '快照渲染' : '阻断渲染'}`
+            : `authority 必需 ${this.authorityLastError ?? 'offline'}`;
+        const authorityCombatText = this.authorityConnected
+            ? `权威战况 ${this.getSessionPhaseLabel()}/${session.outcome} 首袭${this.getAuthorityCombatStatusText()} 事件 ${this.authorityLastEvent ?? 'none'} 错误 ${this.authorityLastError ?? 'none'}`
+            : `权威战况 blocked 事件 ${this.authorityLastEvent ?? 'none'} 错误 ${this.authorityLastError ?? 'none'}`;
 
         const lines = [
-            `阶段 ${this.getSessionPhaseLabel()} ${elapsedMinutes.toString().padStart(2, '0')}:${elapsedSeconds.toString().padStart(2, '0')}/${limitMinutes.toString().padStart(2, '0')}:${limitSeconds.toString().padStart(2, '0')} | ${guidance.headline}`,
+            `阶段 ${this.getSessionPhaseLabel()} ${elapsedText} | ${guidance.headline}`,
             `目标 ${guidance.detail}`,
             `局势 ${guidance.threat} | 库存 ${stockText}`,
             `模式 ${modeText} | ${authorityText} | 弟子 ${discipleTask} HP ${Math.ceil(this.disciple.currentHp)}/${this.disciple.model.stats.maxHp} | 建筑 启${buildingCounts.active} 损${buildingCounts.damaged} 蓝${buildingCounts.planned}`,
+            authorityCombatText,
             `提示 ${this.lastMessage}`,
         ];
 
@@ -5337,6 +6279,21 @@ export class SectMapBootstrap extends Component {
                 this.logRuntime('INFO', 'HUD', 'logs.cleared', '预览页运行时日志缓存已清空');
             },
             getSnapshot: () => this.getRuntimeSnapshot(),
+            bootstrapAuthoritySession: async (options) => {
+                await this.bootstrapAuthoritySession(options);
+                return this.getRuntimeSnapshot();
+            },
+            restoreAuthoritySession: async () => {
+                await this.bootstrapAuthoritySession({ mode: 'restore_latest' });
+                return this.getRuntimeSnapshot();
+            },
+            resetAuthoritySession: async () => {
+                await this.bootstrapAuthoritySession({ mode: 'reset' });
+                return this.getRuntimeSnapshot();
+            },
+            fetchAuthoritySnapshot: async () => this.fetchAuthoritySnapshotNow(),
+            executeAuthorityCommand: async (command, options) =>
+                this.executeAuthorityCommandAsync(command, options),
         };
     }
 
@@ -5351,6 +6308,11 @@ export class SectMapBootstrap extends Component {
         const screenMetrics = getRuntimeScreenMetrics();
         const screenMetricsFallback = getRuntimeScreenMetrics({ forceSafeAreaFallback: true });
         const guidance = this.getSessionGuidance();
+        const session = this.getCurrentSessionViewModel();
+        const discipleTask =
+            this.authorityConnected || this.authorityRenderSource === 'authority_blocked'
+                ? this.authorityDiscipleViewModel?.taskText ?? null
+                : this.describeTask(this.disciple.currentTask);
 
         return {
             mapReady: this.mapReady,
@@ -5374,28 +6336,32 @@ export class SectMapBootstrap extends Component {
             buildingCounts: this.getBuildingStateCounts(),
             buildings: this.getRuntimeBuildingSnapshots(),
             session: {
-                phase: this.sessionPhase,
-                outcome: this.sessionOutcome,
-                elapsedSeconds: Number(this.sessionElapsedSeconds.toFixed(2)),
+                phase: session.phase,
+                outcome: session.outcome,
+                elapsedSeconds: this.authorityConnected ? this.authorityGameTick : Number(this.sessionElapsedSeconds.toFixed(2)),
                 limitSeconds: SESSION_TARGET_SECONDS,
-                objective: this.sessionObjectiveText,
+                objective: session.objective,
                 guidanceHeadline: guidance.headline,
                 guidanceDetail: guidance.detail,
                 guidanceThreat: guidance.threat,
                 markerTile: this.formatTile(guidance.markerTile),
                 markerText: guidance.markerText,
                 focusBuildingId: guidance.focusBuildingId,
-                raidCountdownSeconds: Number(this.hostileNpc.respawnTimerSeconds.toFixed(2)),
-                guardTowerId: this.sessionGuardTowerId,
-                ruinBuildingId: this.sessionRuinBuildingId,
-                firstRaidTriggered: this.firstRaidTriggered,
-                firstRaidResolved: this.firstRaidResolved,
+                raidCountdownSeconds: Number(this.authorityRaidCountdownSeconds.toFixed(2)),
+                defendRemainingSeconds: Number(this.authorityDefendRemainingSeconds.toFixed(2)),
+                guardTowerId: session.guardTowerId,
+                ruinBuildingId: session.ruinBuildingId,
+                firstRaidTriggered: session.firstRaidTriggered,
+                firstRaidResolved: session.firstRaidResolved,
+                recoverReason: session.recoverReason,
+                damagedBuildingCount: session.damagedBuildingCount,
+                regeneratingNodeCount: session.regeneratingNodeCount,
             },
             disciple: {
                 tile: this.formatTile(this.disciple.tile) ?? 'unknown',
                 visualState: this.disciple.visualState,
                 carrying: this.disciple.carrying,
-                task: this.describeTask(this.disciple.currentTask),
+                task: discipleTask,
                 hp: Math.ceil(this.disciple.currentHp),
                 maxHp: this.disciple.model.stats.maxHp,
                 model: this.disciple.model,
@@ -5404,8 +6370,26 @@ export class SectMapBootstrap extends Component {
             authority: {
                 mode: this.authorityMode,
                 connected: this.authorityConnected,
+                playerId: this.authorityPlayerId,
+                playerTokenBound: Boolean(this.authorityPlayerToken),
                 sessionId: this.authoritySessionId,
+                gameTick: this.authorityGameTick,
                 baseUrl: this.authorityClient.getBaseUrl(),
+                renderSource: this.authorityRenderSource,
+                lastBootstrapMode: this.authorityLastBootstrapMode,
+                combat: {
+                    phase: session.phase,
+                    outcome: session.outcome,
+                    objective: session.objective,
+                    raidCountdownSeconds: Number(this.authorityRaidCountdownSeconds.toFixed(2)),
+                    defendRemainingSeconds: Number(this.authorityDefendRemainingSeconds.toFixed(2)),
+                    firstRaidTriggered: session.firstRaidTriggered,
+                    firstRaidResolved: session.firstRaidResolved,
+                    recoverReason: session.recoverReason,
+                    damagedBuildingCount: session.damagedBuildingCount,
+                    regeneratingNodeCount: session.regeneratingNodeCount,
+                    activeHostiles: this.hostileNpc.active ? 1 : 0,
+                },
                 pendingCommands: [...this.authorityPendingCommands.values()].sort(),
                 lastEvent: this.authorityLastEvent,
                 lastError: this.authorityLastError,
@@ -5494,7 +6478,7 @@ export class SectMapBootstrap extends Component {
     }
 
     private getRuntimeBuildingSnapshots(): RuntimeBuildingSnapshot[] {
-        return [...this.buildingEntities.values()]
+        return this.getRenderBuildings()
             .map((building) => ({
                 id: building.id,
                 type: building.definition.id,
@@ -5537,7 +6521,7 @@ export class SectMapBootstrap extends Component {
             damaged: 0,
         };
 
-        for (const building of this.buildingEntities.values()) {
+        for (const building of this.getRenderBuildings()) {
             counts[building.state] += 1;
         }
 
@@ -5558,6 +6542,8 @@ export class SectMapBootstrap extends Component {
                 return '守首波';
             case 'recover':
                 return '修复恢复';
+            case 'second_cycle_ready':
+                return '二轮筹备';
             case 'victory':
                 return '已达成';
             case 'defeat':
@@ -5602,6 +6588,14 @@ export class SectMapBootstrap extends Component {
         }
 
         return `${tile.col},${tile.row}`;
+    }
+
+    private isSameTile(left: TileCoord | null, right: TileCoord | null): boolean {
+        if (!left || !right) {
+            return false;
+        }
+
+        return left.col === right.col && left.row === right.row;
     }
 
     private logRuntime(

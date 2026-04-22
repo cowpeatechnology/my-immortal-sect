@@ -1,7 +1,7 @@
 # Client Structure
 
 **状态**: 草案  
-**最后更新**: 2026-04-16  
+**最后更新**: 2026-04-22  
 **依赖**: `AGENTS.md`, `docs/vision/design-decisions.md`, `docs/plans/m0-vertical-slice.md`
 
 ## Context
@@ -59,6 +59,94 @@ The initial bootstrap assumption was "create the project directly under `client/
 - Do not put authoritative economy or simulation decisions in the client.
 - Do not treat the client as the source of truth for build progress, resource settlement, or karma triggers.
 - Do not use `client/` as a dumping ground for tool output or prototype HTML.
+
+## Thin-Client Runtime Contract
+
+The sect-map runtime is now being rebuilt around:
+
+**authority-only gameplay truth + thin client render/input shell**
+
+For the active `M1` line, the client must separate permanent thin-client responsibilities from transitional preview debt.
+
+### Render State
+
+Render state is permanent client-owned state.
+
+It includes:
+
+- scene graph composition for map, buildings, disciples, hostiles, HUD, tips, and VFX
+- sprite orientation, sorting, visibility, highlight, and selection presentation
+- UI-local display caches derived from the latest authority snapshot
+- presentation-only timers for fades, popups, shakes, and other visual effects
+
+Render state must be disposable and reconstructable from authority snapshot plus current UI state.
+
+### Animation And Interpolation State
+
+Animation and interpolation state is permanent client-owned state.
+
+It includes:
+
+- smoothing movement between authority checkpoints
+- animation playback phase, blend, facing, and speed multipliers
+- path visualization or motion trails used to show the current authority assignment
+- short-lived presentation anchors such as "walk to tile", "play build swing", or "show hit reaction"
+
+Animation and interpolation state must never decide gameplay truth. It can only visualize authority-owned assignment, progress, and damage outcomes.
+
+### Debug State
+
+Debug state is permanent client-owned state.
+
+It includes:
+
+- preview-only overlays and inspector panels
+- cached bounded snapshot comparisons between preview and authority
+- local debug toggles, labels, and warning surfaces such as `authority.lastError`
+- replay helpers that expose reset / restore controls without changing gameplay ownership
+
+Debug state may help humans detect drift, but it must not become a second progression controller.
+
+### Player-Input Submission
+
+Player-input submission is permanent client-owned behavior.
+
+It includes:
+
+- collecting taps, drags, long-presses, and UI button intent
+- mapping those interactions into allowed high-level authority commands
+- submitting bounded fact reports only where the current contract explicitly permits them
+- reacting to authority rejection by clearing stale local presentation state and re-syncing
+
+Player-input submission must stop at intent or allowed bounded facts. It must not announce that build, repair, demolition, raid, or phase progression has completed.
+
+## Transitional Preview Debt
+
+The following client responsibilities may still exist temporarily during the authority rebuild, but they are debt and must not be treated as part of the permanent client design:
+
+- local gather / dropoff choreography that still needs a bounded fact submit before authority updates stockpile
+- preview-side temporary markers that help recover from rejected legacy commands or stale presentation tasks
+- local animation glue that still mirrors incomplete authority worker fields because the snapshot shape is not fully cut over yet
+- any compatibility layer that exists only to keep the dedicated preview runnable while old hybrid paths are being removed
+
+These debt paths must obey two rules:
+
+- they cannot become the source of truth for gameplay progression
+- they must be removable once the authority snapshot exposes the required worker / building / session fields
+
+## Permanent Thin-Client Design
+
+The long-term client design for the sect-map runtime is limited to:
+
+- render state
+- animation / interpolation state
+- debug state
+- player-input submission
+
+Anything outside those four buckets requires explicit justification as either:
+
+- a contract-approved bounded fact surface, or
+- temporary transitional debt scheduled for removal
 
 ## Next Manual Step
 

@@ -1,0 +1,64 @@
+{
+  "version": 1,
+  "defaults": {
+    "output_dir": "../../../workspace/output/browser/chrome-bridge/test-characters",
+    "size": "1024x1024",
+    "format": "png",
+    "wait_timeout": 1500,
+    "generation_timeout_ms": 600000,
+    "post_completion_settle_ms": 30000,
+    "continue_on_error": true,
+    "skip_done": true
+  },
+  "items": [
+    {
+      "id": "elder-master",
+      "name": "仙风道骨的老者",
+      "basename": "elder-master",
+      "prompt": "生成一张适合修仙题材游戏使用的角色资源图：一位仙风道骨的老者，男性，白发长须，气质沉稳高远，眼神温和而深邃，穿青白色与淡金色相间的国风修仙长袍，衣摆和袖口有细致云纹与仙鹤纹装饰，腰间玉佩，手持拂尘或古朴木杖，整体风格精致唯美，国风水墨青绿系，人物比例自然，完整全身，站姿稳定，适合游戏角色立绘/角色资产使用，背景透明，只保留单个人物，不要场景，不要底座，不要文字，不要UI，不要水印，不要多人。",
+      "status": "error",
+      "output_path": null,
+      "output_paths": [],
+      "error_message": "Could not locate the latest generated image card.",
+      "updated_at": "2026-04-15T19:25:12Z"
+    },
+    {
+      "id": "playful-girl",
+      "name": "调皮的小女孩",
+      "basename": "playful-girl",
+      "prompt": "生成一张适合修仙题材游戏使用的角色资源图：一个调皮灵动的小女孩，年龄感约八到十岁，神情机灵可爱，带一点顽皮笑意，梳双髻或丸子头，发饰带少量玉珠与红绳，穿浅青色、米白色和淡粉色搭配的修仙短襦裙装，衣料轻盈，有小香囊或小葫芦挂件，动作自然活泼但保持完整站姿，整体风格精致唯美，国风水墨青绿系，人物比例自然，完整全身，适合游戏角色立绘/角色资产使用，背景透明，只保留单个人物，不要场景，不要底座，不要文字，不要UI，不要水印，不要多人。",
+      "status": "error",
+      "output_path": null,
+      "output_paths": [],
+      "error_message": "Could not find a final download action on the latest generated image.",
+      "updated_at": "2026-04-15T19:26:36Z"
+    },
+    {
+      "id": "young-male-disciple",
+      "name": "青年男性",
+      "basename": "young-male-disciple",
+      "prompt": "生成一张适合修仙题材游戏使用的角色资源图：一位青年男性修士，气质英俊清朗，带一点坚毅与温润感，黑发束冠，穿青绿色与月白色为主的国风修仙长袍，衣装层次清晰，带细致金属配件与玉饰，背负长剑或腰配仙剑，整体风格精致唯美，国风水墨青绿系，人物比例自然，完整全身，站姿干净利落，适合游戏角色立绘/角色资产使用，背景透明，只保留单个人物，不要场景，不要底座，不要文字，不要UI，不要水印，不要多人。",
+      "status": "done",
+      "output_path": "/Users/mawei/MyWork/SlgGame/workspace/output/browser/chrome-bridge/test-characters/young-male-disciple.png",
+      "output_paths": [
+        "/Users/mawei/MyWork/SlgGame/workspace/output/browser/chrome-bridge/test-characters/young-male-disciple.png"
+      ],
+      "error_message": null,
+      "updated_at": "2026-04-15T19:22:49Z",
+      "last_command_id": "303c6975-458e-486a-adfd-8b232e17ee01",
+      "last_generation": {
+        "completed": true,
+        "completed_at": "2026-04-15T19:22:40.026Z",
+        "final_image_count": 1,
+        "busy_observed": true,
+        "images_observed": true,
+        "stable_polls": 2,
+        "poll_count": 29,
+        "settle_ms": 30000,
+        "capture_method": "modal-save-download",
+        "capture_url": "blob:https://chatgpt.com/715df303-ba6a-44ab-9810-bff3fe9e481b",
+        "downloaded_file": "/Users/mawei/Downloads/ChatGPT Image 2026年4月16日 03_22_46.png"
+      }
+    }
+  ]
+}

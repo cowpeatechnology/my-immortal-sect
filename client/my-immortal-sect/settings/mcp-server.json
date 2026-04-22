@@ -1,6 +1,6 @@
 {
   "port": 9527,
-  "autoStart": false,
+  "autoStart": true,
   "enableDebugLog": false,
   "debugLog": false,
   "allowedOrigins": [

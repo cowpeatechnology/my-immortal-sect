@@ -1,11 +1,22 @@
 # Development Loop
 
-Use this loop for scoped project work.
+Use this as the short human-readable summary of the V2 loop.
 
-1. Read the current goal and the assigned subfunction.
-2. Read only the docs and files needed for that scope.
-3. Implement or produce the assigned result without widening scope.
-4. Validate using the real project path when available.
-5. Return a concise handoff with artifacts, validation, blockers, and next owner.
-6. Update durable project docs when the same missing context is likely to matter again.
-7. When the full current plan or milestone is ready to close, perform one consolidated commit/push after the required doc updates. Do not default to committing/pushing after each subfunction.
+For the exact runtime contract, read `docs/process/development-execution-manual.md`.
+
+## Default Loop
+
+1. Read the active pointer.
+2. Stop if the active owner is not your role.
+3. Read only the `must_read` files for the current subfunction.
+4. Execute inside the current objective and `done_when`.
+5. Validate with the real project path or the documented preview surface.
+6. Return one bounded result event.
+7. Let `supervisor` review and accept or reject.
+
+## Guardrails
+
+- Do not widen scope silently.
+- Do not reopen broad planning while executing one subfunction.
+- Do not default to re-reading the entire project history.
+- Do not treat every subfunction as its own mandatory commit boundary.

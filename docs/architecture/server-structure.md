@@ -61,7 +61,15 @@ Current state:
 - directory scaffold exists
 - `go.mod` 已初始化
 - `cmd/gameserver/` 已落地本地 authority HTTP 入口
-- `internal/slggame/authority/` 已落地 Hollywood actor-backed `M1-D` session state
+- `internal/slggame/authority/` 已落地 Hollywood actor-backed authority short-session state
 - `internal/slggame/gateway/` 已落地最小 HTTP -> actor command translation
 
-Current implementation is still intentionally narrow. It only covers the `M1-D` authority slice for建造状态、资源结算与关键短会话快照；完整 persistence、protobuf 和更广的 simulation authority 仍待后续循环推进。
+Current implementation is now authority-first for the active `M1` short-session loop:
+- preview requests bind to `playerId + playerToken + playerSessionId` instead of anonymous global state
+- one session actor owns worker assignment, building progression, hostile combat, session phase, and save/load
+- persistence uses the ADR-0008 protobuf `state_blob` envelope instead of a second save format
+
+What is still intentionally narrow:
+- there is still only one preview-time authority session actor, not the final multi-tenant production topology
+- preview identity binding is a lightweight stand-in for full authentication / authorization
+- transport remains HTTP JSON for local validation, not the final production ingress

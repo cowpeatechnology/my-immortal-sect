@@ -54,14 +54,22 @@ func (s *AuthorityHTTPServer) handleBootstrap(w http.ResponseWriter, r *http.Req
 	}
 
 	var body struct {
-		SessionID string `json:"sessionId"`
+		SessionID   string `json:"sessionId"`
+		PlayerID    string `json:"playerId"`
+		PlayerToken string `json:"playerToken"`
+		Mode        string `json:"mode"`
 	}
 	if err := decodeJSON(r, &body); err != nil {
 		writeError(w, http.StatusBadRequest, err)
 		return
 	}
 
-	response, err := s.request(authority.BootstrapSession{SessionID: body.SessionID})
+	response, err := s.request(authority.BootstrapSession{
+		SessionID:   body.SessionID,
+		PlayerID:    body.PlayerID,
+		PlayerToken: body.PlayerToken,
+		Mode:        authority.SessionBootstrapMode(body.Mode),
+	})
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err)
 		return
@@ -75,7 +83,12 @@ func (s *AuthorityHTTPServer) handleSnapshot(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	response, err := s.request(authority.GetSessionSnapshot{SessionID: r.URL.Query().Get("sessionId")})
+	query := r.URL.Query()
+	response, err := s.request(authority.GetSessionSnapshot{
+		SessionID:   query.Get("sessionId"),
+		PlayerID:    query.Get("playerId"),
+		PlayerToken: query.Get("playerToken"),
+	})
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err)
 		return
@@ -90,8 +103,10 @@ func (s *AuthorityHTTPServer) handleCommand(w http.ResponseWriter, r *http.Reque
 	}
 
 	var body struct {
-		SessionID string                    `json:"sessionId"`
-		Command   authority.CommandEnvelope `json:"command"`
+		SessionID   string                    `json:"sessionId"`
+		PlayerID    string                    `json:"playerId"`
+		PlayerToken string                    `json:"playerToken"`
+		Command     authority.CommandEnvelope `json:"command"`
 	}
 	if err := decodeJSON(r, &body); err != nil {
 		writeError(w, http.StatusBadRequest, err)
@@ -99,8 +114,10 @@ func (s *AuthorityHTTPServer) handleCommand(w http.ResponseWriter, r *http.Reque
 	}
 
 	response, err := s.request(authority.ExecuteCommand{
-		SessionID: body.SessionID,
-		Command:   body.Command,
+		SessionID:   body.SessionID,
+		PlayerID:    body.PlayerID,
+		PlayerToken: body.PlayerToken,
+		Command:     body.Command,
 	})
 	if err != nil {
 		status := http.StatusBadRequest

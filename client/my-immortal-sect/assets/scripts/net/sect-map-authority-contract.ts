@@ -2,6 +2,7 @@ export type AuthorityResourceKind = 'spirit_wood' | 'spirit_stone' | 'herb';
 export type AuthorityBuildingType = 'main_hall' | 'disciple_quarters' | 'warehouse' | 'herb_garden' | 'guard_tower';
 export type AuthorityBuildingState = 'planned' | 'supplied' | 'constructing' | 'active' | 'damaged';
 export type AuthorityBuildingWorkKind = 'build' | 'upgrade';
+export type AuthorityDiscipleAssignmentKind = 'idle' | 'gather' | 'haul' | 'build' | 'repair' | 'guard' | 'demolish';
 export type AuthoritySessionPhase =
     | 'clear_ruin'
     | 'place_guard_tower'
@@ -9,9 +10,17 @@ export type AuthoritySessionPhase =
     | 'raid_countdown'
     | 'defend'
     | 'recover'
+    | 'second_cycle_ready'
     | 'victory'
     | 'defeat';
 export type AuthoritySessionOutcome = 'in_progress' | 'victory' | 'defeat';
+
+export type AuthoritySessionRecoverReason =
+    | 'none'
+    | 'damaged_buildings'
+    | 'resource_regeneration'
+    | 'damaged_buildings_and_resource_regeneration';
+export type AuthorityBootstrapMode = 'restore_latest' | 'reset';
 
 export type AuthorityTileCoord = {
     col: number;
@@ -19,6 +28,18 @@ export type AuthorityTileCoord = {
 };
 
 export type AuthorityStockpile = Record<AuthorityResourceKind, number>;
+
+export type AuthorityResourceNodeState = 'available' | 'regenerating';
+
+export type AuthorityResourceNodeSnapshot = {
+    tile: AuthorityTileCoord;
+    kind: AuthorityResourceKind;
+    state: AuthorityResourceNodeState;
+    remainingCharges: number;
+    maxCharges: number;
+    regenSeconds: number;
+    regenTimerSeconds: number;
+};
 
 export type AuthorityBuildingSnapshot = {
     id: string;
@@ -34,6 +55,39 @@ export type AuthorityBuildingSnapshot = {
     supplied: AuthorityStockpile;
 };
 
+export type AuthorityDiscipleCarryingSnapshot = {
+    kind: AuthorityResourceKind | null;
+    amount: number;
+};
+
+export type AuthorityDiscipleSnapshot = {
+    archetypeId: 'sect_disciple' | 'bandit_scout';
+    id: string;
+    name: string;
+    assignmentKind: AuthorityDiscipleAssignmentKind;
+    targetBuildingId: string | null;
+    targetResourceKind: AuthorityResourceKind | null;
+    targetTile: AuthorityTileCoord | null;
+    carrying: AuthorityDiscipleCarryingSnapshot;
+    hp: number;
+    maxHp: number;
+    visualState: 'idle' | 'moving' | 'working' | 'carrying' | 'guarding' | 'attacking' | 'injured';
+    workProgressTicks: number;
+    expectedNextTransition: string | null;
+};
+
+export type AuthorityHostileSnapshot = {
+    id: string;
+    archetypeId: 'sect_disciple' | 'bandit_scout';
+    name: string;
+    tile: AuthorityTileCoord;
+    hp: number;
+    maxHp: number;
+    visualState: 'idle' | 'moving' | 'working' | 'carrying' | 'guarding' | 'attacking' | 'injured';
+    active: boolean;
+    targetBuildingId: string | null;
+};
+
 export type AuthoritySessionSnapshot = {
     phase: AuthoritySessionPhase;
     outcome: AuthoritySessionOutcome;
@@ -42,12 +96,21 @@ export type AuthoritySessionSnapshot = {
     ruinBuildingId: string | null;
     firstRaidTriggered: boolean;
     firstRaidResolved: boolean;
+    raidCountdownSeconds: number;
+    defendRemainingSeconds: number;
+    recoverReason: AuthoritySessionRecoverReason;
+    damagedBuildingCount: number;
+    regeneratingNodeCount: number;
 };
 
 export type AuthoritySnapshot = {
     sessionId: string;
+    gameTick: number;
     stockpile: AuthorityStockpile;
+    resourceNodes: AuthorityResourceNodeSnapshot[];
     buildings: AuthorityBuildingSnapshot[];
+    disciples: AuthorityDiscipleSnapshot[];
+    hostiles: AuthorityHostileSnapshot[];
     session: AuthoritySessionSnapshot;
 };
 
@@ -57,11 +120,10 @@ export type AuthorityCommandName =
     | 'toggle_demolition'
     | 'collect_stockpile'
     | 'deliver_build_resource'
-    | 'start_building_work'
-    | 'complete_building_work'
     | 'complete_demolition'
-    | 'complete_repair'
-    | 'sync_session_progress';
+    | 'expire_session'
+    | 'trigger_first_raid'
+    | 'resolve_first_raid';
 
 export type AuthorityCommandEnvelope<TPayload = unknown> = {
     name: AuthorityCommandName;
@@ -75,6 +137,11 @@ export type AuthorityCommandResult = {
 };
 
 export type AuthoritySessionResponse = {
+    identity: {
+        playerId: string;
+        playerToken: string;
+        playerSessionId: string;
+    };
     snapshot: AuthoritySnapshot;
     result?: AuthorityCommandResult;
 };

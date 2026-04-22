@@ -10,7 +10,7 @@
 - `docs/decisions/0010-offline-deterministic-simulation.md`
 - `AGENTS.md`
 - `docs/process/engineering-standards.md`
-- `docs/plans/phase-1-sect-map-validation.md`
+- `docs/features/F-002-sect-map-playability-validation.md`
 
 ---
 
@@ -461,4 +461,4 @@ M0 结束时，需要对照以下清单逐项打钩。全绿才能进 M1。
 - [ ] 红米 Note 8 真机获取路径？或替代设备？
 - [ ] 部署环境：M0 结束时要不要推到云服务器？还是留在本地？
 - [ ] 是否需要在 M0 阶段引入 git flow？（建议：main + feature/* 简单流）
-- [ ] commit 粒度的具体约定写进哪？（建议：`docs/process/github-workflow.md` 展开）
+- [ ] commit 粒度的具体约定写进哪？（当前以根 `AGENTS.md` 与 `docs/process/engineering-standards.md` 为准）

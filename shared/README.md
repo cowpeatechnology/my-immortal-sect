@@ -8,6 +8,21 @@ Current intended usage:
 
 This directory is intentionally small at bootstrap time. It should hold shared sources, not duplicated runtime code.
 
+## Current Config Surface
+
+The first concrete shared config source for the sect-map M1 short session is now:
+
+- `configs/m1/sect_map_short_session.v1.json`
+- schema: `configs/m1/sect_map_short_session.schema.json`
+
+This file is the canonical shared source for:
+
+- M1 building template values used by the short-session loop
+- M1 resource-node rules and bootstrap seed tiles
+- M1 session phase-driving values such as target duration, first-raid prep timing, and post-raid recovery / second-cycle-ready progression
+
+Until a generated pipeline exists, client and server work should treat this JSON file as the one place to freeze those gameplay values. Runtime-local copies are transitional and should be converged toward this source rather than extended independently.
+
 ## Current Contract Surface
 
 `M1-D` now freezes the minimum authority-backed short-session contract in:

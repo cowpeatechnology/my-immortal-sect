@@ -2,6 +2,27 @@
 
 Use this JSON envelope when role-to-role or role-to-supervisor messages need to stay low-drift.
 
+It replaces the older split between a free-form thread-conversation note and a separate structured protocol.
+
+## When To Use
+
+Use this protocol when:
+
+- the coordination event is important enough to be durable
+- free-form prose would create drift
+- the message crosses role boundaries and needs explicit input/output framing
+
+For simple human dispatches, ordinary concise chat is still allowed.
+
+## Recommended Message Shape
+
+Even when the event is small, keep these meanings clear:
+
+- `summary`: what is being asked or reported
+- `input`: the scoped problem or incoming handoff
+- `expected_output`: what the receiving role should return
+- `output`: the actual result, blocker, or clarification
+
 ## Protocol
 
 - `protocol_version`: `coordex-agent-io.v1`
