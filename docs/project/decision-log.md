@@ -4,7 +4,8 @@ Record only decisions that change future work.
 
 ## Entries
 
-- 2026-04-21: 项目文档入口已收敛为“少量高权威默认阅读”。默认阅读顺序固定为：根 `AGENTS.md` -> `docs/vision/design-decisions.md` -> `docs/project/development-plan.json` -> `docs/project/development.active.json`。ADR、feature、architecture、process 文档改为按需进入，不再要求普通任务默认通读整棵 `docs/`。
+- 2026-04-23: 目录级文档权威重置已执行：`docs/vision/design-decisions.md` 降级为 superseded shim，旧 `F-002` / `F-004` / `authority-first-runtime-rebuild` / `m0-vertical-slice` / sect-map 资产规格迁入 `docs/legacy/`，`features/` 改为 historical-only，`design/` 改为 inactive，`development-plan.json` 重建为从 GDD v3.1 派生的五阶段路线。
+- 2026-04-23: 项目 North Star 已正式切换到 `docs/vision/gdd_v3_backend_design.md`，并由 `docs/decisions/0012-adopt-gdd-v3-authoritative-backend-gdd.md` 固定为采纳裁决。默认阅读顺序调整为：根 `AGENTS.md` -> `docs/vision/gdd_v3_backend_design.md` -> `docs/decisions/0012-adopt-gdd-v3-authoritative-backend-gdd.md` -> `docs/project/development-plan.json` -> `docs/project/development.active.json`。`docs/vision/design-decisions.md` 降级为 superseded shim。
 - 2026-04-21: 旧 `.coordex/current-plan.md` / `.coordex/plan-history.md` / `.coordex/project-board.json` 规划表面不再作为当前项目的活跃真相。当前唯一活跃计划体系固定为 `docs/project/development-plan.json` + `docs/project/development.active.json` + `docs/project/development.log.jsonl`。
 - 2026-04-20: `M1-A` 的偏验收只接受宗门地图在真实 Cocos 客户端路径中的 client-local `建 + 运` 基线；不得把该结论表述为已完成 `Go + Hollywood` / `shared` 权威闭环。后续里程碑入口应先补权威路径与最小 `守` 分支，而不是把当前状态误判为前后端主线已通。
 - 2026-04-20: 人类已明确覆盖上一条“先补权威路径”的下一步建议。下一里程碑改为 `M1-B` 本地优先深化：先在真实 Cocos 客户端中补通用单位属性、建筑 HP / 受损 / 修复与更高可读资源包，用更丰富的本地流程验证玩法，再决定后续服务端权威接入顺序。

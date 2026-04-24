@@ -1,7 +1,7 @@
 # M1 Authority Short Session Contract V1
 
-**状态**: active  
-**最后更新**: 2026-04-23  
+**状态**: active
+**最后更新**: 2026-04-23
 **适用范围**: `M1` authority-only 宗门地图短会话
 
 ## Purpose
@@ -18,6 +18,8 @@ Pathfinding visualization, token motion interpolation, and local presentation ef
 
 - HTTP JSON over localhost for preview-time validation
 - default authority base URL: `http://127.0.0.1:8787`
+- this document describes the current preview shim only; the formal authority runtime protocol is protobuf-first and frozen in [authority_runtime.proto](/Users/mawei/MyWork/SlgGame/server/internal/proto/slggame/protocol/v1/authority_runtime.proto)
+- JSON transport must not be treated as the current or future default formal authority protocol
 
 ## Session Endpoints
 

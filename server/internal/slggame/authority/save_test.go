@@ -28,6 +28,13 @@ func TestAuthoritySessionSaveEnvelopeRoundTrip(t *testing.T) {
 			"row": resourceTile.Row,
 		},
 	})
+	executeAuthorityCommandForTest(t, state, "set_resource_designation", map[string]any{
+		"resourceTile": map[string]any{
+			"col": resourceTile.Col,
+			"row": resourceTile.Row,
+		},
+		"designated": false,
+	})
 	state.advanceResourceNodes(4)
 
 	save, err := state.exportSaveEnvelope()
@@ -118,6 +125,90 @@ func TestAuthoritySessionSaveStateBlobUsesProtobufWireFormat(t *testing.T) {
 	}
 }
 
+func TestAuthoritySessionSaveRestoresFromSnapshotPlusReplayLog(t *testing.T) {
+	state := newSessionState("test-session")
+	resourceTile := TileCoord{Col: 2, Row: 4}
+
+	executeAuthorityCommandForTest(t, state, "collect_stockpile", map[string]any{
+		"resourceKind": "spirit_wood",
+		"amount":       1,
+		"resourceTile": map[string]any{
+			"col": resourceTile.Col,
+			"row": resourceTile.Row,
+		},
+	})
+	state.advanceResourceNodes(3)
+
+	save, err := state.exportSaveEnvelope()
+	if err != nil {
+		t.Fatalf("export save envelope: %v", err)
+	}
+	if save.SnapshotGameTick >= save.GameTick {
+		t.Fatalf("expected snapshot tick %d to precede current game tick %d once replay exists", save.SnapshotGameTick, save.GameTick)
+	}
+	if len(save.ReplayLogBlob) == 0 {
+		t.Fatalf("expected non-empty replay log blob")
+	}
+
+	restored, err := restoreSessionStateFromSaveEnvelope(save)
+	if err != nil {
+		t.Fatalf("restore session state: %v", err)
+	}
+	if !reflect.DeepEqual(state.snapshot(), restored.snapshot()) {
+		t.Fatalf("expected snapshot+replay restore to match current snapshot")
+	}
+}
+
+func TestAuthoritySessionSaveRestorePreservesDefenseFeedbackAfterReplay(t *testing.T) {
+	state := newReadyForRaidSession()
+	defenseContext := ExternalDefenseContext{
+		RiskIntensity:         38,
+		RiskMitigation:        12,
+		ThreatCurve:           3,
+		GuardDiscipleCount:    0,
+		DefenseFormationLevel: 8,
+		CombatEquipmentBonus:  0,
+		InjuryMitigation:      2,
+		PolicyDefenseBonus:    1,
+		OmenStatus:            "预警",
+		OmenText:              "守御阵已观测到山门外气机异动。",
+		Summary:               "名望与张力抬高了当前风险，但阵法仍在提供缓冲。",
+		SourceSummary: []DefenseSourceSummary{
+			{Source: "reputation", Label: "名望抬升风险", Delta: 18},
+			{Source: "defense_formation", Label: "守御阵缓冲风险", Delta: -8},
+		},
+	}
+	state.syncExternalDefenseContext(defenseContext)
+	advanceIntoRecoverFromAuthorityRaid(t, state)
+
+	before := state.snapshot()
+	if before.Session.Phase != SessionPhaseRecover {
+		t.Fatalf("expected recover snapshot before save, got %s", before.Session.Phase)
+	}
+	if before.Session.DefenseSummary == "" || before.Session.DamageSummary == "" {
+		t.Fatalf("expected bounded defense feedback before save, got %+v", before.Session)
+	}
+
+	save, err := state.exportSaveEnvelope()
+	if err != nil {
+		t.Fatalf("export save envelope: %v", err)
+	}
+	if save.SnapshotGameTick >= save.GameTick {
+		t.Fatalf("expected replay-backed save to keep snapshot tick behind game tick, got snapshot=%d game=%d", save.SnapshotGameTick, save.GameTick)
+	}
+
+	restored, err := restoreSessionStateFromSaveEnvelope(save)
+	if err != nil {
+		t.Fatalf("restore session state: %v", err)
+	}
+	restored.syncExternalDefenseContext(defenseContext)
+
+	after := restored.snapshot()
+	if !reflect.DeepEqual(before, after) {
+		t.Fatalf("expected restore+defense-sync snapshot to preserve bounded defense feedback")
+	}
+}
+
 func TestAuthoritySessionSaveRestoresInProgressAuthorityWork(t *testing.T) {
 	state := newSessionState("test-session")
 	if state.RuinBuildingID != nil {
@@ -130,6 +221,7 @@ func TestAuthoritySessionSaveRestoresInProgressAuthorityWork(t *testing.T) {
 	guardTower.State = BuildingStateSupplied
 	state.GuardTowerID = stringPtr(guardTower.ID)
 	state.syncDerivedProgress()
+	state.resetPersistenceBaseline()
 
 	state.advanceResourceNodes(1)
 	if guardTower.WorkProgressTicks != 1 {

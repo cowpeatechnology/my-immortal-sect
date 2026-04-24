@@ -24,6 +24,7 @@ This project treats dedicated-browser validation as a hard constraint, not a pre
 - Prefer one long-lived preview tab plus the minimum temporary research tabs needed for the current task.
 - If you opened a page only to read docs or inspect one transient state, close it after use instead of leaving the dedicated browser cluttered.
 - If a validation step needs the exact page state the human is already maintaining in the dedicated browser, reuse that page instead of recreating it elsewhere.
+- When a task requires repeatable acceptance replay instead of ad-hoc inspection, use the dedicated-browser gate in [docs/process/dedicated-browser-acceptance-replay-gate.md](/Users/mawei/MyWork/SlgGame/docs/process/dedicated-browser-acceptance-replay-gate.md).
 
 ## Failure Rule
 

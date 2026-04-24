@@ -1,0 +1,152 @@
+syntax = "proto3";
+
+package slggame.protocol.v1;
+
+option go_package = "github.com/cowpeatechnology/my-immortal-sect/server/internal/proto/slggame/protocol/v1;protocolv1";
+
+// ClientCommand is the canonical protobuf-first authority command envelope.
+//
+// Auth/session establishment happens outside this message. By the time a
+// ClientCommand reaches the authority runtime, the gateway/session layer has
+// already bound the request to a verified user/session.
+message ClientCommand {
+  string cmd_id = 1;
+  string user_id = 2;
+  string sect_id = 3;
+  CommandType type = 4;
+  bytes payload = 5;
+  int64 client_seq = 6;
+  uint64 base_version = 7;
+  int64 sent_at_wall_ms = 8;
+}
+
+// CommandResult is the canonical command-response boundary from authority back
+// to the current owning client session.
+message CommandResult {
+  string cmd_id = 1;
+  CommandResultStatus status = 2;
+  CommandError error = 3;
+  string sect_id = 4;
+  uint64 scene_version = 5;
+  repeated ClientEvent events = 6;
+  StatePatch patch = 7;
+  bool need_snapshot = 8;
+}
+
+// CommandError freezes the non-JSON error surface for rejected or deferred
+// authority commands.
+message CommandError {
+  CommandErrorCode code = 1;
+  string message = 2;
+  bool retriable = 3;
+}
+
+// ServerPush is the canonical protobuf push envelope for the currently bound
+// thin-client session. JSON push payloads are not part of the formal protocol.
+message ServerPush {
+  ServerPushType type = 1;
+  bytes data = 2;
+}
+
+// StatePatch is the canonical authority-owned incremental state update.
+//
+// This is a protobuf delta envelope, not JSON Merge Patch and not an
+// ad-hoc view-model diff. Clients consume it as an application of authoritative
+// state changes between two sect versions.
+message StatePatch {
+  string sect_id = 1;
+  uint64 from_version = 2;
+  uint64 to_version = 3;
+  repeated PatchOp ops = 4;
+}
+
+message PatchOp {
+  PatchOpType op = 1;
+  string path = 2;
+  bytes value = 3;
+  PatchValueEncoding value_encoding = 4;
+}
+
+// ClientEvent is the lightweight client-facing event stream attached to a
+// CommandResult or push frame. It is not a second event-sourcing system; it is
+// a derived delivery surface for the active thin client.
+message ClientEvent {
+  uint64 scene_version = 1;
+  ClientEventType type = 2;
+  bytes payload = 3;
+}
+
+enum CommandType {
+  COMMAND_TYPE_UNSPECIFIED = 0;
+
+  // Stable authority-owned player intent commands.
+  COMMAND_TYPE_BUILD_BUILDING = 1;
+  COMMAND_TYPE_UPGRADE_BUILDING = 2;
+  COMMAND_TYPE_TOGGLE_DEMOLITION = 3;
+  COMMAND_TYPE_ASSIGN_DISCIPLE_TASK = 4;
+  COMMAND_TYPE_START_CULTIVATION = 5;
+  COMMAND_TYPE_CLAIM_TASK_REWARD = 6;
+
+  // Transitional bounded-fact command retained only where a feature loop still
+  // needs explicit client-side confirmation of a completed local interaction.
+  COMMAND_TYPE_COLLECT_STOCKPILE_FACT = 100;
+}
+
+enum CommandResultStatus {
+  COMMAND_RESULT_STATUS_UNSPECIFIED = 0;
+  COMMAND_RESULT_STATUS_ACCEPTED = 1;
+  COMMAND_RESULT_STATUS_REJECTED = 2;
+  COMMAND_RESULT_STATUS_PENDING = 3;
+}
+
+enum CommandErrorCode {
+  COMMAND_ERROR_CODE_UNSPECIFIED = 0;
+  COMMAND_ERROR_CODE_AUTH_REQUIRED = 1;
+  COMMAND_ERROR_CODE_NOT_SCENE_OWNER = 2;
+  COMMAND_ERROR_CODE_SCENE_NOT_READY = 3;
+  COMMAND_ERROR_CODE_STALE_CLIENT_VERSION = 4;
+  COMMAND_ERROR_CODE_INVALID_COMMAND = 5;
+  COMMAND_ERROR_CODE_INSUFFICIENT_RESOURCE = 6;
+  COMMAND_ERROR_CODE_BUILDING_LOCKED = 7;
+  COMMAND_ERROR_CODE_DISCIPLE_NOT_FOUND = 8;
+  COMMAND_ERROR_CODE_DISCIPLE_BUSY = 9;
+  COMMAND_ERROR_CODE_TASK_NOT_FOUND = 10;
+  COMMAND_ERROR_CODE_TASK_REQUIREMENT_NOT_MET = 11;
+  COMMAND_ERROR_CODE_COMMAND_NOT_IMPLEMENTED = 12;
+  COMMAND_ERROR_CODE_INTERNAL = 13;
+}
+
+enum ServerPushType {
+  SERVER_PUSH_TYPE_UNSPECIFIED = 0;
+  SERVER_PUSH_TYPE_COMMAND_RESULT = 1;
+  SERVER_PUSH_TYPE_STATE_PATCH = 2;
+  SERVER_PUSH_TYPE_FULL_SNAPSHOT = 3;
+  SERVER_PUSH_TYPE_NOTIFICATION = 4;
+  SERVER_PUSH_TYPE_EVENT_LOG = 5;
+}
+
+enum PatchOpType {
+  PATCH_OP_TYPE_UNSPECIFIED = 0;
+  PATCH_OP_TYPE_SET = 1;
+  PATCH_OP_TYPE_INCREMENT = 2;
+  PATCH_OP_TYPE_REMOVE = 3;
+  PATCH_OP_TYPE_APPEND = 4;
+}
+
+enum PatchValueEncoding {
+  PATCH_VALUE_ENCODING_UNSPECIFIED = 0;
+  PATCH_VALUE_ENCODING_PROTOBUF = 1;
+  PATCH_VALUE_ENCODING_VARINT = 2;
+  PATCH_VALUE_ENCODING_STRING = 3;
+  PATCH_VALUE_ENCODING_BOOL = 4;
+  PATCH_VALUE_ENCODING_BYTES = 5;
+}
+
+enum ClientEventType {
+  CLIENT_EVENT_TYPE_UNSPECIFIED = 0;
+  CLIENT_EVENT_TYPE_RESOURCE_CHANGED = 1;
+  CLIENT_EVENT_TYPE_BUILDING_CHANGED = 2;
+  CLIENT_EVENT_TYPE_DISCIPLE_CHANGED = 3;
+  CLIENT_EVENT_TYPE_SESSION_PHASE_CHANGED = 4;
+  CLIENT_EVENT_TYPE_NOTIFICATION = 5;
+}

@@ -62,6 +62,93 @@ func TestAuthorityResourceNodesDepleteAndRefresh(t *testing.T) {
 	}
 }
 
+func TestAuthorityResourceDesignationIsCommandOwnedAndSnapshotVisible(t *testing.T) {
+	state := newSessionState("test-session")
+	resourceTile := TileCoord{Col: 2, Row: 4}
+
+	initialNode, err := state.getResourceNode(resourceTile)
+	if err != nil {
+		t.Fatalf("get initial resource node: %v", err)
+	}
+	if !initialNode.Designated {
+		t.Fatalf("expected initial resource nodes to stay designated for existing short-session continuity")
+	}
+
+	result := executeAuthorityCommandForTest(t, state, "set_resource_designation", map[string]any{
+		"resourceTile": map[string]any{
+			"col": resourceTile.Col,
+			"row": resourceTile.Row,
+		},
+		"designated": false,
+	})
+	if !result.Accepted || result.Event != "resource.designation_changed" {
+		t.Fatalf("expected accepted designation command, got %+v", result)
+	}
+
+	node, err := state.getResourceNode(resourceTile)
+	if err != nil {
+		t.Fatalf("get resource node after designation: %v", err)
+	}
+	if node.Designated {
+		t.Fatalf("expected authority resource node designation to be false")
+	}
+
+	var found *ResourceNodeSnapshot
+	for _, snapshotNode := range state.snapshot().ResourceNodes {
+		if snapshotNode.Tile == resourceTile {
+			copied := snapshotNode
+			found = &copied
+			break
+		}
+	}
+	if found == nil {
+		t.Fatalf("expected resource node in snapshot")
+	}
+	if found.Designated {
+		t.Fatalf("expected resource designation in snapshot to come from authority")
+	}
+
+	executeAuthorityCommandForTest(t, state, "set_resource_designation", map[string]any{
+		"resourceTile": map[string]any{
+			"col": resourceTile.Col,
+			"row": resourceTile.Row,
+		},
+		"designated": true,
+	})
+	if !node.Designated {
+		t.Fatalf("expected authority resource node designation to be true after re-marking")
+	}
+}
+
+func TestAuthorityGatherAssignmentUsesDesignatedResourceNodes(t *testing.T) {
+	state := newSessionState("test-session")
+
+	executeAuthorityCommandForTest(t, state, "set_resource_designation", map[string]any{
+		"resourceTile": map[string]any{"col": 2, "row": 4},
+		"designated":   false,
+	})
+	executeAuthorityCommandForTest(t, state, "set_resource_designation", map[string]any{
+		"resourceTile": map[string]any{"col": 3, "row": 5},
+		"designated":   false,
+	})
+
+	if target := state.firstAvailableResourceNode(ResourceSpiritWood); target != nil {
+		t.Fatalf("expected unmarked spirit wood nodes to be skipped by authority assignment, got %+v", target)
+	}
+
+	executeAuthorityCommandForTest(t, state, "set_resource_designation", map[string]any{
+		"resourceTile": map[string]any{"col": 3, "row": 5},
+		"designated":   true,
+	})
+	target := state.firstAvailableResourceNode(ResourceSpiritWood)
+	if target == nil {
+		t.Fatalf("expected re-marked spirit wood node to be eligible for authority assignment")
+	}
+	if target.Tile != (TileCoord{Col: 3, Row: 5}) {
+		t.Fatalf("expected re-marked node 3,5, got %+v", target.Tile)
+	}
+}
+
 func TestAuthorityRaidTransitionsThroughRecoverToSecondCycleReady(t *testing.T) {
 	state := newReadyForRaidSession()
 
@@ -69,8 +156,8 @@ func TestAuthorityRaidTransitionsThroughRecoverToSecondCycleReady(t *testing.T) 
 		t.Fatalf("expected raid_countdown, got %s", state.Phase)
 	}
 	initialSnapshot := state.snapshot()
-	if initialSnapshot.Session.RaidCountdownSeconds != sharedAuthorityConfig.firstRaidPrepSeconds {
-		t.Fatalf("expected authority countdown seconds %d, got %d", sharedAuthorityConfig.firstRaidPrepSeconds, initialSnapshot.Session.RaidCountdownSeconds)
+	if initialSnapshot.Session.RaidCountdownSeconds != state.currentRaidCountdownTarget() {
+		t.Fatalf("expected authority countdown seconds %d, got %d", state.currentRaidCountdownTarget(), initialSnapshot.Session.RaidCountdownSeconds)
 	}
 
 	state.advanceResourceNodes(sharedAuthorityConfig.firstRaidPrepSeconds)
@@ -80,8 +167,8 @@ func TestAuthorityRaidTransitionsThroughRecoverToSecondCycleReady(t *testing.T) 
 	if !state.FirstRaidTriggered {
 		t.Fatalf("expected first raid to be marked triggered")
 	}
-	if state.snapshot().Session.DefendRemainingSeconds != sharedAuthorityConfig.firstRaidPrepSeconds {
-		t.Fatalf("expected defend remaining seconds %d, got %d", sharedAuthorityConfig.firstRaidPrepSeconds, state.snapshot().Session.DefendRemainingSeconds)
+	if state.snapshot().Session.DefendRemainingSeconds != state.currentDefendWindowTarget() {
+		t.Fatalf("expected defend remaining seconds %d, got %d", state.currentDefendWindowTarget(), state.snapshot().Session.DefendRemainingSeconds)
 	}
 
 	guardTowerID := derefString(t, state.GuardTowerID)
@@ -276,6 +363,48 @@ func TestAuthorityRepairProgressAdvancesOnAuthorityTick(t *testing.T) {
 	}
 }
 
+func TestAuthorityCommandIDIsIdempotent(t *testing.T) {
+	state := newSessionState("test-session")
+	resourceTile := TileCoord{Col: 2, Row: 4}
+
+	rawPayload, err := json.Marshal(map[string]any{
+		"resourceKind": "spirit_wood",
+		"amount":       1,
+		"resourceTile": map[string]any{
+			"col": resourceTile.Col,
+			"row": resourceTile.Row,
+		},
+	})
+	if err != nil {
+		t.Fatalf("marshal payload: %v", err)
+	}
+
+	command := CommandEnvelope{
+		CommandID: "cmd-collect-1",
+		Name:      "collect_stockpile",
+		Payload:   rawPayload,
+	}
+
+	first, err := state.executeCommand(command)
+	if err != nil {
+		t.Fatalf("execute first command: %v", err)
+	}
+	second, err := state.executeCommand(command)
+	if err != nil {
+		t.Fatalf("execute duplicate command: %v", err)
+	}
+
+	if !first.Accepted || !second.Accepted {
+		t.Fatalf("expected cached command results to remain accepted")
+	}
+	if first != second {
+		t.Fatalf("expected duplicate command to return cached result")
+	}
+	if state.Stockpile.SpiritWood != 1 {
+		t.Fatalf("expected duplicate cmd_id to apply collect only once, got %+v", state.Stockpile)
+	}
+}
+
 func TestAuthorityRejectsLegacyClientOwnedDamageReports(t *testing.T) {
 	state := newReadyForRaidSession()
 
@@ -328,6 +457,9 @@ func TestAuthorityMainHallDamageTriggersDefeat(t *testing.T) {
 		Name:             mustUnitArchetype(UnitArchetypeBanditScout).DisplayName,
 		Tile:             state.hostileAttackTile(mainHall),
 		HP:               99,
+		MaxHP:            99,
+		AttackPower:      99,
+		Defense:          0,
 		VisualState:      UnitVisualStateAttacking,
 		TargetBuildingID: stringPtr(mainHall.ID),
 		Active:           true,
@@ -488,6 +620,74 @@ func TestAuthoritySnapshotIncludesRepairAssignmentDuringRecover(t *testing.T) {
 	}
 }
 
+func TestAuthorityDefenseContextShapesRaidSnapshotAndMitigatesDamage(t *testing.T) {
+	weak := newReadyForRaidSession()
+	weak.syncExternalDefenseContext(ExternalDefenseContext{
+		RiskIntensity:  88,
+		RiskMitigation: 4,
+		ThreatCurve:    4,
+		OmenStatus:     "凶兆",
+		OmenText:       "山门外已有异动",
+	})
+	weakSnapshot := weak.snapshot()
+	if weakSnapshot.Session.RiskIntensity != 88 || weakSnapshot.Session.ThreatCurve != 4 {
+		t.Fatalf("expected weak snapshot risk fields to round-trip, got %+v", weakSnapshot.Session)
+	}
+	if weakSnapshot.Session.OmenStatus != "凶兆" || weakSnapshot.Session.OmenText == "" {
+		t.Fatalf("expected omen fields in authority snapshot, got %+v", weakSnapshot.Session)
+	}
+	if weakSnapshot.Session.DefenseSummary == "" || weakSnapshot.Session.RepairSuggestion == "" {
+		t.Fatalf("expected defense summaries in authority snapshot, got %+v", weakSnapshot.Session)
+	}
+
+	strong := newReadyForRaidSession()
+	strong.syncExternalDefenseContext(ExternalDefenseContext{
+		RiskIntensity:         88,
+		RiskMitigation:        80,
+		GuardDiscipleCount:    2,
+		DefenseFormationLevel: 18,
+		CombatEquipmentBonus:  10,
+		InjuryMitigation:      12,
+		PolicyDefenseBonus:    8,
+		OmenStatus:            "预警",
+		OmenText:              "守御阵提前示警",
+	})
+
+	weak.advanceResourceNodes(weak.currentRaidCountdownTarget())
+	strong.advanceResourceNodes(strong.currentRaidCountdownTarget())
+	if weak.Phase != SessionPhaseDefend || strong.Phase != SessionPhaseDefend {
+		t.Fatalf("expected both sessions to enter defend, weak=%s strong=%s", weak.Phase, strong.Phase)
+	}
+	weak.advanceCombatStep()
+	strong.advanceCombatStep()
+	if weak.Hostile == nil || strong.Hostile == nil {
+		t.Fatalf("expected hostile to spawn for defend comparison, weak=%+v strong=%+v", weak.Hostile, strong.Hostile)
+	}
+
+	weakTower := weak.Buildings[derefString(t, weak.GuardTowerID)]
+	strongTower := strong.Buildings[derefString(t, strong.GuardTowerID)]
+	weak.Hostile.Tile = weak.hostileAttackTile(weakTower)
+	strong.Hostile.Tile = strong.hostileAttackTile(strongTower)
+	weak.Hostile.AttackCooldown = 0
+	strong.Hostile.AttackCooldown = 0
+
+	weak.advanceHostileAttack()
+	strong.advanceHostileAttack()
+
+	if weakTower.HP >= strongTower.HP {
+		t.Fatalf("expected stronger defense context to preserve more HP, weak=%d strong=%d", weakTower.HP, strongTower.HP)
+	}
+	if weakTower.RepairPressure <= strongTower.RepairPressure {
+		t.Fatalf("expected stronger defense context to reduce repair pressure, weak=%d strong=%d", weakTower.RepairPressure, strongTower.RepairPressure)
+	}
+	if weak.DiscipleHP >= strong.DiscipleHP {
+		t.Fatalf("expected stronger defense context to reduce guard injury, weak=%d strong=%d", weak.DiscipleHP, strong.DiscipleHP)
+	}
+	if weak.LastDamageSummary == "" || strong.LastDamageSummary == "" {
+		t.Fatalf("expected authority raid damage summaries after hostile strike, weak=%q strong=%q", weak.LastDamageSummary, strong.LastDamageSummary)
+	}
+}
+
 func newReadyForRaidSession() *sessionState {
 	state := newSessionState("test-session")
 	if state.RuinBuildingID != nil {
@@ -498,6 +698,7 @@ func newReadyForRaidSession() *sessionState {
 	guardTower := state.addBuilding(BuildingGuardTower, sharedAuthorityConfig.initialRuinTile, BuildingStateActive)
 	guardTower.Level = 2
 	guardTower.HP = getBuildingMaxHP(guardTower.Type, guardTower.Level)
+	guardTower.Durability = 100
 	guardTower.PendingAction = nil
 	guardTower.PendingLevel = nil
 	state.GuardTowerID = stringPtr(guardTower.ID)
@@ -507,6 +708,7 @@ func newReadyForRaidSession() *sessionState {
 		Herb:        10,
 	}
 	state.syncDerivedProgress()
+	state.resetPersistenceBaseline()
 	return state
 }
 

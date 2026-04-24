@@ -36,13 +36,13 @@ import {
     buildSectMapRasterSpriteFramePath,
 } from './sect-map-shared-config';
 import { SectMapAuthorityClient } from '../net/sect-map-authority-client';
+import { SectAuthorityClient } from '../net/sect-authority-client';
 import type {
     AuthorityBootstrapMode,
     AuthorityBuildingSnapshot,
     AuthorityDiscipleSnapshot,
     AuthorityHostileSnapshot,
     AuthorityResourceNodeSnapshot,
-    AuthorityBuildingType,
     AuthorityCommandEnvelope,
     AuthorityResourceKind,
     AuthoritySessionRecoverReason,
@@ -50,6 +50,64 @@ import type {
     AuthoritySnapshot,
     AuthorityStockpile,
 } from '../net/sect-map-authority-contract';
+import type {
+    SectAuthorityAcceptCandidatePayload,
+    SectAuthorityAssignDiscipleTaskPayload,
+    SectAuthorityArtifactSnapshot,
+    SectAuthorityArtifactSlot,
+    SectAuthorityArtifactType,
+    SectAuthorityAttemptBreakthroughPayload,
+    SectAuthorityBuildBuildingPayload,
+    SectAuthorityBuildingCatalogEntry,
+    SectAuthorityBuildingSnapshot as SectRuntimeBuildingSnapshot,
+    SectAuthorityCancelTaskPayload,
+    SectAuthorityCandidateSnapshot,
+    SectAuthorityAdjustProductionPayload,
+    SectAuthorityCancelProductionPayload,
+    SectAuthorityChooseEventOptionPayload,
+    SectAuthorityCommandEnvelope as SectRuntimeCommandEnvelope,
+    SectAuthorityCommandResponse,
+    SectAuthorityCraftArtifactPayload,
+    SectAuthorityDiaryEntry,
+    SectAuthorityDiscipleSnapshot as SectRuntimeDiscipleSnapshot,
+    SectAuthorityDismissEventPayload,
+    SectAuthorityEquipArtifactPayload,
+    SectAuthorityEventFeedbackEntry,
+    SectAuthorityEventOptionSnapshot,
+    SectAuthorityExchangeContributionItemPayload,
+    SectAuthorityGoalSnapshot,
+    SectAuthorityJoinResponse,
+    SectAuthorityInstitutionSnapshot,
+    SectAuthorityMonthlyAssessmentResultSnapshot,
+    SectAuthorityOrderSnapshot,
+    SectAuthorityProductionSnapshot,
+    SectAuthorityPublishTaskPayload,
+    SectAuthoritySnapshot,
+    SectAuthorityRejectCandidatePayload,
+    SectAuthorityRepairBuildingPayload,
+    SectAuthorityRepairArtifactPayload,
+    SectAuthorityReserveCavePayload,
+    SectAuthoritySetPolicyPayload,
+    SectAuthoritySetTaskPriorityPayload,
+    SectAuthorityAssignInstitutionManagerPayload,
+    SectAuthoritySetExchangeRulePayload,
+    SectAuthoritySetGatePolicyPayload,
+    SectAuthorityPromoteDisciplePayload,
+    SectAuthorityStartAssessmentPayload,
+    SectAuthorityStartProductionPayload,
+    SectAuthorityStartRecruitmentPayload,
+    SectAuthorityStartCultivationPayload,
+    SectAuthorityTaskDispatchProjection,
+    SectAuthorityTaskSnapshot,
+    SectAuthorityUnequipArtifactPayload,
+    SectAuthorityUsePillForCultivationPayload,
+    SectAuthorityUpgradeBuildingPayload,
+    SectAuthorityContributionAccountSnapshot,
+    SectAuthorityEventSnapshot,
+    SectAuthorityExchangeRuleSnapshot,
+    SectAuthorityPolicyCategory,
+    SectAuthorityPolicyPresentationCategory,
+} from '../net/sect-authority-contract';
 
 const { ccclass } = _decorator;
 
@@ -70,6 +128,17 @@ const TOOLBAR_ROOT = 'ToolbarRoot';
 const BUILD_PANEL_ROOT = 'BuildPanelRoot';
 const RADIAL_MENU_ROOT = 'RadialMenuRoot';
 const SESSION_ACTION_ROOT = 'SessionActionRoot';
+const SECT_PANEL_ROOT = 'SectPanelRoot';
+const STATUS_DETAIL_ROOT = 'StatusDetailRoot';
+
+const ARTIFACT_CRAFT_ORDER: SectAuthorityArtifactType[] = ['sword', 'robe', 'farm_tool', 'alchemy_furnace', 'formation_disk'];
+const ARTIFACT_CRAFT_MATERIAL_TEXT: Record<string, string> = {
+    sword: '矿材10 / 妖材2 / 灵石8',
+    robe: '矿材6 / 妖材4 / 灵石5',
+    farm_tool: '矿材8 / 灵石3',
+    alchemy_furnace: '矿材8 / 阵材2 / 灵石6',
+    formation_disk: '矿材10 / 阵材5 / 灵石10',
+};
 
 const DRAG_THRESHOLD = 12;
 const LONG_PRESS_SECONDS = 0.48;
@@ -83,9 +152,11 @@ const RADIAL_RADIUS = 92;
 const HOSTILE_RESPAWN_SECONDS = 9;
 const BUILDING_HIT_FLASH_SECONDS = 0.42;
 const UNIT_HIT_FLASH_SECONDS = 0.3;
+const DAMAGE_FLOATER_SECONDS = 1.05;
 const SESSION_TARGET_SECONDS = 600;
 const FIRST_RAID_PREP_SECONDS = 24;
 const AUTHORITY_SNAPSHOT_POLL_SECONDS = 1;
+const AUTHORITY_HOSTILE_INTERPOLATION_SECONDS = AUTHORITY_SNAPSHOT_POLL_SECONDS;
 const RESOURCE_REFRESH_HIGHLIGHT_SECONDS = 4;
 const DEFAULT_AUTHORITY_BOOTSTRAP_MODE: AuthorityBootstrapMode = 'restore_latest';
 const AUTHORITY_BOOTSTRAP_QUERY_KEY = 'authorityBootstrap';
@@ -180,6 +251,10 @@ type BuildingEntity = {
     level: number;
     markedForDemolition: boolean;
     currentHp: number;
+    durability: number;
+    efficiency: number;
+    maintenanceDebt: number;
+    damagedReason: string | null;
     damageFlashSeconds: number;
     attackCooldownSeconds: number;
     pendingAction: BuildingWorkKind | null;
@@ -267,7 +342,6 @@ type DiscipleEntity = {
     worldPosition: Vec3;
     visualState: UnitVisualState;
     carrying: ResourceKind | null;
-    currentTask: DiscipleTask | null;
     path: TileCoord[];
     pathIndex: number;
     node: Node | null;
@@ -282,11 +356,16 @@ type HostileNpcEntity = {
     model: LocalUnitModel;
     tile: TileCoord;
     worldPosition: Vec3;
+    authorityRenderFrom: Vec3;
+    authorityRenderTo: Vec3;
+    authorityInterpolationElapsedSeconds: number;
+    authorityInterpolationDurationSeconds: number;
     visualState: UnitVisualState;
     path: TileCoord[];
     pathIndex: number;
     node: Node | null;
     currentHp: number;
+    maxHp: number;
     attackCooldownSeconds: number;
     hitFlashSeconds: number;
     active: boolean;
@@ -294,8 +373,30 @@ type HostileNpcEntity = {
     targetBuildingId: string | null;
 };
 
+type DamageFloaterTargetKind = 'disciple' | 'hostile' | 'building';
+
+type DamageFloater = {
+    id: string;
+    targetKind: DamageFloaterTargetKind;
+    targetId: string;
+    targetName: string;
+    amount: number;
+    anchorPosition: Vec3;
+    elapsedSeconds: number;
+    durationSeconds: number;
+    node: Node | null;
+};
+
 type ToolbarButtonConfig = {
     key: 'browse' | 'gather' | 'build' | 'demolish';
+    label: string;
+    positionX: number;
+};
+
+type SectPanelTabKey = 'overview' | 'buildings' | 'disciples' | 'tasks' | 'institutions' | 'events';
+
+type SectPanelTabConfig = {
+    key: SectPanelTabKey;
     label: string;
     positionX: number;
 };
@@ -307,7 +408,7 @@ type RadialAction = {
 };
 
 type RuntimeLogLevel = 'DEBUG' | 'INFO' | 'WARN' | 'ERROR';
-type RuntimeLogChannel = 'BOOT' | 'INPUT' | 'MODE' | 'MAP' | 'BUILD' | 'TASK' | 'RESOURCE' | 'HUD' | 'COMBAT';
+type RuntimeLogChannel = 'BOOT' | 'INPUT' | 'MODE' | 'MAP' | 'BUILD' | 'TASK' | 'RESOURCE' | 'HUD' | 'COMBAT' | 'SECT';
 type RuntimeLogPayload = Record<string, unknown>;
 
 type RuntimeLogEntry = {
@@ -376,6 +477,10 @@ type RuntimeBuildingSnapshot = {
     level: number;
     hp: number;
     maxHp: number;
+    durability: number;
+    efficiency: number;
+    maintenanceDebt: number;
+    damagedReason: string | null;
     markedForDemolition: boolean;
     pendingAction: BuildingWorkKind | null;
 };
@@ -384,11 +489,30 @@ type RuntimeHostileSnapshot = {
     id: string;
     archetypeId: string;
     tile: string;
+    renderPosition: {
+        x: number;
+        y: number;
+    };
+    interpolationProgress: number;
+    interpolationTargetTile: string | null;
     visualState: UnitVisualState;
     hp: number;
     maxHp: number;
     active: boolean;
     targetBuildingId: string | null;
+};
+
+type RuntimeDamageFloaterSnapshot = {
+    id: string;
+    targetKind: DamageFloaterTargetKind;
+    targetId: string;
+    targetName: string;
+    amount: number;
+    remainingSeconds: number;
+    position: {
+        x: number;
+        y: number;
+    };
 };
 
 type RuntimeSafeInsets = {
@@ -411,8 +535,10 @@ type RuntimePortraitBaselineSnapshot = {
         topAnchorY: number;
         bottomAnchorY: number;
         statusY: number;
+        statusDetailY: number;
         toolbarY: number;
         buildPanelY: number;
+        sessionActionY: number;
     };
 };
 
@@ -442,6 +568,21 @@ type SessionRenderViewModel = {
     recoverReason: AuthoritySessionRecoverReason;
     damagedBuildingCount: number;
     regeneratingNodeCount: number;
+    riskIntensity: number;
+    riskMitigation: number;
+    threatCurve: number;
+    defenseRating: number;
+    guardDiscipleCount: number;
+    omenStatus: string;
+    omenText: string;
+    defenseSummary: string;
+    damageSummary: string;
+    repairSuggestion: string;
+    sourceSummary: Array<{
+        source: string;
+        label: string;
+        delta: number;
+    }>;
 };
 
 type DiscipleRenderViewModel = {
@@ -455,6 +596,371 @@ type DiscipleRenderViewModel = {
     taskText: string | null;
     workProgressTicks: number;
     expectedNextTransition: string | null;
+};
+
+type SectTaskRenderViewModel = {
+    id: string;
+    kind: string;
+    taskType: string;
+    typeLabel: string;
+    gradeText: string;
+    title: string;
+    status: string;
+    priority: number;
+    risk: number;
+    riskText: string;
+    injuryRiskText: string;
+    successRate: number | null;
+    successRateText: string;
+    evaluationText: string;
+    maxAssignees: number;
+    recommendedDiscipleIds: string[];
+    recommendedDiscipleNames: string[];
+    assignedDiscipleNames: string[];
+    progressText: string;
+    requirementText: string;
+    teamRequirementText: string;
+    dispatchCostText: string;
+    rewardText: string;
+    possibleCostText: string;
+    reputationRewardText: string;
+    relationRewardText: string;
+    crisisClueText: string;
+    canDispatch: boolean;
+    dispatchBlockedReason: string | null;
+};
+
+type SectContributionRuleRenderViewModel = {
+    id: string;
+    name: string;
+    cost: number;
+    itemRef: string;
+    monthlyLimit: number;
+    purchased: number;
+    enabled: boolean;
+};
+
+type SectContributionRenderViewModel = {
+    starterDiscipleId: string | null;
+    starterDiscipleName: string;
+    balance: number;
+    earnedTotal: number;
+    spentTotal: number;
+    redeemabilityRatio: number;
+    outstandingContribution: number;
+    treasuryValue: number;
+    rules: SectContributionRuleRenderViewModel[];
+};
+
+type SectPromotionProjectionViewModel = {
+    targetRank: string;
+    targetRankText: string;
+    readinessText: string;
+    blockersText: string;
+    impactText: string;
+    assessmentText: string;
+    assessmentPassed: boolean;
+    canRequestAssessment: boolean;
+    canPromote: boolean;
+};
+
+type SectRosterRenderViewModel = {
+    id: string;
+    name: string;
+    identity: string;
+    identityText: string;
+    realmStage: string;
+    aptitudeText: string;
+    assignmentKind: string;
+    workTargetText: string;
+    needsText: string;
+    supportText: string;
+    contributionText: string;
+    hpText: string;
+    equipmentText: string;
+    relationshipText: string;
+    emotionText: string;
+    recentExperienceText: string;
+    memoryText: string;
+    moodReasonText: string;
+    promotion: SectPromotionProjectionViewModel;
+};
+
+type SectArtifactRenderViewModel = {
+    id: string;
+    type: SectAuthorityArtifactType;
+    typeLabel: string;
+    slot: SectAuthorityArtifactSlot;
+    slotLabel: string;
+    quality: number;
+    qualityText: string;
+    durability: number;
+    maxDurability: number;
+    durabilityText: string;
+    boundDiscipleId: string | null;
+    boundDiscipleName: string;
+    statsText: string;
+    repairNeedText: string;
+    craftMaterialText: string;
+    canEquip: boolean;
+    canUnequip: boolean;
+    canRepair: boolean;
+};
+
+type SectArtifactCraftRenderViewModel = {
+    type: SectAuthorityArtifactType;
+    typeLabel: string;
+    slotLabel: string;
+    materialText: string;
+};
+
+type SectCandidateRenderViewModel = {
+    id: string;
+    name: string;
+    source: string;
+    identity: string;
+    realmStage: string;
+    aptitudeText: string;
+    needsText: string;
+    supportText: string;
+    hpText: string;
+};
+
+type SectInstitutionRenderViewModel = {
+    id: string;
+    kind: string;
+    label: string;
+    level: number;
+    enabled: boolean;
+    managerDiscipleId: string | null;
+    managerText: string;
+    managerEffectText: string;
+    capacityText: string;
+    efficiencyText: string;
+    bottleneckText: string;
+    gatePolicyText: string;
+    caveSlotText: string;
+    exchangeText: string;
+    effectSummaryText: string;
+    recentResultText: string;
+    operationHintText: string;
+    assignedBuildingCount: number;
+    activeTaskCount: number;
+};
+
+type SectAffairsOverviewRenderViewModel = {
+    staffingText: string;
+    maintenanceText: string;
+    materialText: string;
+    riskText: string;
+    satisfactionText: string;
+    institutionEfficiencyText: string;
+    adviceText: string;
+};
+
+type SectProductionRenderViewModel = {
+    id: string;
+    kind: string;
+    status: string;
+    priority: number;
+    progressText: string;
+    cycleText: string;
+    targetCycleText: string;
+    assignedDiscipleNames: string[];
+    inputText: string;
+    outputText: string;
+    bottleneckText: string;
+};
+
+type SectBuildingInstanceRenderViewModel = {
+    id: string;
+    level: number;
+    phase: string;
+    efficiency: number;
+    durability: number;
+    maintenanceDebt: number;
+    damagedReason: string;
+};
+
+type SectBuildingCatalogRenderViewModel = {
+    definitionKey: string;
+    label: string;
+    maxLevel: number;
+    currentCount: number;
+    maxCount: number;
+    unlocked: boolean;
+    canBuild: boolean;
+    unlockText: string;
+    blockerText: string;
+    buildCostText: string;
+    upgradeText: string;
+    maintenanceText: string;
+    instances: SectBuildingInstanceRenderViewModel[];
+};
+
+type SectBuildingSummaryRenderViewModel = {
+    level: number;
+    expansion: number;
+    buildingLimit: number;
+    maintenancePressureText: string;
+    damagedCount: number;
+    lowEfficiencyCount: number;
+};
+
+type SectCultivationRenderViewModel = {
+    discipleId: string;
+    discipleName: string;
+    assignmentKind: string;
+    workTargetText: string;
+    realmStage: string;
+    cultivationProgressText: string;
+    breakthroughText: string;
+    decisionText: string;
+    aidText: string;
+    omenText: string;
+    pressureText: string;
+    supportText: string;
+    needsText: string;
+    hpText: string;
+};
+
+type SectOmenRenderViewModel = {
+    id: string;
+    status: string;
+    title: string;
+    detail: string;
+    severity: number;
+    tagsText: string;
+};
+
+type SectEventChoiceOptionRenderViewModel = {
+    id: string;
+    label: string;
+    description: string;
+    requirementsText: string;
+    previewText: string;
+};
+
+type SectEventChoiceRenderViewModel = {
+    id: string;
+    status: string;
+    title: string;
+    detail: string;
+    severity: number;
+    expiresText: string;
+    requirementsText: string;
+    previewText: string;
+    tagsText: string;
+    options: SectEventChoiceOptionRenderViewModel[];
+};
+
+type SectResolvedEventRenderViewModel = {
+    id: string;
+    kind: string;
+    outcome: string;
+    summary: string;
+    resolvedAtVersion: number;
+};
+
+type SectDiaryRenderViewModel = {
+    id: string;
+    version: number;
+    eventType: string;
+    summary: string;
+    source: string;
+    timingText: string;
+    storyText: string;
+};
+
+type SectEventFeedbackRenderViewModel = {
+    id: string;
+    version: number;
+    category: string;
+    eventType: string;
+    summary: string;
+    source: string;
+    timingText: string;
+    storyText: string;
+};
+
+type SectPolicyRenderViewModel = {
+    category: SectAuthorityPolicyCategory;
+    value: string;
+    label: string;
+    explanation: string;
+    impactSummary: string[];
+    options: Array<{
+        value: string;
+        label: string;
+        explanation: string;
+        impactSummary: string[];
+    }>;
+};
+
+type SectGoalRenderViewModel = {
+    id: string;
+    kind: string;
+    title: string;
+    status: string;
+    progressText: string;
+    rewardText: string;
+    outcomeText: string;
+    focusDiscipleText: string;
+    tagsText: string;
+    recommendationText: string;
+};
+
+type SectResolvedGoalRenderViewModel = {
+    id: string;
+    outcome: string;
+    summary: string;
+    resolvedAtVersion: number;
+};
+
+type SectCrisisRenderViewModel = {
+    id: string;
+    title: string;
+    status: string;
+    stage: string;
+    stageText: string;
+    severity: number;
+    sourceText: string;
+    detail: string;
+    expiresText: string;
+    previewText: string;
+    optionSummaryText: string;
+    tagsText: string;
+    recommendationText: string;
+};
+
+type SectTreatmentRenderViewModel = {
+    discipleId: string;
+    discipleName: string;
+    queueText: string;
+    injuryText: string;
+    hpText: string;
+    pressureText: string;
+    recoveryText: string;
+    herbCostText: string;
+    institutionText: string;
+    recommendationText: string;
+};
+
+type SectOrderRenderViewModel = {
+    safetyText: string;
+    disciplineText: string;
+    strifeRiskText: string;
+    summaryText: string;
+    recommendationText: string;
+};
+
+type SectMonthlyAssessmentRenderViewModel = {
+    latestMonthText: string;
+    latestChampionText: string;
+    latestRewardText: string;
+    latestSummaryText: string;
+    historyText: string;
+    recommendationText: string;
 };
 
 type RuntimeSnapshot = {
@@ -494,6 +1000,21 @@ type RuntimeSnapshot = {
         recoverReason: AuthoritySessionRecoverReason;
         damagedBuildingCount: number;
         regeneratingNodeCount: number;
+        riskIntensity: number;
+        riskMitigation: number;
+        threatCurve: number;
+        defenseRating: number;
+        guardDiscipleCount: number;
+        omenStatus: string;
+        omenText: string;
+        defenseSummary: string;
+        damageSummary: string;
+        repairSuggestion: string;
+        sourceSummary: Array<{
+            source: string;
+            label: string;
+            delta: number;
+        }>;
     };
     disciple: {
         tile: string;
@@ -505,6 +1026,7 @@ type RuntimeSnapshot = {
         model: LocalUnitModel;
     };
     hostiles: RuntimeHostileSnapshot[];
+    damageFloaters: RuntimeDamageFloaterSnapshot[];
     authority: {
         mode: 'authority' | 'authority_required';
         connected: boolean;
@@ -526,11 +1048,76 @@ type RuntimeSnapshot = {
             recoverReason: AuthoritySessionRecoverReason;
             damagedBuildingCount: number;
             regeneratingNodeCount: number;
+            riskIntensity: number;
+            riskMitigation: number;
+            threatCurve: number;
+            defenseRating: number;
+            guardDiscipleCount: number;
+            omenStatus: string;
+            omenText: string;
+            defenseSummary: string;
+            damageSummary: string;
+            repairSuggestion: string;
+            sourceSummary: Array<{
+                source: string;
+                label: string;
+                delta: number;
+            }>;
             activeHostiles: number;
         };
         pendingCommands: string[];
         lastEvent: string | null;
         lastError: string | null;
+    };
+    sectAuthority: {
+        connected: boolean;
+        sectId: string | null;
+        sceneVersion: number;
+        rosterCount: number;
+        roster: SectRosterRenderViewModel[];
+        artifactCount: number;
+        artifacts: SectArtifactRenderViewModel[];
+        artifactCraftOptions: SectArtifactCraftRenderViewModel[];
+        candidateCount: number;
+        candidates: SectCandidateRenderViewModel[];
+        taskCount: number;
+        tasks: SectTaskRenderViewModel[];
+        contribution: SectContributionRenderViewModel | null;
+        overview: SectAffairsOverviewRenderViewModel | null;
+        institutionCount: number;
+        institutions: SectInstitutionRenderViewModel[];
+        productionCount: number;
+        productions: SectProductionRenderViewModel[];
+        buildingSummary: SectBuildingSummaryRenderViewModel | null;
+        buildingCatalog: SectBuildingCatalogRenderViewModel[];
+        cultivation: SectCultivationRenderViewModel | null;
+        eventChoiceCount: number;
+        eventChoices: SectEventChoiceRenderViewModel[];
+        resolvedEventCount: number;
+        resolvedEvents: SectResolvedEventRenderViewModel[];
+        omenCount: number;
+        omens: SectOmenRenderViewModel[];
+        diaryCount: number;
+        diary: SectDiaryRenderViewModel[];
+        eventFeedbackCount: number;
+        eventFeedback: SectEventFeedbackRenderViewModel[];
+        policies: SectPolicyRenderViewModel[];
+        goalCount: number;
+        goals: SectGoalRenderViewModel[];
+        resolvedGoalCount: number;
+        resolvedGoals: SectResolvedGoalRenderViewModel[];
+        crisisCount: number;
+        crises: SectCrisisRenderViewModel[];
+        treatmentCount: number;
+        treatments: SectTreatmentRenderViewModel[];
+        order: SectOrderRenderViewModel | null;
+        monthlyAssessment: SectMonthlyAssessmentRenderViewModel | null;
+        recentPolicyEvents: SectEventFeedbackRenderViewModel[];
+        recentPromotionEvents: SectEventFeedbackRenderViewModel[];
+        pendingCommands: string[];
+        lastError: string | null;
+        lastPatchFromVersion: number | null;
+        lastPatchToVersion: number | null;
     };
 };
 
@@ -544,6 +1131,13 @@ type RuntimeDebugBridge = {
     fetchAuthoritySnapshot: () => Promise<RuntimeSnapshot>;
     executeAuthorityCommand: <TPayload>(
         command: AuthorityCommandEnvelope<TPayload>,
+        options?: {
+            commandKey?: string;
+        },
+    ) => Promise<RuntimeSnapshot>;
+    joinSectAuthority: () => Promise<RuntimeSnapshot>;
+    executeSectAuthorityCommand: <TPayload>(
+        command: SectRuntimeCommandEnvelope<TPayload>,
         options?: {
             commandKey?: string;
         },
@@ -646,6 +1240,15 @@ const TOOLBAR_BUTTONS: ToolbarButtonConfig[] = [
     { key: 'demolish', label: '拆除', positionX: 240 },
 ];
 
+const SECT_PANEL_TABS: SectPanelTabConfig[] = [
+    { key: 'overview', label: '总览', positionX: -160 },
+    { key: 'buildings', label: '建筑', positionX: -96 },
+    { key: 'disciples', label: '弟子', positionX: -32 },
+    { key: 'tasks', label: '任务', positionX: 32 },
+    { key: 'institutions', label: '机构', positionX: 96 },
+    { key: 'events', label: '事件', positionX: 160 },
+];
+
 @ccclass('SectMapBootstrap')
 export class SectMapBootstrap extends Component {
     private readonly runtimeSessionStartedAt = Date.now();
@@ -665,7 +1268,11 @@ export class SectMapBootstrap extends Component {
     private buildPanelRoot: Node | null = null;
     private radialMenuRoot: Node | null = null;
     private sessionActionRoot: Node | null = null;
+    private sectPanelRoot: Node | null = null;
+    private statusDetailRoot: Node | null = null;
     private statusLabel: Label | null = null;
+    private sectPanelLabel: Label | null = null;
+    private statusDetailLabel: Label | null = null;
 
     private groundLayer: TiledLayer | null = null;
     private roadLayer: TiledLayer | null = null;
@@ -681,6 +1288,8 @@ export class SectMapBootstrap extends Component {
     private visualAssetFrames: Partial<Record<SectMapVisualAssetId, SpriteFrame>> = {};
     private toolbarButtons = new Map<string, Node>();
     private buildButtons = new Map<string, Node>();
+    private damageFloaters: DamageFloater[] = [];
+    private nextDamageFloaterId = 1;
 
     private selectedTile: TileCoord | null = null;
     private buildPlacement: BuildPlacement | null = null;
@@ -720,6 +1329,7 @@ export class SectMapBootstrap extends Component {
     private authoritySessionRegeneratingNodeCount = 0;
     private sessionBuildPanelPrompted = false;
     private authorityClient = new SectMapAuthorityClient();
+    private sectAuthorityClient = new SectAuthorityClient();
     private authoritySessionId = 'preview-local';
     private authorityPlayerId = 'preview-player';
     private authorityPlayerToken: string | null = null;
@@ -739,6 +1349,40 @@ export class SectMapBootstrap extends Component {
     private authoritySessionViewModel: SessionRenderViewModel | null = null;
     private authorityGatherFactTimerSeconds = 0;
     private authorityGatherFactKey: string | null = null;
+    private sectAuthoritySnapshot: SectAuthoritySnapshot | null = null;
+    private sectAuthoritySectId: string | null = null;
+    private sectRosterViewModels: SectRosterRenderViewModel[] = [];
+    private sectArtifactViewModels: SectArtifactRenderViewModel[] = [];
+    private sectArtifactCraftViewModels: SectArtifactCraftRenderViewModel[] = [];
+    private sectCandidateViewModels: SectCandidateRenderViewModel[] = [];
+    private sectAuthorityTaskViewModels: SectTaskRenderViewModel[] = [];
+    private sectContributionViewModel: SectContributionRenderViewModel | null = null;
+    private sectAffairsOverviewViewModel: SectAffairsOverviewRenderViewModel | null = null;
+    private sectInstitutionViewModels: SectInstitutionRenderViewModel[] = [];
+    private sectProductionViewModels: SectProductionRenderViewModel[] = [];
+    private sectBuildingSummaryViewModel: SectBuildingSummaryRenderViewModel | null = null;
+    private sectBuildingCatalogViewModels: SectBuildingCatalogRenderViewModel[] = [];
+    private sectCultivationViewModel: SectCultivationRenderViewModel | null = null;
+    private sectEventChoiceViewModels: SectEventChoiceRenderViewModel[] = [];
+    private sectResolvedEventViewModels: SectResolvedEventRenderViewModel[] = [];
+    private sectOmenViewModels: SectOmenRenderViewModel[] = [];
+    private sectDiaryViewModels: SectDiaryRenderViewModel[] = [];
+    private sectEventFeedbackViewModels: SectEventFeedbackRenderViewModel[] = [];
+    private sectPolicyViewModels: SectPolicyRenderViewModel[] = [];
+    private sectGoalViewModels: SectGoalRenderViewModel[] = [];
+    private sectResolvedGoalViewModels: SectResolvedGoalRenderViewModel[] = [];
+    private sectCrisisViewModels: SectCrisisRenderViewModel[] = [];
+    private sectTreatmentViewModels: SectTreatmentRenderViewModel[] = [];
+    private sectOrderViewModel: SectOrderRenderViewModel | null = null;
+    private sectMonthlyAssessmentViewModel: SectMonthlyAssessmentRenderViewModel | null = null;
+    private sectAuthorityPendingCommands = new Set<string>();
+    private sectAuthorityLastError: string | null = null;
+    private sectAuthorityPatchFromVersion: number | null = null;
+    private sectAuthorityPatchToVersion: number | null = null;
+    private sectPanelVisible = false;
+    private sectPanelTab: SectPanelTabKey = 'overview';
+    private statusDetailVisible = false;
+    private legacyDiscipleTask: DiscipleTask | null = null;
 
     private activePointerId: number | null = null;
     private pointerStart = v3();
@@ -758,7 +1402,6 @@ export class SectMapBootstrap extends Component {
         worldPosition: v3(),
         visualState: 'idle',
         carrying: null,
-        currentTask: null,
         path: [],
         pathIndex: 0,
         node: null,
@@ -773,11 +1416,16 @@ export class SectMapBootstrap extends Component {
         model: createLocalUnitModel('bandit_scout', '寇'),
         tile: { col: 0, row: 0 },
         worldPosition: v3(),
+        authorityRenderFrom: v3(),
+        authorityRenderTo: v3(),
+        authorityInterpolationElapsedSeconds: 0,
+        authorityInterpolationDurationSeconds: 0,
         visualState: 'idle',
         path: [],
         pathIndex: 0,
         node: null,
         currentHp: createLocalUnitModel('bandit_scout', '寇').stats.maxHp,
+        maxHp: createLocalUnitModel('bandit_scout', '寇').stats.maxHp,
         attackCooldownSeconds: 0,
         hitFlashSeconds: 0,
         active: false,
@@ -820,6 +1468,9 @@ export class SectMapBootstrap extends Component {
             this.statusLabel.fontSize = 17;
             this.statusLabel.lineHeight = 22;
             this.statusLabel.enableWrapText = true;
+            this.statusLabel.overflow = Label.Overflow.CLAMP;
+            this.statusLabel.horizontalAlign = Label.HorizontalAlign.LEFT;
+            this.statusLabel.verticalAlign = Label.VerticalAlign.CENTER;
             this.statusLabel.color = new Color(246, 248, 252, 255);
         }
 
@@ -916,6 +1567,8 @@ export class SectMapBootstrap extends Component {
         this.buildToolbar();
         this.buildBuildPanel();
         this.buildSessionActions();
+        this.buildStatusDetailPanel();
+        this.buildSectPanel();
         this.registerInput();
 
         const discipleCenter = this.getTileCenter(this.disciple.tile);
@@ -987,6 +1640,51 @@ export class SectMapBootstrap extends Component {
         this.persistAuthorityIdentity();
     }
 
+    private async joinSectAuthoritySurface(): Promise<void> {
+        try {
+            const response = await this.sectAuthorityClient.joinSect(this.authorityPlayerId, this.authoritySessionId, null);
+            this.applySectAuthorityJoinResponse(response, 'join');
+        } catch (error) {
+            const message = error instanceof Error ? error.message : 'sect_authority_join_failed';
+            this.sectAuthoritySnapshot = null;
+            this.sectAuthoritySectId = null;
+            this.sectRosterViewModels = [];
+            this.sectArtifactViewModels = [];
+            this.sectArtifactCraftViewModels = [];
+            this.sectCandidateViewModels = [];
+            this.sectAuthorityTaskViewModels = [];
+            this.sectContributionViewModel = null;
+            this.sectAffairsOverviewViewModel = null;
+            this.sectInstitutionViewModels = [];
+            this.sectProductionViewModels = [];
+            this.sectBuildingSummaryViewModel = null;
+            this.sectBuildingCatalogViewModels = [];
+            this.sectCultivationViewModel = null;
+            this.sectEventChoiceViewModels = [];
+            this.sectResolvedEventViewModels = [];
+            this.sectOmenViewModels = [];
+            this.sectDiaryViewModels = [];
+            this.sectEventFeedbackViewModels = [];
+            this.sectPolicyViewModels = [];
+            this.sectGoalViewModels = [];
+            this.sectResolvedGoalViewModels = [];
+            this.sectCrisisViewModels = [];
+            this.sectTreatmentViewModels = [];
+            this.sectOrderViewModel = null;
+            this.sectMonthlyAssessmentViewModel = null;
+            this.sectAuthorityPendingCommands.clear();
+            this.sectAuthorityPatchFromVersion = null;
+            this.sectAuthorityPatchToVersion = null;
+            this.sectAuthorityLastError = message;
+            this.logRuntime('WARN', 'SECT', 'sect_authority.join_failed', '宗务界面未能拉取 authority sect snapshot', {
+                playerId: this.authorityPlayerId,
+                sessionId: this.authoritySessionId,
+                error: message,
+            });
+            this.refreshSectPanel();
+        }
+    }
+
     private async bootstrapAuthoritySession(options?: { mode?: AuthorityBootstrapMode }): Promise<void> {
         const mode = options?.mode ?? DEFAULT_AUTHORITY_BOOTSTRAP_MODE;
         this.authorityLastBootstrapMode = mode;
@@ -1005,6 +1703,7 @@ export class SectMapBootstrap extends Component {
             this.authorityLastError = null;
             this.authorityRenderSource = 'authority_snapshot';
             this.authoritySnapshotPollSeconds = AUTHORITY_SNAPSHOT_POLL_SECONDS;
+            await this.joinSectAuthoritySurface();
             this.logRuntime('INFO', 'BOOT', 'authority.bootstrap_ready', 'M1 authority snapshot 已接入当前预览会话', {
                 sessionId: this.authoritySessionId,
                 playerId: this.authorityPlayerId,
@@ -1036,6 +1735,7 @@ export class SectMapBootstrap extends Component {
                 mode,
                 error: message,
             });
+            this.clearSectAuthoritySurface();
         }
     }
 
@@ -1058,13 +1758,16 @@ export class SectMapBootstrap extends Component {
         this.authorityDiscipleSnapshot = null;
         this.authorityPendingCommands.clear();
         this.authorityPollingSnapshot = false;
-        this.disciple.currentTask = null;
+        this.clearLocalGatherPresentationState();
+        this.legacyDiscipleTask = null;
+        this.clearSectAuthoritySurface();
         this.disciple.carrying = null;
         this.disciple.path = [];
         this.disciple.pathIndex = 0;
         this.closeBuildPanel();
         this.closeRadialMenu();
         this.clearBuildPlacement();
+        this.resetAuthorityHostileInterpolation();
         this.refreshDiscipleToken();
 
         if (!stateChanged) {
@@ -1109,6 +1812,49 @@ export class SectMapBootstrap extends Component {
         return this.getRuntimeSnapshot();
     }
 
+    private clearSectAuthoritySurface(): void {
+        this.sectAuthoritySnapshot = null;
+        this.sectAuthoritySectId = null;
+        this.sectRosterViewModels = [];
+        this.sectArtifactViewModels = [];
+        this.sectArtifactCraftViewModels = [];
+        this.sectCandidateViewModels = [];
+        this.sectAuthorityTaskViewModels = [];
+        this.sectContributionViewModel = null;
+        this.sectAffairsOverviewViewModel = null;
+        this.sectInstitutionViewModels = [];
+        this.sectProductionViewModels = [];
+        this.sectBuildingSummaryViewModel = null;
+        this.sectBuildingCatalogViewModels = [];
+        this.sectCultivationViewModel = null;
+        this.sectEventChoiceViewModels = [];
+        this.sectResolvedEventViewModels = [];
+        this.sectOmenViewModels = [];
+        this.sectDiaryViewModels = [];
+        this.sectEventFeedbackViewModels = [];
+        this.sectPolicyViewModels = [];
+        this.sectGoalViewModels = [];
+        this.sectResolvedGoalViewModels = [];
+        this.sectCrisisViewModels = [];
+        this.sectTreatmentViewModels = [];
+        this.sectOrderViewModel = null;
+        this.sectMonthlyAssessmentViewModel = null;
+        this.sectAuthorityPendingCommands.clear();
+        this.sectAuthorityPatchFromVersion = null;
+        this.sectAuthorityPatchToVersion = null;
+        this.refreshSectPanel();
+    }
+
+    private isAuthorityMainlinePreview(): boolean {
+        return this.authorityConnected || this.authorityMode === 'authority_required' || this.authorityRenderSource === 'authority_blocked';
+    }
+
+    private clearLocalGatherPresentationState(message?: string): void {
+        if (this.inputMode === 'gather') {
+            this.setMode('browse', message ?? 'authority 已接管采集分配，主预览不再接受本地采集标记');
+        }
+    }
+
     private shouldUseAuthorityRenderViewModels(): boolean {
         return this.authorityBuildingViewModels.size > 0 && (this.authorityConnected || this.authorityRenderSource === 'authority_blocked');
     }
@@ -1137,6 +1883,36 @@ export class SectMapBootstrap extends Component {
             return this.authoritySessionViewModel;
         }
 
+        if (this.isAuthorityMainlinePreview()) {
+            return {
+                phase: 'clear_ruin',
+                outcome: 'in_progress',
+                objective: this.authorityLastError
+                    ? `authority 阻断：${this.authorityLastError}`
+                    : '等待 authority snapshot 接管当前预览',
+                guardTowerId: null,
+                ruinBuildingId: null,
+                firstRaidTriggered: false,
+                firstRaidResolved: false,
+                raidCountdownSeconds: this.authorityRaidCountdownSeconds,
+                defendRemainingSeconds: this.authorityDefendRemainingSeconds,
+                recoverReason: 'none',
+                damagedBuildingCount: 0,
+                regeneratingNodeCount: 0,
+                riskIntensity: 0,
+                riskMitigation: 0,
+                threatCurve: 1,
+                defenseRating: 0,
+                guardDiscipleCount: 0,
+                omenStatus: 'steady',
+                omenText: this.authorityLastError ? `authority 阻断：${this.authorityLastError}` : '等待权威敌袭上下文同步',
+                defenseSummary: '等待 authority 守备摘要',
+                damageSummary: '暂无战损摘要',
+                repairSuggestion: '暂无修复建议',
+                sourceSummary: [],
+            };
+        }
+
         return {
             phase: this.sessionPhase,
             outcome: this.sessionOutcome,
@@ -1150,6 +1926,17 @@ export class SectMapBootstrap extends Component {
             recoverReason: this.authoritySessionRecoverReason,
             damagedBuildingCount: this.authoritySessionDamagedBuildingCount,
             regeneratingNodeCount: this.authoritySessionRegeneratingNodeCount,
+            riskIntensity: 0,
+            riskMitigation: 0,
+            threatCurve: 1,
+            defenseRating: 0,
+            guardDiscipleCount: 0,
+            omenStatus: 'steady',
+            omenText: '',
+            defenseSummary: '',
+            damageSummary: '',
+            repairSuggestion: '',
+            sourceSummary: [],
         };
     }
 
@@ -1167,6 +1954,17 @@ export class SectMapBootstrap extends Component {
             recoverReason: snapshot.session.recoverReason,
             damagedBuildingCount: snapshot.session.damagedBuildingCount,
             regeneratingNodeCount: snapshot.session.regeneratingNodeCount,
+            riskIntensity: snapshot.session.riskIntensity,
+            riskMitigation: snapshot.session.riskMitigation,
+            threatCurve: snapshot.session.threatCurve,
+            defenseRating: snapshot.session.defenseRating,
+            guardDiscipleCount: snapshot.session.guardDiscipleCount,
+            omenStatus: snapshot.session.omenStatus,
+            omenText: snapshot.session.omenText,
+            defenseSummary: snapshot.session.defenseSummary,
+            damageSummary: snapshot.session.damageSummary,
+            repairSuggestion: snapshot.session.repairSuggestion,
+            sourceSummary: [...(snapshot.session.sourceSummary ?? [])].map((entry) => ({ ...entry })),
         };
     }
 
@@ -1241,11 +2039,25 @@ export class SectMapBootstrap extends Component {
     }
 
     private syncAuthorityRenderViewModels(snapshot: AuthoritySnapshot): void {
+        const previousBuildings = new Map(this.authorityBuildingViewModels);
+        const previousDiscipleSnapshot = this.authorityDiscipleSnapshot;
+        const previousDiscipleHP = previousDiscipleSnapshot ? this.disciple.currentHp : null;
         this.authorityBuildingViewModels.clear();
 
         let highestBuildingNumericID = 0;
         for (const snapshotBuilding of snapshot.buildings) {
             const viewModel = this.buildEntityFromAuthority(snapshotBuilding);
+            const previousBuilding = previousBuildings.get(viewModel.id);
+            if (previousBuilding && viewModel.currentHp < previousBuilding.currentHp) {
+                viewModel.damageFlashSeconds = BUILDING_HIT_FLASH_SECONDS;
+                this.queueDamageFloater({
+                    targetKind: 'building',
+                    targetId: viewModel.id,
+                    targetName: viewModel.definition.label,
+                    amount: previousBuilding.currentHp - viewModel.currentHp,
+                    anchorPosition: this.getBuildingDamageFloaterAnchor(viewModel),
+                });
+            }
             this.authorityBuildingViewModels.set(viewModel.id, viewModel);
             const numericID = Number(viewModel.id.replace('building-', ''));
             if (Number.isFinite(numericID)) {
@@ -1259,6 +2071,24 @@ export class SectMapBootstrap extends Component {
             snapshot.disciples.find((disciple) => disciple.id === this.disciple.id) ??
             snapshot.disciples[0] ??
             null;
+        if (this.authorityDiscipleSnapshot) {
+            if (
+                previousDiscipleSnapshot &&
+                previousDiscipleSnapshot.id === this.authorityDiscipleSnapshot.id &&
+                previousDiscipleHP !== null &&
+                this.authorityDiscipleSnapshot.hp < previousDiscipleHP
+            ) {
+                this.disciple.hitFlashSeconds = UNIT_HIT_FLASH_SECONDS;
+                this.queueDamageFloater({
+                    targetKind: 'disciple',
+                    targetId: this.authorityDiscipleSnapshot.id,
+                    targetName: this.authorityDiscipleSnapshot.name,
+                    amount: previousDiscipleHP - this.authorityDiscipleSnapshot.hp,
+                    anchorPosition: this.getUnitDamageFloaterAnchor(this.disciple),
+                });
+            }
+            this.disciple.currentHp = this.authorityDiscipleSnapshot.hp;
+        }
         this.authorityDiscipleViewModel = this.buildAuthorityDiscipleViewModel(this.authorityDiscipleSnapshot);
     }
 
@@ -1272,30 +2102,171 @@ export class SectMapBootstrap extends Component {
             this.hostileNpc.attackCooldownSeconds = 0;
             this.hostileNpc.visualState = 'idle';
             this.hostileNpc.respawnTimerSeconds = 0;
+            this.resetAuthorityHostileInterpolation();
             this.refreshHostileNpcToken();
             return;
         }
 
-        if (this.hostileNpc.id !== hostile.id || this.hostileNpc.model.archetypeId !== hostile.archetypeId) {
+        const wasActive = this.hostileNpc.active;
+        const previousTile = { ...this.hostileNpc.tile };
+        const identityChanged = this.hostileNpc.id !== hostile.id || this.hostileNpc.model.archetypeId !== hostile.archetypeId;
+        if (identityChanged) {
             this.hostileNpc.id = hostile.id;
             this.hostileNpc.name = hostile.name;
             this.hostileNpc.model = createLocalUnitModel(hostile.archetypeId, hostile.name);
         }
 
-        const previousHP = this.hostileNpc.currentHp;
+        const previousHP = identityChanged ? hostile.hp : this.hostileNpc.currentHp;
+        const targetPosition = this.getTileCenter(hostile.tile);
+        const tileChanged = !this.isSameTile(previousTile, hostile.tile);
         this.hostileNpc.active = true;
         this.hostileNpc.tile = { ...hostile.tile };
-        this.hostileNpc.worldPosition = this.getTileCenter(hostile.tile);
         this.hostileNpc.path = [];
         this.hostileNpc.pathIndex = 0;
         this.hostileNpc.visualState = hostile.visualState;
         this.hostileNpc.currentHp = hostile.hp;
+        this.hostileNpc.maxHp = hostile.maxHp;
         this.hostileNpc.targetBuildingId = hostile.targetBuildingId;
         this.hostileNpc.respawnTimerSeconds = 0;
+        if (!wasActive || identityChanged) {
+            this.hostileNpc.worldPosition.set(targetPosition.x, targetPosition.y, 0);
+            this.resetAuthorityHostileInterpolation(targetPosition);
+        } else if (tileChanged) {
+            this.startAuthorityHostileInterpolation(targetPosition);
+        }
         if (hostile.hp < previousHP) {
             this.hostileNpc.hitFlashSeconds = UNIT_HIT_FLASH_SECONDS;
+            this.queueDamageFloater({
+                targetKind: 'hostile',
+                targetId: hostile.id,
+                targetName: hostile.name,
+                amount: previousHP - hostile.hp,
+                anchorPosition: this.getUnitDamageFloaterAnchor(this.hostileNpc),
+            });
         }
         this.refreshHostileNpcToken();
+    }
+
+    private startAuthorityHostileInterpolation(targetPosition: Vec3): void {
+        this.hostileNpc.authorityRenderFrom.set(this.hostileNpc.worldPosition.x, this.hostileNpc.worldPosition.y, 0);
+        this.hostileNpc.authorityRenderTo.set(targetPosition.x, targetPosition.y, 0);
+        this.hostileNpc.authorityInterpolationElapsedSeconds = 0;
+        this.hostileNpc.authorityInterpolationDurationSeconds = AUTHORITY_HOSTILE_INTERPOLATION_SECONDS;
+    }
+
+    private resetAuthorityHostileInterpolation(position: Vec3 = this.hostileNpc.worldPosition): void {
+        this.hostileNpc.authorityRenderFrom.set(position.x, position.y, 0);
+        this.hostileNpc.authorityRenderTo.set(position.x, position.y, 0);
+        this.hostileNpc.authorityInterpolationElapsedSeconds = 0;
+        this.hostileNpc.authorityInterpolationDurationSeconds = 0;
+    }
+
+    private getUnitDamageFloaterAnchor(unit: DiscipleEntity | HostileNpcEntity): Vec3 {
+        return v3(unit.worldPosition.x, unit.worldPosition.y + 108, 0);
+    }
+
+    private getBuildingDamageFloaterAnchor(building: BuildingEntity): Vec3 {
+        const tiles = this.getFootprintTiles(building.origin, building.definition.width, building.definition.height);
+        const frame = this.getFootprintFrame(tiles);
+        return v3(frame.center.x, frame.center.y + frame.height * 0.5 + 68, 0);
+    }
+
+    private queueDamageFloater(options: {
+        targetKind: DamageFloaterTargetKind;
+        targetId: string;
+        targetName: string;
+        amount: number;
+        anchorPosition: Vec3;
+    }): void {
+        const amount = Math.ceil(options.amount);
+        if (amount <= 0) {
+            return;
+        }
+
+        const floater: DamageFloater = {
+            id: `damage-floater-${this.nextDamageFloaterId}`,
+            targetKind: options.targetKind,
+            targetId: options.targetId,
+            targetName: options.targetName,
+            amount,
+            anchorPosition: v3(options.anchorPosition.x, options.anchorPosition.y, 0),
+            elapsedSeconds: 0,
+            durationSeconds: DAMAGE_FLOATER_SECONDS,
+            node: null,
+        };
+        this.nextDamageFloaterId += 1;
+        this.damageFloaters.push(floater);
+        while (this.damageFloaters.length > 18) {
+            const expired = this.damageFloaters.shift();
+            expired?.node?.destroy();
+        }
+        this.ensureDamageFloaterNode(floater);
+        this.updateDamageFloaterNode(floater);
+    }
+
+    private ensureDamageFloaterNode(floater: DamageFloater): Node | null {
+        if (floater.node || !this.overlayRoot) {
+            return floater.node;
+        }
+
+        const root = new Node(floater.id);
+        root.setParent(this.overlayRoot);
+        this.configureNodeSize(root, 170, 42);
+
+        const backdropNode = new Node('Backdrop');
+        backdropNode.setParent(root);
+        this.configureNodeSize(backdropNode, 164, 34);
+        const backdrop = backdropNode.addComponent(Graphics);
+        backdrop.fillColor = new Color(74, 30, 30, 224);
+        backdrop.strokeColor = new Color(255, 206, 168, 255);
+        backdrop.lineWidth = 2;
+        backdrop.roundRect(-82, -17, 164, 34, 15);
+        backdrop.fill();
+        backdrop.stroke();
+
+        const labelNode = new Node('Label');
+        labelNode.setParent(root);
+        this.configureNodeSize(labelNode, 156, 30);
+        const label = labelNode.addComponent(Label);
+        label.fontSize = 18;
+        label.lineHeight = 22;
+        label.color = new Color(255, 238, 204, 255);
+        label.enableWrapText = false;
+
+        floater.node = root;
+        return root;
+    }
+
+    private updateDamageFloaterNode(floater: DamageFloater): void {
+        const root = this.ensureDamageFloaterNode(floater);
+        if (!root) {
+            return;
+        }
+
+        const progress = Math.min(1, floater.elapsedSeconds / Math.max(0.001, floater.durationSeconds));
+        const rise = 48 * progress;
+        root.setPosition(floater.anchorPosition.x, floater.anchorPosition.y + rise, 0);
+        const pulse = progress < 0.18 ? 1 + (0.18 - progress) * 1.1 : 1;
+        root.setScale(pulse, pulse, 1);
+        root.active = true;
+
+        const label = root.getChildByName('Label')?.getComponent(Label);
+        if (label) {
+            label.string = `-${floater.amount} ${floater.targetName}`;
+        }
+    }
+
+    private advanceDamageFloaters(deltaTime: number): void {
+        for (let index = this.damageFloaters.length - 1; index >= 0; index -= 1) {
+            const floater = this.damageFloaters[index];
+            floater.elapsedSeconds += Math.max(0, deltaTime);
+            if (floater.elapsedSeconds >= floater.durationSeconds) {
+                floater.node?.destroy();
+                this.damageFloaters.splice(index, 1);
+                continue;
+            }
+            this.updateDamageFloaterNode(floater);
+        }
     }
 
     private syncLocalBuildingEntitiesFromAuthority(snapshot: AuthoritySnapshot): void {
@@ -1356,7 +2327,7 @@ export class SectMapBootstrap extends Component {
                     this.openBuildPanel(focusTile);
                 }
             }
-            this.disciple.currentTask = null;
+            this.legacyDiscipleTask = null;
             this.disciple.path = [];
             this.disciple.pathIndex = 0;
             this.disciple.carrying = this.authorityDiscipleViewModel?.carrying ?? null;
@@ -1380,6 +2351,1634 @@ export class SectMapBootstrap extends Component {
         }
     }
 
+    private applySectAuthorityJoinResponse(response: SectAuthorityJoinResponse, reason: string): void {
+        this.applySectAuthoritySnapshot(response.snapshot, reason);
+        this.sectAuthorityLastError = null;
+    }
+
+    private applySectAuthorityCommandResponse(response: SectAuthorityCommandResponse, reason: string): void {
+        this.applySectAuthoritySnapshot(response.snapshot, reason);
+        this.sectAuthorityPatchFromVersion = response.result.patch.fromVersion;
+        this.sectAuthorityPatchToVersion = response.result.patch.toVersion;
+        this.sectAuthorityLastError = response.result.error?.message ?? null;
+        if (response.result.status === 'COMMAND_RESULT_STATUS_REJECTED') {
+            throw new Error(response.result.error?.message ?? 'sect_command_rejected');
+        }
+    }
+
+    private applySectAuthoritySnapshot(snapshot: SectAuthoritySnapshot, reason: string): void {
+        this.sectAuthoritySnapshot = snapshot;
+        this.sectAuthoritySectId = snapshot.sectId;
+        this.refreshSectAuthorityViewModels(snapshot);
+        this.refreshSectPanel();
+        if (this.buildPanelRoot?.active) {
+            this.buildBuildPanel();
+        }
+        if (reason !== 'join') {
+            this.logRuntime('INFO', 'SECT', 'sect_authority.snapshot_applied', '宗务界面已消费 authority sect snapshot', {
+                reason,
+                sectId: snapshot.sectId,
+                sceneVersion: snapshot.sceneVersion,
+                rosterCount: this.sectRosterViewModels.length,
+                candidateCount: this.sectCandidateViewModels.length,
+                taskCount: this.sectAuthorityTaskViewModels.length,
+                contributionBalance: this.sectContributionViewModel?.balance ?? 0,
+                institutionCount: this.sectInstitutionViewModels.length,
+                productionCount: this.sectProductionViewModels.length,
+                buildingCatalogCount: this.sectBuildingCatalogViewModels.length,
+                cultivationStage: this.sectCultivationViewModel?.realmStage ?? null,
+                eventChoiceCount: this.sectEventChoiceViewModels.length,
+                resolvedEventCount: this.sectResolvedEventViewModels.length,
+                omenCount: this.sectOmenViewModels.length,
+                diaryCount: this.sectDiaryViewModels.length,
+                eventFeedbackCount: this.sectEventFeedbackViewModels.length,
+                policyCount: this.sectPolicyViewModels.length,
+                goalCount: this.sectGoalViewModels.length,
+                crisisCount: this.sectCrisisViewModels.length,
+                treatmentCount: this.sectTreatmentViewModels.length,
+                monthlyAssessmentLatestMonth: this.sectMonthlyAssessmentViewModel?.latestMonthText ?? null,
+            });
+        }
+    }
+
+    private refreshSectAuthorityViewModels(snapshot: SectAuthoritySnapshot): void {
+        const disciples = snapshot.state.disciples ?? {};
+        const contribution = snapshot.state.contribution;
+        this.sectArtifactCraftViewModels = this.buildSectArtifactCraftViewModels();
+        this.sectArtifactViewModels = Object.values(snapshot.state.inventory?.artifacts ?? {})
+            .sort((left, right) => left.item_id.localeCompare(right.item_id))
+            .map((artifact) => this.buildSectArtifactViewModel(artifact, snapshot));
+        this.sectRosterViewModels = Object.values(disciples)
+            .sort((left, right) => left.disciple_id.localeCompare(right.disciple_id))
+            .map((disciple) => this.buildSectRosterViewModel(disciple, contribution.accounts?.[disciple.disciple_id], snapshot));
+        this.sectCandidateViewModels = Object.values(snapshot.state.admissions?.candidates ?? {})
+            .sort((left, right) => left.candidate_id.localeCompare(right.candidate_id))
+            .map((candidate) => this.buildSectCandidateViewModel(candidate));
+        const tasks = Object.values(snapshot.state.tasks ?? {})
+            .sort((left, right) => left.task_id.localeCompare(right.task_id))
+            .map((task) => this.buildSectTaskViewModel(task, disciples, snapshot.taskDispatch?.[task.task_id]));
+        this.sectAuthorityTaskViewModels = tasks;
+        this.sectContributionViewModel = this.buildSectContributionViewModel(snapshot);
+        this.sectBuildingSummaryViewModel = this.buildSectBuildingSummaryViewModel(snapshot);
+        this.sectBuildingCatalogViewModels = this.buildSectBuildingCatalogViewModels(snapshot);
+        this.sectAffairsOverviewViewModel = this.buildSectAffairsOverviewViewModel(snapshot, tasks);
+        this.sectInstitutionViewModels = Object.values(snapshot.state.institutions?.by_id ?? {})
+            .sort((left, right) => left.institution_id.localeCompare(right.institution_id))
+            .map((institution) => this.buildSectInstitutionViewModel(institution, snapshot));
+        this.sectProductionViewModels = Object.values(snapshot.state.productions ?? {})
+            .sort((left, right) => left.production_id.localeCompare(right.production_id))
+            .map((production) => this.buildSectProductionViewModel(production, disciples));
+        this.sectCultivationViewModel = this.buildSectCultivationViewModel(snapshot);
+        this.sectPolicyViewModels = this.buildSectPolicyViewModels(snapshot);
+        this.sectEventChoiceViewModels = Object.values(snapshot.state.events?.active_events ?? {})
+            .filter((event) => (event.options?.length ?? 0) > 0)
+            .sort((left, right) => right.severity - left.severity || left.event_id.localeCompare(right.event_id))
+            .map((event) => this.buildSectEventChoiceViewModel(event, disciples, snapshot.state.time?.calendar_day));
+        this.sectResolvedEventViewModels = (snapshot.state.events?.resolved_events ?? [])
+            .slice()
+            .sort((left, right) => right.resolved_at_version - left.resolved_at_version || left.event_id.localeCompare(right.event_id))
+            .slice(0, 6)
+            .map((event) => ({
+                id: event.event_id,
+                kind: event.kind,
+                outcome: event.outcome,
+                summary: event.summary,
+                resolvedAtVersion: event.resolved_at_version,
+            }));
+        this.sectOmenViewModels = Object.values(snapshot.state.events?.active_events ?? {})
+            .sort((left, right) => right.severity - left.severity || left.event_id.localeCompare(right.event_id))
+            .map((event) => this.buildSectOmenViewModel(event, disciples));
+        this.sectDiaryViewModels = (snapshot.diary ?? [])
+            .slice()
+            .sort((left, right) => right.version - left.version || right.related_tick - left.related_tick)
+            .slice(0, 8)
+            .map((entry) => this.buildSectDiaryViewModel(entry));
+        this.sectEventFeedbackViewModels = (snapshot.eventSummaries ?? [])
+            .slice()
+            .sort((left, right) => right.version - left.version || right.related_tick - left.related_tick)
+            .slice(0, 10)
+            .map((entry) => this.buildSectEventFeedbackViewModel(entry));
+        this.sectGoalViewModels = Object.values(snapshot.state.goals?.by_id ?? {})
+            .sort((left, right) => left.goal_id.localeCompare(right.goal_id))
+            .map((goal) => this.buildSectGoalViewModel(goal, disciples));
+        this.sectResolvedGoalViewModels = (snapshot.state.goals?.resolved ?? [])
+            .slice()
+            .sort((left, right) => right.resolved_at_version - left.resolved_at_version || left.goal_id.localeCompare(right.goal_id))
+            .slice(0, 6)
+            .map((goal) => ({
+                id: goal.goal_id,
+                outcome: goal.outcome,
+                summary: goal.summary,
+                resolvedAtVersion: goal.resolved_at_version,
+            }));
+        this.sectCrisisViewModels = Object.values(snapshot.state.events?.active_events ?? {})
+            .filter((event) => Boolean(event.chain_id) || Boolean(event.chain_stage) || (event.tags ?? []).includes('crisis'))
+            .sort((left, right) => right.severity - left.severity || left.event_id.localeCompare(right.event_id))
+            .map((event) => this.buildSectCrisisViewModel(event, disciples, snapshot.state.time?.calendar_day));
+        this.sectTreatmentViewModels = this.buildSectTreatmentViewModels(snapshot);
+        this.sectOrderViewModel = this.buildSectOrderViewModel(snapshot.state.order);
+        this.sectMonthlyAssessmentViewModel = this.buildSectMonthlyAssessmentViewModel(snapshot);
+    }
+
+    private buildSectRosterViewModel(
+        disciple: SectRuntimeDiscipleSnapshot,
+        account?: SectAuthorityContributionAccountSnapshot,
+        snapshot?: SectAuthoritySnapshot,
+    ): SectRosterRenderViewModel {
+        const promotion = this.buildSectPromotionProjectionViewModel(disciple, account, snapshot);
+        return {
+            id: disciple.disciple_id,
+            name: disciple.name,
+            identity: disciple.identity,
+            identityText: this.formatSectIdentityRank(disciple.identity),
+            realmStage: this.formatSectRealmStage(disciple.realm.stage),
+            aptitudeText: this.formatSectAptitudeText(disciple.aptitude),
+            assignmentKind: disciple.assignment_kind,
+            workTargetText: disciple.work_target.description || disciple.work_target.task_id || disciple.work_target.building_id || '无',
+            needsText: this.formatSectNeedsText(disciple.needs),
+            supportText: this.formatSectSupportText(disciple.support),
+            contributionText: `贡 ${account?.balance ?? 0}/${account?.earned_total ?? 0}`,
+            hpText: `HP ${disciple.hp}/${disciple.max_hp} 满${disciple.satisfaction ?? 0} 忠${disciple.loyalty ?? 0}`,
+            equipmentText: this.formatSectEquipmentText(disciple, snapshot),
+            relationshipText: this.formatSectDiscipleRelationshipText(disciple),
+            emotionText: this.formatSectDiscipleEmotionText(disciple),
+            recentExperienceText: this.formatSectDiscipleRecentExperienceText(disciple),
+            memoryText: this.formatSectDiscipleMemoryText(disciple),
+            moodReasonText: this.formatSectDiscipleMoodReasonText(disciple),
+            promotion,
+        };
+    }
+
+    private buildSectArtifactCraftViewModels(): SectArtifactCraftRenderViewModel[] {
+        return ARTIFACT_CRAFT_ORDER.map((artifactType) => ({
+            type: artifactType,
+            typeLabel: this.formatSectArtifactType(artifactType),
+            slotLabel: this.formatSectArtifactSlot(this.getSectArtifactSlotForType(artifactType)),
+            materialText: ARTIFACT_CRAFT_MATERIAL_TEXT[artifactType] ?? 'authority 校验材料',
+        }));
+    }
+
+    private buildSectArtifactViewModel(
+        artifact: SectAuthorityArtifactSnapshot,
+        snapshot: SectAuthoritySnapshot,
+    ): SectArtifactRenderViewModel {
+        const slot = this.getSectArtifactSlotForType(artifact.type);
+        const boundDiscipleId = artifact.bound_disciple_id ?? null;
+        const boundDisciple = boundDiscipleId ? snapshot.state.disciples?.[boundDiscipleId] : null;
+        const durability = artifact.durability ?? 0;
+        const maxDurability = artifact.max_durability || 100;
+        const missingDurability = Math.max(0, maxDurability - durability);
+        return {
+            id: artifact.item_id,
+            type: artifact.type,
+            typeLabel: this.formatSectArtifactType(artifact.type),
+            slot,
+            slotLabel: this.formatSectArtifactSlot(slot),
+            quality: artifact.quality ?? 1,
+            qualityText: `品${artifact.quality ?? 1}`,
+            durability,
+            maxDurability,
+            durabilityText: `耐${durability}/${maxDurability}`,
+            boundDiscipleId,
+            boundDiscipleName: boundDisciple?.name ?? boundDiscipleId ?? '未装备',
+            statsText: this.formatSectArtifactStats(artifact.stats ?? {}),
+            repairNeedText: missingDurability > 0 ? `需修${missingDurability} 耐久，材料由 authority 校验` : '无需修理',
+            craftMaterialText: ARTIFACT_CRAFT_MATERIAL_TEXT[artifact.type] ?? 'authority 校验材料',
+            canEquip: !boundDiscipleId && durability > 0 && this.hasDiscipleWithOpenArtifactSlot(snapshot, slot),
+            canUnequip: Boolean(boundDiscipleId),
+            canRepair: missingDurability > 0,
+        };
+    }
+
+    private buildSectCandidateViewModel(candidate: SectAuthorityCandidateSnapshot): SectCandidateRenderViewModel {
+        return {
+            id: candidate.candidate_id,
+            name: candidate.name,
+            source: candidate.source,
+            identity: candidate.identity,
+            realmStage: this.formatSectRealmStage(candidate.realm.stage),
+            aptitudeText: this.formatSectAptitudeText(candidate.aptitude),
+            needsText: this.formatSectNeedsText(candidate.needs),
+            supportText: this.formatSectSupportText(candidate.support),
+            hpText: `HP ${candidate.hp}/${candidate.max_hp}`,
+        };
+    }
+
+    private formatSectEquipmentText(disciple: SectRuntimeDiscipleSnapshot, snapshot?: SectAuthoritySnapshot): string {
+        const equipment = disciple.equipment;
+        if (!equipment) {
+            return '装 未配法器';
+        }
+        const artifacts = snapshot?.state.inventory?.artifacts ?? {};
+        const parts = [
+            this.formatSectEquipmentSlotText('weapon', equipment.weapon, artifacts),
+            this.formatSectEquipmentSlotText('robe', equipment.robe, artifacts),
+            this.formatSectEquipmentSlotText('tool', equipment.tool, artifacts),
+            this.formatSectEquipmentSlotText('special', equipment.special, artifacts),
+        ].filter((entry) => entry.length > 0);
+        return parts.length > 0 ? `装 ${parts.join(' / ')}` : '装 未配法器';
+    }
+
+    private formatSectEquipmentSlotText(
+        slot: SectAuthorityArtifactSlot,
+        itemId: string | undefined,
+        artifacts: Record<string, SectAuthorityArtifactSnapshot>,
+    ): string {
+        if (!itemId) {
+            return '';
+        }
+        const artifact = artifacts[itemId];
+        const typeLabel = this.formatSectArtifactType(artifact?.type ?? itemId);
+        const quality = artifact?.quality ?? 1;
+        const durability = artifact?.durability ?? 0;
+        return `${this.formatSectArtifactSlot(slot)}:${typeLabel}(品${quality} 耐${durability})`;
+    }
+
+    private formatSectArtifactType(type: string): string {
+        switch (type) {
+            case 'sword':
+                return '法剑';
+            case 'robe':
+                return '法袍';
+            case 'farm_tool':
+                return '工具';
+            case 'alchemy_furnace':
+                return '丹炉';
+            case 'formation_disk':
+                return '阵盘';
+            default:
+                return type || '未知法器';
+        }
+    }
+
+    private formatSectArtifactSlot(slot: SectAuthorityArtifactSlot): string {
+        switch (slot) {
+            case 'weapon':
+                return '兵';
+            case 'robe':
+                return '袍';
+            case 'tool':
+                return '具';
+            case 'special':
+                return '奇';
+            default:
+                return slot || '槽';
+        }
+    }
+
+    private getSectArtifactSlotForType(type: SectAuthorityArtifactType): SectAuthorityArtifactSlot {
+        switch (type) {
+            case 'sword':
+                return 'weapon';
+            case 'robe':
+                return 'robe';
+            case 'farm_tool':
+            case 'alchemy_furnace':
+                return 'tool';
+            case 'formation_disk':
+                return 'special';
+            default:
+                return 'special';
+        }
+    }
+
+    private formatSectArtifactStats(stats: Record<string, number>): string {
+        const parts = Object.entries(stats)
+            .filter(([, value]) => typeof value === 'number' && value !== 0)
+            .sort(([left], [right]) => left.localeCompare(right))
+            .map(([key, value]) => `${this.formatSectArtifactStatKey(key)}+${value}`);
+        return parts.join(' / ') || '无固定加成';
+    }
+
+    private formatSectArtifactStatKey(key: string): string {
+        switch (key) {
+            case 'combat':
+                return '战';
+            case 'production':
+                return '产';
+            case 'cultivation':
+                return '修';
+            case 'exploration':
+                return '探';
+            case 'injury_mitigation':
+                return '伤减';
+            default:
+                return key;
+        }
+    }
+
+    private hasDiscipleWithOpenArtifactSlot(snapshot: SectAuthoritySnapshot, slot: SectAuthorityArtifactSlot): boolean {
+        return Object.values(snapshot.state.disciples ?? {}).some((disciple) => !this.getSectDiscipleEquippedArtifactId(disciple, slot));
+    }
+
+    private getSectDiscipleEquippedArtifactId(
+        disciple: SectRuntimeDiscipleSnapshot,
+        slot: SectAuthorityArtifactSlot,
+    ): string | null {
+        switch (slot) {
+            case 'weapon':
+                return disciple.equipment?.weapon ?? null;
+            case 'robe':
+                return disciple.equipment?.robe ?? null;
+            case 'tool':
+                return disciple.equipment?.tool ?? null;
+            case 'special':
+                return disciple.equipment?.special ?? null;
+            default:
+                return null;
+        }
+    }
+
+    private buildSectTaskViewModel(
+        task: SectAuthorityTaskSnapshot,
+        disciples: Record<string, SectRuntimeDiscipleSnapshot>,
+        dispatchProjection?: SectAuthorityTaskDispatchProjection,
+    ): SectTaskRenderViewModel {
+        const taskType = task.type ?? this.inferSectTaskType(task.kind);
+        const assignedDiscipleNames = (task.assigned_disciple_ids ?? [])
+            .map((discipleId) => disciples[discipleId]?.name ?? discipleId)
+            .filter((entry) => entry.length > 0);
+        const recommendedDiscipleIds = dispatchProjection?.recommended_disciple_ids ?? [];
+        const recommendedDiscipleNames = recommendedDiscipleIds
+            .map((discipleId) => disciples[discipleId]?.name ?? discipleId)
+            .filter((entry) => entry.length > 0);
+        const progressText =
+            task.required_progress_days > 0
+                ? `${task.completed_progress_days}/${task.required_progress_days} 日`
+                : `${task.progress_ticks} tick`;
+        const rewardParts: string[] = [];
+        if (task.contribution_reward > 0) {
+            rewardParts.push(`贡 ${task.contribution_reward}`);
+        }
+        Object.entries(task.reward_resources ?? {}).forEach(([kind, amount]) => {
+            if ((amount ?? 0) > 0) {
+                rewardParts.push(`${kind}:${amount}`);
+            }
+        });
+        const reputationRewardText = (task.reputation_reward ?? 0) > 0 ? `名望+${task.reputation_reward}` : '名望+0';
+        const relationRewardText = Object.entries(task.relation_reward ?? {})
+            .filter(([, amount]) => (amount ?? 0) > 0)
+            .map(([faction, amount]) => `${faction}+${amount}`)
+            .join(' / ');
+        const requirementParts: string[] = [];
+        if (task.min_identity) {
+            requirementParts.push(this.formatSectIdentityRank(task.min_identity));
+        }
+        if (task.min_realm) {
+            requirementParts.push(this.formatSectRealmStage(task.min_realm));
+        }
+        const aptitude = task.required_aptitude;
+        if (aptitude) {
+            const aptitudeText = this.formatSectAptitudeText(aptitude);
+            if (aptitudeText !== '灵0 悟0 体0 心0 运0') {
+                requirementParts.push(aptitudeText);
+            }
+        }
+        const dispatchCostText = Object.entries(task.dispatch_cost ?? {})
+            .filter(([, amount]) => (amount ?? 0) > 0)
+            .map(([kind, amount]) => `${kind}:${amount}`)
+            .join(' / ');
+        const successRate =
+            typeof task.success_rate === 'number' && task.success_rate > 0
+                ? task.success_rate
+                : typeof dispatchProjection?.recommended_success_rate === 'number' && dispatchProjection.recommended_success_rate > 0
+                  ? dispatchProjection.recommended_success_rate
+                  : null;
+        const blockedReason = this.getSectTaskDispatchBlockedReason(task, recommendedDiscipleIds, dispatchProjection?.blocked_reason);
+        const canDispatch = !blockedReason;
+        const injuryRiskText = this.formatSectTaskInjuryRisk(taskType, task.risk ?? 0);
+        const dispatchCostDisplay = dispatchCostText || '无';
+        const possibleCostText = [
+            dispatchCostDisplay !== '无' ? `派遣成本 ${dispatchCostDisplay}` : '',
+            injuryRiskText,
+            task.crisis_clue ? `线索/危机 ${task.crisis_clue}` : '',
+        ]
+            .filter((entry) => entry.length > 0)
+            .join(' / ');
+        return {
+            id: task.task_id,
+            kind: task.kind,
+            taskType,
+            typeLabel: this.formatSectTaskType(taskType),
+            gradeText: this.formatSectTaskGrade(task.grade),
+            title: task.title,
+            status: task.status,
+            priority: task.priority ?? 0,
+            risk: task.risk ?? 0,
+            riskText: `风险 ${task.risk ?? 0}/100`,
+            injuryRiskText,
+            successRate,
+            successRateText: successRate === null ? '成功率 authority 待结算' : `成功率 ${successRate}%`,
+            evaluationText: this.formatSectTaskEvaluation(task.evaluation),
+            maxAssignees: task.max_assignees ?? 1,
+            recommendedDiscipleIds,
+            recommendedDiscipleNames,
+            assignedDiscipleNames,
+            progressText,
+            requirementText: requirementParts.join(' / ') || '无',
+            teamRequirementText: `队伍上限 ${task.max_assignees ?? 1} / ${requirementParts.join(' / ') || '无'}`,
+            dispatchCostText: dispatchCostDisplay,
+            rewardText: rewardParts.join(' / ') || '无',
+            possibleCostText: possibleCostText || '无',
+            reputationRewardText,
+            relationRewardText: relationRewardText || '关系+0',
+            crisisClueText: task.crisis_clue || '无',
+            canDispatch,
+            dispatchBlockedReason: blockedReason,
+        };
+    }
+
+    private buildSectContributionViewModel(snapshot: SectAuthoritySnapshot): SectContributionRenderViewModel | null {
+        const disciples = Object.values(snapshot.state.disciples ?? {}).sort((left, right) => left.disciple_id.localeCompare(right.disciple_id));
+        const starterDisciple = disciples[0] ?? null;
+        if (!starterDisciple) {
+            return null;
+        }
+        const contribution = snapshot.state.contribution;
+        const account = contribution.accounts?.[starterDisciple.disciple_id] as SectAuthorityContributionAccountSnapshot | undefined;
+        const starterMonthlyPurchases = contribution.monthly_purchases?.[starterDisciple.disciple_id] ?? {};
+        const rules = Object.values(contribution.treasury_rules ?? {})
+            .sort((left, right) => left.exchange_item_id.localeCompare(right.exchange_item_id))
+            .map((rule) => this.buildSectContributionRuleViewModel(rule, starterMonthlyPurchases[rule.exchange_item_id] ?? 0));
+        return {
+            starterDiscipleId: starterDisciple.disciple_id,
+            starterDiscipleName: starterDisciple.name,
+            balance: account?.balance ?? 0,
+            earnedTotal: account?.earned_total ?? 0,
+            spentTotal: account?.spent_total ?? 0,
+            redeemabilityRatio: contribution.redeemability_ratio ?? 0,
+            outstandingContribution: contribution.outstanding_contribution ?? 0,
+            treasuryValue: contribution.treasury_value ?? 0,
+            rules,
+        };
+    }
+
+    private buildSectContributionRuleViewModel(
+        rule: SectAuthorityExchangeRuleSnapshot,
+        purchased: number,
+    ): SectContributionRuleRenderViewModel {
+        return {
+            id: rule.exchange_item_id,
+            name: rule.name,
+            cost: rule.contribution_cost,
+            itemRef: rule.item_ref,
+            monthlyLimit: rule.monthly_limit,
+            purchased,
+            enabled: rule.enabled,
+        };
+    }
+
+    private buildSectAffairsOverviewViewModel(
+        snapshot: SectAuthoritySnapshot,
+        tasks: SectTaskRenderViewModel[],
+    ): SectAffairsOverviewRenderViewModel {
+        const disciples = Object.values(snapshot.state.disciples ?? {});
+        const idleCount = disciples.filter((disciple) => disciple.assignment_kind === 'idle').length;
+        const publishedTaskCount = tasks.filter((task) => task.status === 'published').length;
+        const damagedBuildings = Object.values(snapshot.state.buildings ?? {}).filter((building) => building.phase === 'damaged');
+        const lowEfficiencyBuildings = Object.values(snapshot.state.buildings ?? {}).filter((building) => (building.efficiency ?? 100) < 100);
+        const insufficientBuilds = (snapshot.buildingCatalog ?? []).filter((entry) => (entry.blockers ?? []).includes('insufficient_resources'));
+        const blockedProductions = Object.values(snapshot.state.productions ?? {}).filter(
+            (production) => production.status === 'blocked' || Object.keys(production.shortage ?? {}).length > 0,
+        );
+        const highRiskTasks = tasks.filter((task) => task.risk >= 60 && task.status !== 'completed' && task.status !== 'cancelled');
+        const highSeverityEvents = Object.values(snapshot.state.events?.active_events ?? {}).filter((event) => event.severity >= 3);
+        const crisisChoices = Object.values(snapshot.state.events?.active_events ?? {}).filter((event) => event.chain_stage === 'choice');
+        const lowSatisfaction = disciples.filter((disciple) => (disciple.satisfaction ?? 100) < 55);
+        const highPressure = disciples.filter((disciple) => (disciple.pressure ?? 0) >= 60);
+        const treatmentBacklog = disciples.filter((disciple) => disciple.injury_level > 0 || disciple.hp < disciple.max_hp);
+        const institutions = Object.values(snapshot.state.institutions?.by_id ?? {});
+        const unmanaged = institutions.filter((institution) => institution.enabled && !institution.manager_disciple_id);
+        const lowEfficiencyInstitutions = institutions.filter((institution) => institution.enabled && (institution.efficiency ?? 100) < 100);
+        const order = snapshot.state.order;
+        const activeGoals = Object.values(snapshot.state.goals?.by_id ?? {}).filter((goal) => goal.status === 'active');
+        const advice: string[] = [];
+        if (unmanaged.length > 0 && disciples.length > 0) {
+            advice.push(`补管事:${this.formatSectInstitutionKind(unmanaged[0].kind || unmanaged[0].institution_id)}`);
+        }
+        if (damagedBuildings.length > 0 || lowEfficiencyBuildings.length > 0) {
+            advice.push('优先修复低效建筑');
+        }
+        if (blockedProductions.length > 0 || insufficientBuilds.length > 0) {
+            advice.push('补材料或调整生产');
+        }
+        if (highRiskTasks.length > 0 || highSeverityEvents.length > 0 || crisisChoices.length > 0) {
+            advice.push('高风险先派强弟子/处理危机');
+        }
+        if (lowSatisfaction.length > 0 || highPressure.length > 0) {
+            advice.push('检查供养、居舍、膳堂与月例压力');
+        }
+        if (treatmentBacklog.length > 0) {
+            advice.push('药庐优先处理伤病与恢复');
+        }
+        if ((order?.internal_strife_risk ?? 0) >= 50) {
+            advice.push('山门秩序偏低，需压制失序风险');
+        }
+        if (activeGoals.length > 0) {
+            advice.push(`盯目标:${activeGoals[0].title}`);
+        }
+
+        return {
+            staffingText: `弟子 ${disciples.length} / 空闲 ${idleCount} / 待派任务 ${publishedTaskCount} / 缺管事 ${unmanaged.length}`,
+            maintenanceText: `${damagedBuildings.length} 受损 / ${lowEfficiencyBuildings.length} 低效 / ${this.sectBuildingSummaryViewModel?.maintenancePressureText ?? '维护压力由 authority 目录声明'}`,
+            materialText: `${blockedProductions.length} 生产瓶颈 / ${insufficientBuilds.length} 建造资源阻断`,
+            riskText: `${highRiskTasks.length} 高风险任务 / ${highSeverityEvents.length} 高危事件 / 危机抉择 ${crisisChoices.length} / tension ${snapshot.state.events?.tension ?? 0} / 失序 ${order?.internal_strife_risk ?? 0}`,
+            satisfactionText: `${lowSatisfaction.length} 满意偏低 / ${highPressure.length} 压力偏高`,
+            institutionEfficiencyText: `${institutions.length} 机构 / ${lowEfficiencyInstitutions.length} 低效 / ${unmanaged.length} 未配管事`,
+            adviceText: advice.join('；') || '暂无强制建议，维持 authority 当前节奏',
+        };
+    }
+
+    private buildSectInstitutionViewModel(
+        institution: SectAuthorityInstitutionSnapshot,
+        snapshot: SectAuthoritySnapshot,
+    ): SectInstitutionRenderViewModel {
+        const manager = institution.manager_disciple_id ? snapshot.state.disciples?.[institution.manager_disciple_id] : null;
+        const managerEffect = institution.manager_effect;
+        const gatePolicy = institution.gate_policy;
+        const caveSlots = institution.cave_slots ?? [];
+        const occupiedCaveSlots = caveSlots.filter((slot) => slot.occupied_by).length;
+        const bottlenecks: string[] = [];
+        if (!institution.enabled) {
+            bottlenecks.push('停用');
+        }
+        if (!institution.manager_disciple_id) {
+            bottlenecks.push('缺管事');
+        }
+        if ((institution.efficiency ?? 100) < 100) {
+            bottlenecks.push(`效率${institution.efficiency ?? 100}%`);
+        }
+        if ((institution.exchange_pressure ?? 0) > 0) {
+            bottlenecks.push(`兑付压力${institution.exchange_pressure}`);
+        }
+        if (institution.institution_id === 'cave' && caveSlots.length > 0 && occupiedCaveSlots >= caveSlots.length) {
+            bottlenecks.push('洞府满席');
+        }
+        return {
+            id: institution.institution_id,
+            kind: institution.kind,
+            label: this.formatSectInstitutionKind(institution.kind || institution.institution_id),
+            level: institution.level,
+            enabled: institution.enabled,
+            managerDiscipleId: institution.manager_disciple_id ?? null,
+            managerText: manager ? `${manager.name}(${this.formatSectIdentityRank(manager.identity)})` : '未任命',
+            managerEffectText: managerEffect
+                ? `评分${managerEffect.manager_score} 效+${managerEffect.efficiency_bonus} 忠${managerEffect.loyalty_modifier} 伤-${managerEffect.injury_penalty}`
+                : 'authority 未声明管事效果',
+            capacityText: `容量${institution.capacity ?? 0} 舒适${institution.comfort ?? 0} 治疗${institution.healing_power ?? 0} 修炼+${institution.cultivation_support ?? 0}`,
+            efficiencyText: `效率${institution.efficiency ?? 100}% 任务+${institution.task_capacity_bonus ?? 0}`,
+            bottleneckText: bottlenecks.join('、') || '无瓶颈',
+            gatePolicyText: gatePolicy
+                ? `山门${gatePolicy.open_to_visitors ? '开放' : '关闭'} 游方${gatePolicy.allow_wandering_cultivators ? '允许' : '禁止'} 守卫${gatePolicy.guard_disciple_ids?.length ?? 0}`
+                : '非山门',
+            caveSlotText:
+                caveSlots.length > 0
+                    ? `${occupiedCaveSlots}/${caveSlots.length} 席 ${caveSlots
+                          .map((slot) => `${slot.slot_id}:${slot.occupied_by ?? '空'}@${slot.reserved_until_day ?? 0}`)
+                          .join(' | ')}`
+                    : '无洞府席位',
+            exchangeText:
+                institution.institution_id === 'treasury'
+                    ? `兑换${institution.public_exchange_enabled ? '开放' : '关闭'} 压力${institution.exchange_pressure ?? 0}`
+                    : '非宝库',
+            effectSummaryText: (institution.effect_summary ?? []).join(' / ') || 'authority 未声明效果摘要',
+            recentResultText: this.buildSectInstitutionRecentResultText(snapshot, institution),
+            operationHintText: this.buildSectInstitutionOperationHint(institution),
+            assignedBuildingCount: institution.assigned_building_ids?.length ?? 0,
+            activeTaskCount: institution.active_task_ids?.length ?? 0,
+        };
+    }
+
+    private buildSectInstitutionRecentResultText(
+        snapshot: SectAuthoritySnapshot,
+        institution: SectAuthorityInstitutionSnapshot,
+    ): string {
+        const latest = (snapshot.eventSummaries ?? [])
+            .filter((entry) =>
+                entry.event_type === 'institution.changed' ||
+                entry.summary.includes(this.formatSectInstitutionKind(institution.kind || institution.institution_id)) ||
+                entry.summary.includes(institution.institution_id),
+            )
+            .sort((left, right) => right.version - left.version || right.related_tick - left.related_tick)
+            .slice(0, 2)
+            .map((entry) => `v${entry.version}:${entry.summary}`);
+        return latest.join(' | ') || '暂无机构专属近期结果';
+    }
+
+    private buildSectInstitutionOperationHint(institution: SectAuthorityInstitutionSnapshot): string {
+        switch (institution.institution_id) {
+            case 'gate':
+                return '按钮“山门”提交 SetGatePolicy；“管事”提交 AssignInstitutionManager';
+            case 'main_hall':
+                return '主殿/工坊侧读取法器制作与装备摘要；按钮“铸器/装备/卸具”只提交 authority 意图';
+            case 'treasury':
+                return '按钮“兑规”提交 SetExchangeRule；“管事”提交 AssignInstitutionManager';
+            case 'medicine_hut':
+                return '药庐读取治疗队列与法器修理需求；按钮“修器”只提交 RepairArtifact，治疗只看 authority 日结';
+            case 'cave':
+                return '按钮“洞府”提交 ReserveCave；“管事”提交 AssignInstitutionManager';
+            default:
+                return '按钮“管事”提交 AssignInstitutionManager';
+        }
+    }
+
+    private buildSectProductionViewModel(
+        production: SectAuthorityProductionSnapshot,
+        disciples: Record<string, SectRuntimeDiscipleSnapshot>,
+    ): SectProductionRenderViewModel {
+        const assignedDiscipleNames = (production.assigned_disciples ?? [])
+            .map((discipleId) => disciples[discipleId]?.name ?? discipleId)
+            .filter((entry) => entry.length > 0);
+        return {
+            id: production.production_id,
+            kind: production.kind,
+            status: production.status,
+            priority: production.priority ?? 0,
+            progressText: `${production.progress_days}/${Math.max(1, production.required_progress_days)} 日`,
+            cycleText: `${production.completed_cycles} 轮`,
+            targetCycleText: production.target_cycles && production.target_cycles > 0 ? `目标 ${production.target_cycles} 轮` : '持续',
+            assignedDiscipleNames,
+            inputText: this.formatSectResourceChangeText(production.input_cost),
+            outputText: this.formatSectResourceChangeText(production.output_reward),
+            bottleneckText:
+                production.shortage && Object.keys(production.shortage).length > 0
+                    ? `${production.blocked_reason || '资源短缺'} ${this.formatSectResourceChangeText(production.shortage)}`
+                    : '无瓶颈',
+        };
+    }
+
+    private buildSectBuildingSummaryViewModel(snapshot: SectAuthoritySnapshot): SectBuildingSummaryRenderViewModel {
+        const meta = snapshot.state.meta;
+        const buildings = Object.values(snapshot.state.buildings ?? {});
+        const damagedCount = buildings.filter((building) => building.phase === 'damaged').length;
+        const lowEfficiencyCount = buildings.filter((building) => (building.efficiency ?? 100) < 100).length;
+        const pressureParts = (snapshot.buildingCatalog ?? [])
+            .flatMap((entry) =>
+                (entry.existing_buildings ?? []).flatMap((instance) => {
+                    const cost = entry.maintenance_by_level?.[String(instance.level)];
+                    if (!this.hasSectResourceCost(cost)) {
+                        return [];
+                    }
+                    const maintenance = this.formatSectBuildingMaintenanceForLevel(entry, instance.level);
+                    return [`${entry.label || entry.definition_key}#${instance.building_id} ${maintenance}`];
+                }),
+            );
+        return {
+            level: meta?.level ?? 0,
+            expansion: meta?.expansion ?? buildings.length,
+            buildingLimit: meta?.building_limit ?? buildings.length,
+            maintenancePressureText: pressureParts.join(' | ') || '无维护压力',
+            damagedCount,
+            lowEfficiencyCount,
+        };
+    }
+
+    private buildSectBuildingCatalogViewModels(snapshot: SectAuthoritySnapshot): SectBuildingCatalogRenderViewModel[] {
+        const catalog = snapshot.buildingCatalog ?? [];
+        return catalog
+            .slice()
+            .sort((left, right) => left.definition_key.localeCompare(right.definition_key))
+            .map((entry) => this.buildSectBuildingCatalogViewModel(entry, snapshot.state.buildings ?? {}));
+    }
+
+    private buildSectBuildingCatalogViewModel(
+        entry: SectAuthorityBuildingCatalogEntry,
+        buildingState: Record<string, SectRuntimeBuildingSnapshot>,
+    ): SectBuildingCatalogRenderViewModel {
+        const instances = (entry.existing_buildings ?? [])
+            .map((instance) => {
+                const stateBuilding = buildingState[instance.building_id];
+                return {
+                    id: instance.building_id,
+                    level: stateBuilding?.level ?? instance.level,
+                    phase: stateBuilding?.phase ?? instance.phase,
+                    efficiency: stateBuilding?.efficiency ?? instance.efficiency ?? 100,
+                    durability: stateBuilding?.durability ?? instance.durability ?? 100,
+                    maintenanceDebt: stateBuilding?.maintenance_debt ?? instance.maintenance_debt ?? 0,
+                    damagedReason: stateBuilding?.damaged_reason ?? instance.damaged_reason ?? 'none',
+                };
+            })
+            .sort((left, right) => left.id.localeCompare(right.id));
+        return {
+            definitionKey: entry.definition_key,
+            label: entry.label || this.formatSectBuildingDefinitionKey(entry.definition_key),
+            maxLevel: entry.max_level ?? 1,
+            currentCount: entry.current_count ?? instances.length,
+            maxCount: entry.max_count ?? 0,
+            unlocked: Boolean(entry.unlocked),
+            canBuild: Boolean(entry.can_build),
+            unlockText: this.formatSectBuildingUnlockText(entry),
+            blockerText: this.formatSectBuildingBlockers(entry.blockers ?? []),
+            buildCostText: this.formatSectResourceChangeText(entry.build_cost),
+            upgradeText: this.formatSectBuildingUpgradeText(entry),
+            maintenanceText: this.formatSectBuildingMaintenanceText(entry),
+            instances,
+        };
+    }
+
+    private formatSectBuildingDefinitionKey(definitionKey: string): string {
+        switch (definitionKey) {
+            case 'main_hall':
+                return '主殿';
+            case 'warehouse':
+                return '仓房';
+            case 'gate':
+            case 'guard_tower':
+                return '护山台';
+            default:
+                return definitionKey.replace(/_/g, ' ');
+        }
+    }
+
+    private formatSectInstitutionKind(kind: string): string {
+        switch (kind) {
+            case 'gate':
+                return '山门';
+            case 'main_hall':
+                return '主殿';
+            case 'task_hall':
+                return '任务堂';
+            case 'treasury':
+                return '功勋宝库';
+            case 'dormitory':
+                return '居舍';
+            case 'canteen':
+                return '膳堂';
+            case 'medicine_hut':
+                return '药庐';
+            case 'cave':
+                return '洞府';
+            default:
+                return kind.replace(/_/g, ' ');
+        }
+    }
+
+    private formatSectBuildingUnlockText(entry: SectAuthorityBuildingCatalogEntry): string {
+        const parts = [`宗门Lv.${entry.unlock_sect_level ?? 1}`];
+        if ((entry.required_main_hall_level ?? 0) > 0) {
+            parts.push(`主殿Lv.${entry.required_main_hall_level}`);
+        }
+        return `${entry.unlocked ? '已解锁' : '未解锁'}(${parts.join(' + ')})`;
+    }
+
+    private formatSectBuildingBlockers(blockers: string[]): string {
+        if (blockers.length === 0) {
+            return '无';
+        }
+        return blockers
+            .map((blocker) => {
+                if (blocker.startsWith('sect_level_')) {
+                    return blocker.replace('sect_level_', '宗门Lv.').replace('_required', '');
+                }
+                if (blocker.startsWith('main_hall_level_')) {
+                    return blocker.replace('main_hall_level_', '主殿Lv.').replace('_required', '');
+                }
+                if (blocker.startsWith('building_limit_')) {
+                    return blocker.replace('building_limit_', '建筑上限').replace('_reached', '已满');
+                }
+                if (blocker.startsWith('definition_count_limit_')) {
+                    return blocker.replace('definition_count_limit_', '同类上限').replace('_reached', '已满');
+                }
+                if (blocker === 'insufficient_resources') {
+                    return '资源不足';
+                }
+                return blocker;
+            })
+            .join('、');
+    }
+
+    private formatSectBuildingUpgradeText(entry: SectAuthorityBuildingCatalogEntry): string {
+        const levels = Object.entries(entry.upgrade_cost_by_level ?? {})
+            .sort(([left], [right]) => Number(left) - Number(right))
+            .map(([level, cost]) => `Lv.${Number(level) + 1}:${this.formatSectResourceChangeText(cost)}`);
+        return levels.join(' | ') || '无升级';
+    }
+
+    private formatSectBuildingMaintenanceText(entry: SectAuthorityBuildingCatalogEntry): string {
+        const levels = Object.entries(entry.maintenance_by_level ?? {})
+            .sort(([left], [right]) => Number(left) - Number(right))
+            .map(([level, cost]) => `Lv.${level}/日:${this.formatSectResourceChangeText(cost)}`);
+        return levels.join(' | ') || '无维护';
+    }
+
+    private formatSectBuildingMaintenanceForLevel(entry: SectAuthorityBuildingCatalogEntry, level: number): string {
+        return `Lv.${level}/日:${this.formatSectResourceChangeText(entry.maintenance_by_level?.[String(level)])}`;
+    }
+
+    private buildSectCultivationViewModel(snapshot: SectAuthoritySnapshot): SectCultivationRenderViewModel | null {
+        const disciple = this.getPrimarySectDiscipleSnapshot(snapshot);
+        if (!disciple) {
+            return null;
+        }
+        const decision = disciple.cultivation_decision;
+        return {
+            discipleId: disciple.disciple_id,
+            discipleName: disciple.name,
+            assignmentKind: disciple.assignment_kind,
+            workTargetText: disciple.work_target.description || '无',
+            realmStage: this.formatSectRealmStage(disciple.realm.stage),
+            cultivationProgressText: `${disciple.realm.cultivation_points}/${decision?.required_points ?? '?'} (${decision?.progress_percent ?? 0}%)`,
+            breakthroughText: disciple.realm.ready_for_breakthrough
+                ? `可突破 / 失败 ${disciple.realm.failed_breakthrough_count}`
+                : `待修炼 / 失败 ${disciple.realm.failed_breakthrough_count}`,
+            decisionText: `日进 ${decision?.daily_gain ?? 0} / 成功 ${decision?.breakthrough_success_rate ?? 0}% / 风险 ${decision?.breakthrough_risk ?? 0}/${decision?.breakthrough_risk_limit ?? 0} / 耗灵石 ${decision?.breakthrough_spirit_stone_cost ?? 0}`,
+            aidText: `环境 +${decision?.environment_bonus ?? 0}% / 修炼丹 ${decision?.cultivation_pill_available ?? 0} / 突破丹 ${decision?.breakthrough_pill_available ?? 0}`,
+            omenText: `预兆 ${decision?.omen_status ?? 'none'}${decision?.omen_text ? ` / ${decision.omen_text}` : ''}`,
+            pressureText: `压强 ${disciple.pressure} / 伤势 ${disciple.injury_level}`,
+            supportText: `供养 粮${disciple.support.food_satisfied ? '足' : '缺'} 居${disciple.support.housing_satisfied ? '足' : '缺'} 医${disciple.support.medical_supported ? '足' : '缺'}`,
+            needsText: `日耗 灵谷${disciple.needs.daily_spirit_grain} / 休息${disciple.needs.daily_rest_ticks}`,
+            hpText: `HP ${disciple.hp}/${disciple.max_hp}`,
+        };
+    }
+
+    private buildSectPolicyViewModels(snapshot: SectAuthoritySnapshot): SectPolicyRenderViewModel[] {
+        const policies = snapshot.state.policies;
+        const presentation = policies?.presentation?.categories ?? {};
+        const fallbackCategories: Array<[SectAuthorityPolicyCategory, string]> = [
+            ['task', policies?.task_policy ?? ''],
+            ['resource', policies?.resource_policy ?? ''],
+            ['recruitment', policies?.recruitment_policy ?? ''],
+            ['cultivation', policies?.cultivation_policy ?? ''],
+        ];
+        const entries = fallbackCategories.map(([category, fallbackValue]) => {
+            const categoryPresentation = presentation[category];
+            return this.buildSectPolicyViewModel(category, fallbackValue, categoryPresentation);
+        });
+        return entries.filter((entry) => entry.value.length > 0);
+    }
+
+    private buildSectPolicyViewModel(
+        category: SectAuthorityPolicyCategory,
+        fallbackValue: string,
+        presentation?: SectAuthorityPolicyPresentationCategory,
+    ): SectPolicyRenderViewModel {
+        return {
+            category,
+            value: presentation?.current_value ?? fallbackValue,
+            label: presentation?.current_label ?? fallbackValue,
+            explanation: presentation?.explanation ?? 'authority 未下发该政策说明',
+            impactSummary: [...(presentation?.impact_summary ?? [])],
+            options: (presentation?.options ?? []).map((option) => ({
+                value: option.value,
+                label: option.label,
+                explanation: option.explanation,
+                impactSummary: [...(option.impact_summary ?? [])],
+            })),
+        };
+    }
+
+    private buildSectGoalViewModel(
+        goal: SectAuthorityGoalSnapshot,
+        disciples: Record<string, SectRuntimeDiscipleSnapshot>,
+    ): SectGoalRenderViewModel {
+        const focusDisciple =
+            goal.focus_disciple_id && disciples[goal.focus_disciple_id]
+                ? disciples[goal.focus_disciple_id].name
+                : goal.focus_disciple_id ?? '无指定弟子';
+        const targetProgress = Math.max(1, goal.target_progress ?? 0);
+        const progressText = goal.progress_text || `${goal.current_progress}/${targetProgress}`;
+        return {
+            id: goal.goal_id,
+            kind: goal.kind,
+            title: goal.title,
+            status: this.formatSectGoalStatus(goal.status),
+            progressText,
+            rewardText: this.formatSectGoalRewardText(goal),
+            outcomeText: goal.outcome_summary || '等待 authority 继续推进',
+            focusDiscipleText: focusDisciple,
+            tagsText: this.formatSectDiscipleTagText(goal.tags, '无标签'),
+            recommendationText: this.getSectGoalRecommendationText(goal),
+        };
+    }
+
+    private buildSectCrisisViewModel(
+        event: SectAuthorityEventSnapshot,
+        disciples: Record<string, SectRuntimeDiscipleSnapshot>,
+        currentCalendarDay?: number,
+    ): SectCrisisRenderViewModel {
+        const sourceName =
+            event.source_disciple_id && disciples[event.source_disciple_id]
+                ? disciples[event.source_disciple_id].name
+                : event.source_disciple_id ?? '无';
+        const stage = event.chain_stage || this.inferSectCrisisStage(event);
+        const optionSummaryText =
+            (event.options?.length ?? 0) > 0
+                ? `选项 ${event.options?.length ?? 0} 个，使用选1/选2/选3或搁置提交 authority 意图`
+                : '无选项，等待 authority 推进或过期';
+        return {
+            id: event.event_id,
+            title: event.title,
+            status: event.status,
+            stage,
+            stageText: this.formatSectCrisisStage(stage),
+            severity: event.severity,
+            sourceText: sourceName,
+            detail: event.omen_text || event.description,
+            expiresText: this.formatSectEventExpiresText(event.expires_at_day, currentCalendarDay),
+            previewText: this.formatSectEventResultPreviewText(event.result_preview),
+            optionSummaryText,
+            tagsText: this.formatSectDiscipleTagText(event.tags, '无标签'),
+            recommendationText: this.getSectCrisisRecommendationText(stage, event),
+        };
+    }
+
+    private buildSectTreatmentViewModels(snapshot: SectAuthoritySnapshot): SectTreatmentRenderViewModel[] {
+        const medicine = snapshot.state.institutions?.by_id?.medicine_hut;
+        const healingPower = medicine?.enabled ? medicine.healing_power ?? 0 : 0;
+        const treatmentCapacity = medicine?.enabled && healingPower > 0 ? Math.max(1, medicine.capacity ?? 0) : 0;
+        const treatmentTargets = Object.values(snapshot.state.disciples ?? {})
+            .filter((disciple) => disciple.injury_level > 0 || disciple.hp < disciple.max_hp)
+            .sort((left, right) => {
+                if ((right.injury_level ?? 0) !== (left.injury_level ?? 0)) {
+                    return (right.injury_level ?? 0) - (left.injury_level ?? 0);
+                }
+                const leftRatio = left.max_hp > 0 ? left.hp / left.max_hp : 1;
+                const rightRatio = right.max_hp > 0 ? right.hp / right.max_hp : 1;
+                if (leftRatio !== rightRatio) {
+                    return leftRatio - rightRatio;
+                }
+                return (right.pressure ?? 0) - (left.pressure ?? 0) || left.disciple_id.localeCompare(right.disciple_id);
+            });
+        const institutionText = medicine
+            ? `药庐 Lv${medicine.level} 容量${medicine.capacity ?? 0} 治疗${medicine.healing_power ?? 0}`
+            : '药庐未建成';
+        return treatmentTargets.map((disciple, index) => {
+            const inQueue = treatmentCapacity > 0 && index < treatmentCapacity;
+            const herbCost = disciple.injury_level >= 2 ? 2 : 1;
+            return {
+                discipleId: disciple.disciple_id,
+                discipleName: disciple.name,
+                queueText: inQueue ? `今日治疗位 ${index + 1}/${treatmentCapacity}` : `待排队 #${index + 1}`,
+                injuryText: `伤势 ${disciple.injury_level}`,
+                hpText: `HP ${disciple.hp}/${disciple.max_hp}`,
+                pressureText: `压力 ${disciple.pressure}`,
+                recoveryText:
+                    healingPower > 0
+                        ? `authority 日结预计 伤-${healingPower} / HP+${healingPower * 10} / 压-${healingPower * 2}`
+                        : '当前药庐无 authority 治疗能力',
+                herbCostText: `预计药材 ${herbCost}`,
+                institutionText,
+                recommendationText: inQueue
+                    ? '等待 authority 治疗结算'
+                    : treatmentCapacity > 0
+                      ? '名额不足，先处理更重伤者'
+                      : '药庐未启用或治疗能力不足',
+            };
+        });
+    }
+
+    private buildSectOrderViewModel(order: SectAuthorityOrderSnapshot | undefined): SectOrderRenderViewModel | null {
+        if (!order) {
+            return null;
+        }
+        return {
+            safetyText: `安全 ${order.safety}/100`,
+            disciplineText: `秩序 ${order.discipline}/100`,
+            strifeRiskText: `失序风险 ${order.internal_strife_risk}/100`,
+            summaryText: (order.summary ?? []).join(' / ') || 'authority 未声明秩序摘要',
+            recommendationText:
+                order.internal_strife_risk >= 60
+                    ? '优先补守卫、提升满意并降低事件 tension'
+                    : order.internal_strife_risk >= 35
+                      ? '维持山门与秩序，继续压低失序风险'
+                      : '秩序平稳，可继续推进经营目标',
+        };
+    }
+
+    private buildSectMonthlyAssessmentViewModel(snapshot: SectAuthoritySnapshot): SectMonthlyAssessmentRenderViewModel | null {
+        const assessment = snapshot.state.monthly_assessment;
+        if (!assessment) {
+            return null;
+        }
+        const latest = assessment.latest ?? null;
+        const historyEntries = (assessment.history ?? [])
+            .slice()
+            .sort((left, right) => right.month_index - left.month_index)
+            .slice(0, 3)
+            .map((entry) => this.formatSectMonthlyAssessmentHistoryEntry(entry));
+        return {
+            latestMonthText: latest ? `第 ${latest.month_index} 月小比` : `最近结算月 ${assessment.last_month_index ?? 0}`,
+            latestChampionText: latest
+                ? `${latest.champion_name || latest.champion_disciple_id || '未记名弟子'} / 评分 ${latest.score}`
+                : '尚未结算出月度小比结果',
+            latestRewardText: latest
+                ? `贡献+${latest.reward_contribution ?? 0} / 名望+${latest.reward_reputation ?? 0} / 晋升势能+${latest.promotion_momentum ?? 0}`
+                : '奖励待 authority 首次结算',
+            latestSummaryText: latest?.summary || 'authority 尚未产出月度小比摘要',
+            historyText: historyEntries.join(' | ') || '暂无历史',
+            recommendationText: latest
+                ? '月度小比结果已由 authority 结算，不提供本地报名/补发。'
+                : '等待 authority 月结推进首轮小比，不提供本地报名或手动处理。',
+        };
+    }
+
+    private buildSectOmenViewModel(
+        event: SectAuthorityEventSnapshot,
+        disciples: Record<string, SectRuntimeDiscipleSnapshot>,
+    ): SectOmenRenderViewModel {
+        const sourceName =
+            event.source_disciple_id && disciples[event.source_disciple_id]
+                ? disciples[event.source_disciple_id].name
+                : event.source_disciple_id ?? '无';
+        const detail = event.status === 'foreshadowed' ? event.omen_text || event.description : event.description;
+        return {
+            id: event.event_id,
+            status: event.status,
+            title: event.title,
+            detail,
+            severity: event.severity,
+            tagsText: [`危 ${event.severity}`, `源 ${sourceName}`, ...(event.tags ?? [])].join(' / '),
+        };
+    }
+
+    private buildSectEventChoiceViewModel(
+        event: SectAuthorityEventSnapshot,
+        disciples: Record<string, SectRuntimeDiscipleSnapshot>,
+        currentCalendarDay?: number,
+    ): SectEventChoiceRenderViewModel {
+        const sourceName =
+            event.source_disciple_id && disciples[event.source_disciple_id]
+                ? disciples[event.source_disciple_id].name
+                : event.source_disciple_id ?? '无';
+        const options = (event.options ?? []).map((option) => this.buildSectEventChoiceOptionViewModel(option, disciples));
+        return {
+            id: event.event_id,
+            status: event.status,
+            title: event.title,
+            detail: event.omen_text || event.description,
+            severity: event.severity,
+            expiresText: this.formatSectEventExpiresText(event.expires_at_day, currentCalendarDay),
+            requirementsText: this.formatSectEventRequirementText(event.requirements, disciples),
+            previewText: this.formatSectEventResultPreviewText(event.result_preview),
+            tagsText: [`危 ${event.severity}`, `源 ${sourceName}`, ...(event.tags ?? [])].join(' / '),
+            options,
+        };
+    }
+
+    private buildSectEventChoiceOptionViewModel(
+        option: SectAuthorityEventOptionSnapshot,
+        disciples: Record<string, SectRuntimeDiscipleSnapshot>,
+    ): SectEventChoiceOptionRenderViewModel {
+        return {
+            id: option.option_id,
+            label: option.label,
+            description: option.description || '无说明',
+            requirementsText: this.formatSectEventRequirementText(option.requirements, disciples),
+            previewText: this.formatSectEventResultPreviewText(option.result_preview),
+        };
+    }
+
+    private buildSectDiaryViewModel(entry: SectAuthorityDiaryEntry): SectDiaryRenderViewModel {
+        return {
+            id: entry.event_id,
+            version: entry.version,
+            eventType: entry.event_type,
+            summary: entry.summary,
+            source: entry.replay_source,
+            timingText: `D${entry.related_day} T${entry.related_tick}`,
+            storyText: `源 ${entry.replay_source} / 事件 ${entry.event_type}`,
+        };
+    }
+
+    private buildSectEventFeedbackViewModel(entry: SectAuthorityEventFeedbackEntry): SectEventFeedbackRenderViewModel {
+        return {
+            id: entry.event_id,
+            version: entry.version,
+            category: entry.category,
+            eventType: entry.event_type,
+            summary: entry.summary,
+            source: entry.replay_source,
+            timingText: `D${entry.related_day} T${entry.related_tick}`,
+            storyText: `源 ${entry.replay_source} / 分类 ${entry.category} / 事件 ${entry.event_type}`,
+        };
+    }
+
+    private formatSectGoalStatus(status: string): string {
+        switch (status) {
+            case 'active':
+                return '进行中';
+            case 'completed':
+                return '已完成';
+            case 'failed':
+                return '已失败';
+            default:
+                return status || 'unknown';
+        }
+    }
+
+    private formatSectGoalRewardText(goal: SectAuthorityGoalSnapshot): string {
+        if ((goal.reward_summary ?? []).length > 0) {
+            return goal.reward_summary?.join(' / ') ?? 'authority 自动结算';
+        }
+        const rewardParts: string[] = [];
+        const rewardText = this.formatSectResourceChangeText(goal.reward_resources);
+        if (rewardText !== '无') {
+            rewardParts.push(rewardText);
+        }
+        if ((goal.reward_reputation ?? 0) !== 0) {
+            rewardParts.push(`名望${goal.reward_reputation && goal.reward_reputation > 0 ? '+' : ''}${goal.reward_reputation}`);
+        }
+        if ((goal.reward_satisfaction ?? 0) !== 0) {
+            rewardParts.push(`满意${goal.reward_satisfaction && goal.reward_satisfaction > 0 ? '+' : ''}${goal.reward_satisfaction}`);
+        }
+        if ((goal.failure_reputation ?? 0) !== 0) {
+            rewardParts.push(`失败名望${goal.failure_reputation}`);
+        }
+        if ((goal.failure_satisfaction ?? 0) !== 0) {
+            rewardParts.push(`失败满意${goal.failure_satisfaction}`);
+        }
+        return rewardParts.join(' / ') || 'authority 自动结算';
+    }
+
+    private getSectGoalRecommendationText(goal: SectAuthorityGoalSnapshot): string {
+        if (goal.status === 'completed') {
+            return '奖励已由 authority 发放，无需本地领取。';
+        }
+        if (goal.status === 'failed') {
+            return '失败结果已由 authority 结算，只能查看后续反馈。';
+        }
+        switch (goal.kind) {
+            case 'cave_routine':
+                return '优先安排弟子入洞闭关，洞府席位与修炼支持只看 authority 状态。';
+            case 'inner_disciple':
+                return '先补齐晋升条件，再用考核/晋升 authority 意图推进。';
+            case 'external_affairs':
+                return '继续完成外务/探索/战斗任务，客户端只提交派遣意图。';
+            case 'stable_monthly':
+                return '稳住月结、供养和义务，结果只由 authority 月结判定。';
+            default:
+                return '目标进度与奖励只来自 authority 快照。';
+        }
+    }
+
+    private inferSectCrisisStage(event: SectAuthorityEventSnapshot): string {
+        if (event.kind === 'sect_crisis_choice') {
+            return 'choice';
+        }
+        if (event.kind === 'sect_crisis_minor') {
+            return 'minor_crisis';
+        }
+        if (event.kind === 'sect_crisis_omen') {
+            return 'omen';
+        }
+        return 'unknown';
+    }
+
+    private formatSectCrisisStage(stage: string): string {
+        switch (stage) {
+            case 'omen':
+                return '预兆';
+            case 'minor_crisis':
+                return '小危机';
+            case 'choice':
+                return '掌门抉择';
+            default:
+                return stage || '危机链';
+        }
+    }
+
+    private getSectCrisisRecommendationText(stage: string, event: SectAuthorityEventSnapshot): string {
+        switch (stage) {
+            case 'omen':
+                return '先看预兆与风险来源，authority 不会跳过掌门选择直接结算重大结果。';
+            case 'minor_crisis':
+                return '危机已显形，继续观察或等待 authority 推进到正式抉择阶段。';
+            case 'choice':
+                return (event.options?.length ?? 0) > 0
+                    ? '使用选1/选2/选3或搁置按钮提交 authority 意图。'
+                    : '当前无可选项，只能等待 authority 继续推进。';
+            default:
+                return '危机链只读 authority 状态，不做本地危机结算。';
+        }
+    }
+
+    private formatSectMonthlyAssessmentHistoryEntry(result: SectAuthorityMonthlyAssessmentResultSnapshot): string {
+        const champion = result.champion_name || result.champion_disciple_id || '未记名弟子';
+        return `M${result.month_index}:${champion} 评分${result.score} 贡+${result.reward_contribution ?? 0} 名望+${result.reward_reputation ?? 0}`;
+    }
+
+    private getPrimarySectDiscipleSnapshot(snapshot: SectAuthoritySnapshot): SectRuntimeDiscipleSnapshot | null {
+        const disciples = Object.values(snapshot.state.disciples ?? {}).sort((left, right) => left.disciple_id.localeCompare(right.disciple_id));
+        return disciples[0] ?? null;
+    }
+
+    private inferSectTaskType(kind: string): string {
+        switch (kind) {
+            case 'merchant_commission':
+            case 'village_aid':
+                return 'external';
+            case 'ancient_road_explore':
+                return 'explore';
+            case 'sect_patrol':
+            case 'demon_scout':
+            case 'combat_training':
+                return 'combat';
+            case 'production_support':
+                return 'production';
+            default:
+                return 'internal';
+        }
+    }
+
+    private formatSectTaskType(taskType: string): string {
+        switch (taskType) {
+            case 'external':
+                return '外务';
+            case 'explore':
+                return '探索';
+            case 'combat':
+                return '战斗';
+            case 'production':
+                return '生产';
+            case 'internal':
+                return '内务';
+            default:
+                return taskType.replace(/_/g, ' ');
+        }
+    }
+
+    private formatSectTaskGrade(grade?: string): string {
+        switch (grade) {
+            case 'ding':
+                return '丁';
+            case 'bing':
+                return '丙';
+            case 'yi':
+                return '乙';
+            case 'jia':
+                return '甲';
+            case 'special':
+                return '特';
+            default:
+                return grade ? grade.replace(/_/g, ' ') : '未分级';
+        }
+    }
+
+    private formatSectTaskEvaluation(evaluation?: string): string {
+        switch (evaluation) {
+            case 'excellent':
+                return '评价 优';
+            case 'good':
+                return '评价 良';
+            case 'normal':
+                return '评价 中';
+            case 'poor':
+                return '评价 差';
+            case 'failed':
+                return '评价 失败';
+            default:
+                return '评价 authority 待结算';
+        }
+    }
+
+    private formatSectTaskInjuryRisk(taskType: string, risk: number): string {
+        if (taskType !== 'combat' && taskType !== 'explore' && taskType !== 'external') {
+            return '伤病风险 无明显外勤风险';
+        }
+        if (risk >= 70) {
+            return '伤病风险 高';
+        }
+        if (risk >= 35) {
+            return '伤病风险 中';
+        }
+        return '伤病风险 低';
+    }
+
+    private getSectTaskDispatchBlockedReason(
+        task: SectAuthorityTaskSnapshot,
+        recommendedDiscipleIds: string[],
+        authorityBlockedReason?: string,
+    ): string | null {
+        if (!this.authorityConnected || this.authorityRenderSource !== 'authority_snapshot') {
+            return 'authority_blocked';
+        }
+        if (task.status !== 'published') {
+            return `任务状态 ${task.status}`;
+        }
+        if (authorityBlockedReason) {
+            return authorityBlockedReason;
+        }
+        if (recommendedDiscipleIds.length === 0) {
+            return 'authority 未声明推荐队伍';
+        }
+        return null;
+    }
+
+    private formatSectRealmStage(stage: string): string {
+        return stage.replace(/_/g, ' ');
+    }
+
+    private formatSectIdentityRank(identity: string): string {
+        switch (identity) {
+            case 'outer_disciple':
+                return '外门';
+            case 'inner_disciple':
+                return '内门';
+            default:
+                return identity.replace(/_/g, ' ');
+        }
+    }
+
+    private getSectPromotionTargetRank(identity: string): string {
+        return identity === 'outer_disciple' ? 'inner_disciple' : '';
+    }
+
+    private getSectRealmRankValue(stage: string): number {
+        switch (stage) {
+            case 'mortal':
+                return 0;
+            case 'qi_entry':
+                return 1;
+            case 'qi_early':
+                return 2;
+            case 'qi_middle':
+                return 3;
+            case 'qi_late':
+                return 4;
+            case 'foundation':
+                return 5;
+            case 'golden_core':
+                return 6;
+            default:
+                return 0;
+        }
+    }
+
+    private hasSectPromotionBuilding(snapshot?: SectAuthoritySnapshot): boolean {
+        return Object.values(snapshot?.state.buildings ?? {}).some(
+            (building) =>
+                building.definition_key === 'main_hall' &&
+                (building.level ?? 0) >= 2 &&
+                building.phase === 'active' &&
+                (building.hp ?? 0) > 0,
+        );
+    }
+
+    private formatSectAssessmentText(
+        assessment: SectRuntimeDiscipleSnapshot['assessment'] | undefined,
+        targetRankText: string,
+    ): string {
+        if (!assessment?.target_rank || !assessment.resolved_at_version) {
+            return targetRankText ? `考核 ${targetRankText} 未进行` : '考核 无晋升路径';
+        }
+        const status = assessment.passed ? '通过' : '未通过';
+        const reason = assessment.reason && assessment.reason !== 'passed' ? ` / ${assessment.reason}` : '';
+        return `考核 ${status} ${this.formatSectIdentityRank(assessment.target_rank)} 评分${assessment.score}${reason}`;
+    }
+
+    private buildSectPromotionProjectionViewModel(
+        disciple: SectRuntimeDiscipleSnapshot,
+        account?: SectAuthorityContributionAccountSnapshot,
+        snapshot?: SectAuthoritySnapshot,
+    ): SectPromotionProjectionViewModel {
+        const targetRank = this.getSectPromotionTargetRank(disciple.identity);
+        const targetRankText = targetRank ? this.formatSectIdentityRank(targetRank) : '';
+        const completedDuty = snapshot?.state.monthly?.obligations.completed_days?.[disciple.disciple_id] ?? 0;
+        const blockers: string[] = [];
+        const connectedToAuthority = this.authorityConnected && this.authorityRenderSource === 'authority_snapshot';
+        if (!targetRank) {
+            blockers.push('当前身份无已开放晋升路径');
+        }
+        if (!connectedToAuthority) {
+            blockers.push('authority_blocked');
+        }
+        if (targetRank && this.getSectRealmRankValue(disciple.realm.stage) < this.getSectRealmRankValue('qi_entry')) {
+            blockers.push('修为未达炼气入门');
+        }
+        if (targetRank && (account?.earned_total ?? 0) < 20) {
+            blockers.push('累计贡献不足20');
+        }
+        if (targetRank && (account?.balance ?? 0) < 10) {
+            blockers.push('可用贡献不足10');
+        }
+        if (targetRank && completedDuty < 1) {
+            blockers.push('本月义务未达1天');
+        }
+        if (targetRank && (disciple.loyalty ?? 0) < 60) {
+            blockers.push('忠诚不足60');
+        }
+        if (targetRank && (disciple.satisfaction ?? 0) < 55) {
+            blockers.push('满意不足55');
+        }
+        if (targetRank && ((disciple.injury_level ?? 0) > 1 || (disciple.hp ?? 0) <= 0)) {
+            blockers.push('伤病过重');
+        }
+        if (targetRank && !this.hasSectPromotionBuilding(snapshot)) {
+            blockers.push('主殿未达2级');
+        }
+
+        const assessment = disciple.assessment;
+        const assessmentPassed = Boolean(assessment?.passed && assessment.target_rank === targetRank);
+        const readinessText = targetRank
+            ? blockers.length === 0
+                ? `可申请${targetRankText}考核`
+                : `待补齐${targetRankText}条件`
+            : '未开放';
+        const impactText = targetRank
+            ? `${targetRankText}: 月例+8 / 月义务-1 / 解锁内门任务 / 消耗贡献10 / 满意忠诚提升`
+            : 'authority 未声明可晋升收益';
+        return {
+            targetRank,
+            targetRankText,
+            readinessText,
+            blockersText: blockers.join('、') || '无',
+            impactText,
+            assessmentText: this.formatSectAssessmentText(assessment, targetRankText),
+            assessmentPassed,
+            canRequestAssessment: Boolean(targetRank && connectedToAuthority),
+            canPromote: Boolean(targetRank && assessmentPassed && blockers.length === 0 && connectedToAuthority),
+        };
+    }
+
+    private formatSectPolicyCategory(category: SectAuthorityPolicyCategory): string {
+        switch (category) {
+            case 'task':
+                return '任务';
+            case 'resource':
+                return '资源';
+            case 'recruitment':
+                return '收徒';
+            case 'cultivation':
+                return '修炼';
+            default:
+                return String(category);
+        }
+    }
+
+    private formatSectAptitudeText(aptitude?: SectAuthorityCandidateSnapshot['aptitude']): string {
+        if (!aptitude) {
+            return '资质 unknown';
+        }
+        return `灵${aptitude.spirit_root} 悟${aptitude.comprehension} 体${aptitude.physique} 心${aptitude.mind} 运${aptitude.luck}`;
+    }
+
+    private formatSectNeedsText(needs?: SectRuntimeDiscipleSnapshot['needs']): string {
+        if (!needs) {
+            return '供养需求 unknown';
+        }
+        return `日需 谷${needs.daily_spirit_grain} 休${needs.daily_rest_ticks}`;
+    }
+
+    private formatSectSupportText(support?: SectRuntimeDiscipleSnapshot['support']): string {
+        if (!support) {
+            return '供养状态 unknown';
+        }
+        return `供养 粮${support.food_satisfied ? '足' : '缺'} 居${support.housing_satisfied ? '足' : '缺'} 医${support.medical_supported ? '足' : '缺'}`;
+    }
+
+    private getSectDiscipleMemoryEntries(
+        disciple: SectRuntimeDiscipleSnapshot,
+    ): NonNullable<SectRuntimeDiscipleSnapshot['memories']> {
+        return [...(disciple.memories ?? [])].sort(
+            (left, right) =>
+                (right.recorded_at_version ?? 0) - (left.recorded_at_version ?? 0) ||
+                (right.recorded_at_day ?? 0) - (left.recorded_at_day ?? 0) ||
+                (right.intensity ?? 0) - (left.intensity ?? 0),
+        );
+    }
+
+    private formatSectDiscipleTagText(tags?: string[] | null, fallback = '无'): string {
+        const parts = (tags ?? []).map((tag) => tag.trim()).filter(Boolean);
+        return parts.join(' / ') || fallback;
+    }
+
+    private formatSectDiscipleRelationshipText(disciple: SectRuntimeDiscipleSnapshot): string {
+        return this.formatSectDiscipleTagText(disciple.relationship_tags, '关系平稳');
+    }
+
+    private formatSectDiscipleEmotionText(disciple: SectRuntimeDiscipleSnapshot): string {
+        return this.formatSectDiscipleTagText(disciple.emotion_tags, '情绪平稳');
+    }
+
+    private formatSectDiscipleRecentExperienceText(disciple: SectRuntimeDiscipleSnapshot): string {
+        const recent = (disciple.recent_experience_summary ?? []).map((summary) => summary.trim()).filter(Boolean);
+        if (recent.length > 0) {
+            return recent.slice(0, 3).join(' / ');
+        }
+        const memoryFallback = this.getSectDiscipleMemoryEntries(disciple)
+            .slice(0, 2)
+            .map((memory) => memory.summary.trim())
+            .filter(Boolean);
+        return memoryFallback.join(' / ') || '近期暂无新经历';
+    }
+
+    private formatSectDiscipleMemoryText(disciple: SectRuntimeDiscipleSnapshot): string {
+        const memories = this.getSectDiscipleMemoryEntries(disciple)
+            .slice(0, 3)
+            .map((memory) => {
+                const tagText = this.formatSectDiscipleTagText(memory.tags, '');
+                return `${memory.summary}${tagText ? ` (${tagText})` : ''}`;
+            });
+        return memories.join(' / ') || '关键记忆未记录';
+    }
+
+    private formatSectDiscipleMoodReasonText(disciple: SectRuntimeDiscipleSnapshot): string {
+        const parts = [`满意${disciple.satisfaction ?? 0}`, `忠${disciple.loyalty ?? 0}`];
+        const emotionText = this.formatSectDiscipleTagText(disciple.emotion_tags, '');
+        if (emotionText) {
+            parts.push(`情绪 ${emotionText}`);
+        }
+        const relationshipText = this.formatSectDiscipleTagText(disciple.relationship_tags, '');
+        if (relationshipText) {
+            parts.push(`关系 ${relationshipText}`);
+        }
+        const recentText = this.formatSectDiscipleRecentExperienceText(disciple);
+        if (recentText && recentText !== '近期暂无新经历') {
+            parts.push(`缘由 ${recentText}`);
+        }
+        const sourceText = this.getSectDiscipleMemoryEntries(disciple)
+            .slice(0, 2)
+            .map((memory) => memory.source_event_type)
+            .filter(Boolean)
+            .join(' / ');
+        if (sourceText) {
+            parts.push(`来源 ${sourceText}`);
+        }
+        return parts.join(' / ');
+    }
+
+    private formatSectResourceChangeText(stock?: Record<string, number> | null): string {
+        if (!stock) {
+            return '无';
+        }
+        const parts = Object.entries(stock)
+            .filter(([, amount]) => (amount ?? 0) > 0)
+            .sort(([left], [right]) => left.localeCompare(right))
+            .map(([kind, amount]) => `${kind}:${amount}`);
+        return parts.join(' / ') || '无';
+    }
+
+    private hasSectResourceCost(stock?: Record<string, number> | null): boolean {
+        return Object.values(stock ?? {}).some((amount) => (amount ?? 0) > 0);
+    }
+
+    private formatSectSignedResourceDeltaText(stock?: Record<string, number> | null): string {
+        if (!stock) {
+            return '';
+        }
+        return Object.entries(stock)
+            .filter(([, amount]) => (amount ?? 0) !== 0)
+            .sort(([left], [right]) => left.localeCompare(right))
+            .map(([kind, amount]) => `${kind}:${amount > 0 ? '+' : ''}${amount}`)
+            .join(' / ');
+    }
+
+    private formatSectEventRequirementText(
+        requirement: SectAuthorityEventSnapshot['requirements'],
+        disciples: Record<string, SectRuntimeDiscipleSnapshot>,
+    ): string {
+        const parts: string[] = [];
+        const resources = this.formatSectResourceChangeText(requirement?.min_resources);
+        if (resources !== '无') {
+            parts.push(`资源>=${resources}`);
+        }
+        const discipleId = requirement?.required_disciple_id ?? null;
+        if (discipleId) {
+            parts.push(`弟子=${disciples[discipleId]?.name ?? discipleId}`);
+        }
+        return parts.join(' / ') || '无';
+    }
+
+    private formatSectEventResultPreviewText(preview: SectAuthorityEventSnapshot['result_preview']): string {
+        if (!preview) {
+            return '无';
+        }
+        const parts: string[] = [];
+        const resourceText = this.formatSectSignedResourceDeltaText(preview.resource_delta);
+        if (resourceText) {
+            parts.push(`资源 ${resourceText}`);
+        }
+        if ((preview.disciple_pressure_delta ?? 0) !== 0) {
+            parts.push(`压力 ${preview.disciple_pressure_delta! > 0 ? '+' : ''}${preview.disciple_pressure_delta}`);
+        }
+        if ((preview.disciple_satisfaction_delta ?? 0) !== 0) {
+            parts.push(`满意 ${preview.disciple_satisfaction_delta! > 0 ? '+' : ''}${preview.disciple_satisfaction_delta}`);
+        }
+        if ((preview.tension_delta ?? 0) !== 0) {
+            parts.push(`张力 ${preview.tension_delta! > 0 ? '+' : ''}${preview.tension_delta}`);
+        }
+        if ((preview.fame_delta ?? 0) !== 0) {
+            parts.push(`名望 ${preview.fame_delta! > 0 ? '+' : ''}${preview.fame_delta}`);
+        }
+        if (preview.task_title || preview.task_id) {
+            parts.push(`任务 ${preview.task_title || preview.task_id}`);
+        }
+        if (preview.summary) {
+            parts.push(preview.summary);
+        }
+        return parts.join(' / ') || '无';
+    }
+
+    private formatSectEventExpiresText(expiresAtDay?: number, currentCalendarDay?: number): string {
+        if (!expiresAtDay || expiresAtDay <= 0) {
+            return '无过期日';
+        }
+        if (typeof currentCalendarDay === 'number') {
+            return `第${expiresAtDay}日过期 / 剩${Math.max(0, expiresAtDay - currentCalendarDay)}日`;
+        }
+        return `第${expiresAtDay}日过期`;
+    }
+
     private applyAuthoritySessionPresentation(previousPhase: SessionPhase, previousOutcome: SessionOutcome): void {
         if (this.authorityConnected) {
             this.hostileNpc.respawnTimerSeconds = this.sessionPhase === 'raid_countdown' ? this.authorityRaidCountdownSeconds : 0;
@@ -1391,6 +3990,7 @@ export class SectMapBootstrap extends Component {
             this.hostileNpc.pathIndex = 0;
             this.hostileNpc.targetBuildingId = null;
             this.hostileNpc.attackCooldownSeconds = 0;
+            this.resetAuthorityHostileInterpolation();
             this.setMessage('authority 判定资源节点已恢复，宗门进入下一轮筹备态');
             this.refreshHostileNpcToken();
         }
@@ -1404,7 +4004,8 @@ export class SectMapBootstrap extends Component {
         this.hostileNpc.pathIndex = 0;
         this.hostileNpc.targetBuildingId = null;
         this.hostileNpc.attackCooldownSeconds = 0;
-        this.disciple.currentTask = null;
+        this.resetAuthorityHostileInterpolation();
+        this.legacyDiscipleTask = null;
         this.disciple.path = [];
         this.disciple.pathIndex = 0;
         this.closeBuildPanel();
@@ -1433,6 +4034,10 @@ export class SectMapBootstrap extends Component {
             level: snapshotBuilding.level,
             markedForDemolition: snapshotBuilding.markedForDemolition,
             currentHp: snapshotBuilding.hp,
+            durability: snapshotBuilding.durability ?? Math.round((snapshotBuilding.hp / Math.max(1, snapshotBuilding.maxHp)) * 100),
+            efficiency: snapshotBuilding.efficiency ?? 100,
+            maintenanceDebt: snapshotBuilding.maintenanceDebt ?? 0,
+            damagedReason: snapshotBuilding.damagedReason ?? null,
             damageFlashSeconds: 0,
             attackCooldownSeconds: 0,
             pendingAction: snapshotBuilding.pendingAction as BuildingWorkKind | null,
@@ -1465,7 +4070,7 @@ export class SectMapBootstrap extends Component {
             this.resourceNodes.set(key, {
                 kind: snapshotNode.kind as ResourceKind,
                 tile: { ...snapshotNode.tile },
-                designated: existing?.designated ?? false,
+                designated: snapshotNode.designated,
                 state: snapshotNode.state as ResourceNodeState,
                 remainingCharges: snapshotNode.remainingCharges,
                 maxCharges: snapshotNode.maxCharges,
@@ -1578,6 +4183,46 @@ export class SectMapBootstrap extends Component {
         }
     }
 
+    private async executeSectAuthorityCommandAsync<TPayload>(
+        command: SectRuntimeCommandEnvelope<TPayload>,
+        options?: {
+            commandKey?: string;
+        },
+    ): Promise<RuntimeSnapshot> {
+        const commandKey = options?.commandKey ?? command.type;
+        if (!this.sectAuthoritySectId) {
+            throw new Error('sect_authority_not_joined');
+        }
+        if (this.sectAuthorityPendingCommands.has(commandKey)) {
+            throw new Error(`sect_authority_command_pending:${commandKey}`);
+        }
+
+        this.sectAuthorityPendingCommands.add(commandKey);
+        try {
+            const response = await this.sectAuthorityClient.executeCommand(
+                this.authorityPlayerId,
+                this.sectAuthoritySectId,
+                this.authoritySessionId,
+                command,
+            );
+            this.applySectAuthorityCommandResponse(response, command.type);
+            this.setMessage(`任务堂 authority 已处理 ${command.type}`);
+            return this.getRuntimeSnapshot();
+        } catch (error) {
+            const message = error instanceof Error ? error.message : 'sect_authority_command_failed';
+            this.sectAuthorityLastError = message;
+            this.logRuntime('WARN', 'SECT', 'sect_authority.command_failed', '宗务界面 authority 命令失败', {
+                command: command.type,
+                error: message,
+            });
+            this.setMessage(`任务堂 authority 命令失败：${message}`);
+            throw error;
+        } finally {
+            this.sectAuthorityPendingCommands.delete(commandKey);
+            this.refreshSectPanel();
+        }
+    }
+
     private async refreshAuthoritySnapshotAfterCommandReject(
         commandName: string,
         context: RuntimeLogPayload,
@@ -1604,7 +4249,7 @@ export class SectMapBootstrap extends Component {
 
     private clearAuthorityHaulTaskAfterReject(task: Extract<DiscipleTask, { kind: 'haul' }>): void {
         this.disciple.carrying = null;
-        this.disciple.currentTask = null;
+        this.legacyDiscipleTask = null;
         this.disciple.path = [];
         this.disciple.pathIndex = 0;
         this.logRuntime('WARN', 'TASK', 'task.haul_cleared_after_reject', 'authority 已拒绝陈旧搬运任务，弟子将重新分配工作', {
@@ -1614,7 +4259,8 @@ export class SectMapBootstrap extends Component {
     }
 
     private advanceAuthorityPresentation(deltaTime: number): void {
-        this.disciple.currentTask = null;
+        this.legacyDiscipleTask = null;
+        this.advanceAuthorityHostilePresentation(deltaTime);
         this.disciple.carrying = this.authorityDiscipleViewModel?.carrying ?? null;
 
         const viewModel = this.authorityDiscipleViewModel;
@@ -1658,6 +4304,40 @@ export class SectMapBootstrap extends Component {
         }
         this.refreshDiscipleToken();
         this.advanceAuthorityGatherFact(viewModel, deltaTime);
+    }
+
+    private advanceAuthorityHostilePresentation(deltaTime: number): void {
+        if (!this.hostileNpc.active) {
+            this.refreshHostileNpcToken();
+            return;
+        }
+
+        this.hostileNpc.path = [];
+        this.hostileNpc.pathIndex = 0;
+
+        const duration = this.hostileNpc.authorityInterpolationDurationSeconds;
+        if (duration <= 0) {
+            this.refreshHostileNpcToken();
+            return;
+        }
+
+        this.hostileNpc.authorityInterpolationElapsedSeconds = Math.min(
+            duration,
+            this.hostileNpc.authorityInterpolationElapsedSeconds + Math.max(0, deltaTime),
+        );
+        const progress = Math.min(1, this.hostileNpc.authorityInterpolationElapsedSeconds / duration);
+        const from = this.hostileNpc.authorityRenderFrom;
+        const to = this.hostileNpc.authorityRenderTo;
+        this.hostileNpc.worldPosition.set(
+            from.x + (to.x - from.x) * progress,
+            from.y + (to.y - from.y) * progress,
+            0,
+        );
+
+        if (progress >= 1) {
+            this.resetAuthorityHostileInterpolation(this.hostileNpc.authorityRenderTo);
+        }
+        this.refreshHostileNpcToken();
     }
 
     private advanceAuthorityGatherFact(viewModel: DiscipleRenderViewModel, deltaTime: number): void {
@@ -2008,17 +4688,25 @@ export class SectMapBootstrap extends Component {
         this.buildPanelRoot = this.ensureChild(BUILD_PANEL_ROOT, this.hudRoot);
         this.radialMenuRoot = this.ensureChild(RADIAL_MENU_ROOT, this.hudRoot);
         this.sessionActionRoot = this.ensureChild(SESSION_ACTION_ROOT, this.hudRoot);
+        this.sectPanelRoot = this.ensureChild(SECT_PANEL_ROOT, this.hudRoot);
+        this.statusDetailRoot = this.ensureChild(STATUS_DETAIL_ROOT, this.hudRoot);
 
         this.configureNodeSize(this.hudRoot, view.getVisibleSize().width, view.getVisibleSize().height);
         this.configureNodeSize(this.toolbarRoot, 760, 88);
         this.configureNodeSize(this.buildPanelRoot, 640, 128);
         this.configureNodeSize(this.radialMenuRoot, 320, 320);
-        this.configureNodeSize(this.sessionActionRoot, 220, 64);
+        this.configureNodeSize(this.sessionActionRoot, 320, 64);
+        this.configureNodeSize(this.sectPanelRoot, 420, 700);
+        this.configureNodeSize(this.statusDetailRoot, 420, 300);
         this.toolbarRoot.setPosition(0, -286, 0);
         this.buildPanelRoot.setPosition(0, -168, 0);
         this.sessionActionRoot.setPosition(0, 0, 0);
+        this.sectPanelRoot.setPosition(0, 0, 0);
+        this.statusDetailRoot.setPosition(0, 0, 0);
         this.radialMenuRoot.active = false;
         this.buildPanelRoot.active = false;
+        this.sectPanelRoot.active = false;
+        this.statusDetailRoot.active = false;
     }
 
     private onCanvasResize(): void {
@@ -2097,19 +4785,24 @@ export class SectMapBootstrap extends Component {
         const safeCenterX = (safeInsets.left - safeInsets.right) * 0.5;
         const topAnchorY = visibleHeight * 0.5 - safeInsets.top;
         const bottomAnchorY = -visibleHeight * 0.5 + safeInsets.bottom;
-        const statusWidth = Math.max(300, visibleWidth - horizontalPaddingLeft - horizontalPaddingRight);
+        const statusWidth = Math.max(220, Math.min(240, visibleWidth - horizontalPaddingLeft - horizontalPaddingRight - 500));
+        const statusX = -visibleWidth * 0.5 + horizontalPaddingLeft + statusWidth * 0.5;
         const toolbarWidth = Math.max(420, Math.min(640, visibleWidth - horizontalPaddingLeft - horizontalPaddingRight));
         const buildPanelWidth = Math.max(420, Math.min(580, visibleWidth - horizontalPaddingLeft - horizontalPaddingRight));
-        const sessionActionX = visibleWidth * 0.5 - horizontalPaddingRight - 82;
+        const sessionActionX = visibleWidth * 0.5 - horizontalPaddingRight - 122;
         const sessionActionY = topAnchorY - 34;
-        const statusY = topAnchorY - 56;
+        const sectPanelX = visibleWidth * 0.5 - horizontalPaddingRight - 218;
+        const sectPanelY = topAnchorY - 374;
+        const statusY = topAnchorY - 48;
+        const statusDetailX = -visibleWidth * 0.5 + horizontalPaddingLeft + 220;
+        const statusDetailY = topAnchorY - 228;
         const toolbarY = bottomAnchorY + 72;
         const buildPanelY = bottomAnchorY + 188;
 
         if (this.statusLabel) {
             const statusNode = this.statusLabel.node;
-            this.configureNodeSize(statusNode, statusWidth, 140);
-            statusNode.setPosition(safeCenterX, statusY, 0);
+            this.configureNodeSize(statusNode, statusWidth, 76);
+            statusNode.setPosition(statusX, statusY, 0);
         }
 
         if (this.toolbarRoot) {
@@ -2123,8 +4816,18 @@ export class SectMapBootstrap extends Component {
         }
 
         if (this.sessionActionRoot) {
-            this.configureNodeSize(this.sessionActionRoot, 164, 56);
+            this.configureNodeSize(this.sessionActionRoot, 300, 56);
             this.sessionActionRoot.setPosition(sessionActionX, sessionActionY, 0);
+        }
+
+        if (this.sectPanelRoot) {
+            this.configureNodeSize(this.sectPanelRoot, 420, 700);
+            this.sectPanelRoot.setPosition(sectPanelX, sectPanelY, 0);
+        }
+
+        if (this.statusDetailRoot) {
+            this.configureNodeSize(this.statusDetailRoot, 420, 300);
+            this.statusDetailRoot.setPosition(statusDetailX, statusDetailY, 0);
         }
 
         this.portraitBaselineSnapshot = {
@@ -2140,8 +4843,10 @@ export class SectMapBootstrap extends Component {
                 topAnchorY,
                 bottomAnchorY,
                 statusY,
+                statusDetailY,
                 toolbarY,
                 buildPanelY,
+                sessionActionY,
             },
         };
     }
@@ -2169,7 +4874,10 @@ export class SectMapBootstrap extends Component {
                         this.closeBuildPanel();
                         this.clearBuildPlacement();
                         this.closeRadialMenu();
-                        this.setMode('gather', '采集模式：点击资源格添加或取消采集标记');
+                        if (!this.ensureAuthorityMainlineAvailable('enter_gather_mode')) {
+                            break;
+                        }
+                        this.setMode('gather', '采集模式：点击资源格向 authority 标记或取消采集目标');
                         break;
                     case 'build':
                         this.closeRadialMenu();
@@ -2214,7 +4922,7 @@ export class SectMapBootstrap extends Component {
 
         candidates.forEach((definition, index) => {
             const node = this.createScreenButton(
-                `${definition.label}\n${this.getCostText(definition.cost)}`,
+                this.getBuildPanelDefinitionText(definition),
                 132,
                 84,
                 () => {
@@ -2229,6 +4937,35 @@ export class SectMapBootstrap extends Component {
         });
     }
 
+    private getBuildPanelDefinitionText(definition: BuildingDefinition): string {
+        const catalogEntry = this.getSectBuildingCatalogByDefinition(definition.id);
+        if (!catalogEntry) {
+            return `${definition.label}\n${this.getCostText(definition.cost)}`;
+        }
+        const status = catalogEntry.canBuild ? '可建' : `阻 ${catalogEntry.blockerText}`;
+        return `${definition.label}\n${status}\n护 ${catalogEntry.maintenanceText}`;
+    }
+
+    private getSectBuildingCatalogByDefinition(definitionID: string): SectBuildingCatalogRenderViewModel | null {
+        const authorityKey = this.getSectAuthorityBuildingDefinitionKey(definitionID);
+        if (!authorityKey) {
+            return null;
+        }
+        return this.sectBuildingCatalogViewModels.find((entry) => entry.definitionKey === authorityKey) ?? null;
+    }
+
+    private getSectAuthorityBuildingDefinitionKey(definitionID: string): string | null {
+        switch (definitionID) {
+            case 'main_hall':
+            case 'warehouse':
+                return definitionID;
+            case 'guard_tower':
+                return 'gate';
+            default:
+                return null;
+        }
+    }
+
     private buildSessionActions(): void {
         if (!this.sessionActionRoot) {
             return;
@@ -2238,14 +4975,1515 @@ export class SectMapBootstrap extends Component {
             child.destroy();
         }
 
-        const resetNode = this.createScreenButton('新局', 148, 52, () => {
+        const resetNode = this.createScreenButton('新局', 138, 52, () => {
             this.closeBuildPanel();
             this.clearBuildPlacement();
             this.closeRadialMenu();
             void this.bootstrapAuthoritySession({ mode: 'reset' });
         }, 22);
         resetNode.name = 'NewGameButton';
+        resetNode.setPosition(-100, 0, 0);
         resetNode.setParent(this.sessionActionRoot);
+
+        const taskHallNode = this.createScreenButton('宗务', 92, 52, () => {
+            this.toggleSectPanel();
+        }, 22);
+        taskHallNode.name = 'TaskHallButton';
+        taskHallNode.setPosition(15, 0, 0);
+        taskHallNode.setParent(this.sessionActionRoot);
+
+        const statusNode = this.createScreenButton('状态', 92, 52, () => {
+            this.toggleStatusDetailPanel();
+        }, 22);
+        statusNode.name = 'StatusDetailButton';
+        statusNode.setPosition(115, 0, 0);
+        statusNode.setParent(this.sessionActionRoot);
+    }
+
+    private buildStatusDetailPanel(): void {
+        if (!this.statusDetailRoot) {
+            return;
+        }
+
+        for (const child of [...this.statusDetailRoot.children]) {
+            child.destroy();
+        }
+        this.statusDetailLabel = null;
+
+        const panelBackground = new Node('StatusDetailBackground');
+        panelBackground.setParent(this.statusDetailRoot);
+        this.configureNodeSize(panelBackground, 420, 300);
+        this.paintPanelBackground(panelBackground, new Color(22, 29, 40, 232), new Color(104, 132, 162, 255));
+
+        const labelNode = new Node('StatusDetailInfo');
+        labelNode.setParent(this.statusDetailRoot);
+        labelNode.setPosition(0, 0, 0);
+        const labelTransform = labelNode.addComponent(UITransform);
+        labelTransform.setContentSize(376, 252);
+        const label = labelNode.addComponent(Label);
+        label.fontSize = 16;
+        label.lineHeight = 20;
+        label.enableWrapText = true;
+        label.color = new Color(236, 241, 248, 255);
+        this.statusDetailLabel = label;
+
+        this.refreshStatusDetailPanel();
+    }
+
+    private toggleStatusDetailPanel(): void {
+        this.statusDetailVisible = !this.statusDetailVisible;
+        this.refreshStatusDetailPanel();
+    }
+
+    private refreshStatusDetailPanel(): void {
+        if (this.statusDetailRoot) {
+            this.statusDetailRoot.active = this.statusDetailVisible;
+        }
+        if (!this.statusDetailLabel) {
+            return;
+        }
+
+        this.statusDetailLabel.string = this.buildStatusDetailText();
+    }
+
+    private buildStatusDetailText(): string {
+        const session = this.getCurrentSessionViewModel();
+        const buildingCounts = this.getBuildingStateCounts();
+        const discipleTask =
+            this.isAuthorityMainlinePreview()
+                ? this.authorityDiscipleViewModel?.taskText ?? '等待 authority assignment'
+                : this.describeTask(this.legacyDiscipleTask) ?? '待命';
+        const sectSummary = this.sectAuthoritySnapshot
+            ? `宗务 v${this.sectAuthoritySnapshot.sceneVersion} Lv${this.sectBuildingSummaryViewModel?.level ?? 0} 楼${this.sectBuildingSummaryViewModel?.expansion ?? 0}/${this.sectBuildingSummaryViewModel?.buildingLimit ?? 0} 弟子${this.sectRosterViewModels.length} 候选${this.sectCandidateViewModels.length} 任务${this.sectAuthorityTaskViewModels.length} 机构${this.sectInstitutionViewModels.length} 生产${this.sectProductionViewModels.length} 政策${this.sectPolicyViewModels.length} 目标${this.sectGoalViewModels.length} 危机${this.sectCrisisViewModels.length} 治疗${this.sectTreatmentViewModels.length} 待决${this.sectEventChoiceViewModels.length} 已决${this.sectResolvedEventViewModels.length} 预兆${this.sectOmenViewModels.length} 日记${this.sectDiaryViewModels.length} 事件${this.sectEventFeedbackViewModels.length}`
+            : `宗务 ${this.sectAuthorityLastError ?? '等待 sect snapshot'} 预兆0`;
+
+        return [
+            '状态 / 调试',
+            `authority ${this.authorityConnected ? 'connected' : 'blocked'} ${this.authorityPlayerId} ${this.authoritySessionId}`,
+            `tick ${this.authorityGameTick} source ${this.authorityRenderSource} mode ${this.authorityMode}`,
+            `lastError ${this.authorityLastError ?? 'none'}`,
+            `lastEvent ${this.authorityLastEvent ?? 'none'}`,
+            `阶段 ${session.phase}/${session.outcome} 首袭 ${session.firstRaidTriggered ? '已触发' : '未触发'} / ${session.firstRaidResolved ? '已收口' : '未收口'}`,
+            `敌袭 倒计时${Math.ceil(session.raidCountdownSeconds)}s 防守${Math.ceil(session.defendRemainingSeconds)}s recover=${session.recoverReason}`,
+            `弟子 ${discipleTask} HP ${Math.ceil(this.disciple.currentHp)}/${this.disciple.model.stats.maxHp}`,
+            `建筑 active=${buildingCounts.active} damaged=${buildingCounts.damaged} planned=${buildingCounts.planned} supplied=${buildingCounts.supplied} constructing=${buildingCounts.constructing}`,
+            sectSummary,
+            `提示 ${this.lastMessage}`,
+        ].join('\n');
+    }
+
+    private buildSectPanel(): void {
+        if (!this.sectPanelRoot) {
+            return;
+        }
+
+        for (const child of [...this.sectPanelRoot.children]) {
+            child.destroy();
+        }
+        this.sectPanelLabel = null;
+
+        const panelBackground = new Node('SectPanelBackground');
+        panelBackground.setParent(this.sectPanelRoot);
+        this.configureNodeSize(panelBackground, 420, 700);
+        this.paintPanelBackground(panelBackground, new Color(24, 31, 43, 228), new Color(98, 126, 156, 255));
+
+        const infoNode = new Node('SectPanelInfo');
+        infoNode.setParent(this.sectPanelRoot);
+        infoNode.setPosition(0, 42, 0);
+        const infoTransform = infoNode.addComponent(UITransform);
+        infoTransform.setContentSize(376, 488);
+        const infoLabel = infoNode.addComponent(Label);
+        infoLabel.fontSize = 14;
+        infoLabel.lineHeight = 18;
+        infoLabel.enableWrapText = true;
+        infoLabel.color = new Color(236, 241, 248, 255);
+        this.sectPanelLabel = infoLabel;
+
+        const closeButton = this.createScreenButton('X', 42, 34, () => {
+            this.closeSectPanel();
+        }, 20);
+        closeButton.name = 'SectPanelCloseButton';
+        closeButton.setPosition(174, 326, 0);
+        closeButton.setParent(this.sectPanelRoot);
+
+        for (const tab of SECT_PANEL_TABS) {
+            const tabButton = this.createScreenButton(tab.label, 58, 32, () => {
+                this.setSectPanelTab(tab.key);
+            }, 15);
+            tabButton.name = `SectPanelTab-${tab.key}`;
+            tabButton.setPosition(tab.positionX, 326, 0);
+            tabButton.setParent(this.sectPanelRoot);
+            this.paintButtonBackground(tabButton, tab.key === this.sectPanelTab);
+        }
+
+        this.buildSectPanelActions(this.sectPanelTab);
+
+        this.refreshSectPanel();
+    }
+
+    private buildSectPanelActions(tab: SectPanelTabKey): void {
+        switch (tab) {
+            case 'overview':
+                this.addSectPanelActionButton('任务策', -150, -284, () => {
+                    void this.setNextSectPolicyFromHUD('task').catch(() => undefined);
+                });
+                this.addSectPanelActionButton('资源策', -50, -284, () => {
+                    void this.setNextSectPolicyFromHUD('resource').catch(() => undefined);
+                });
+                this.addSectPanelActionButton('收徒策', 50, -284, () => {
+                    void this.setNextSectPolicyFromHUD('recruitment').catch(() => undefined);
+                });
+                this.addSectPanelActionButton('修炼策', 150, -284, () => {
+                    void this.setNextSectPolicyFromHUD('cultivation').catch(() => undefined);
+                });
+                break;
+            case 'disciples':
+                this.addSectPanelActionButton('收徒', -156, -252, () => {
+                    void this.startRecruitmentFromHUD().catch(() => undefined);
+                });
+                this.addSectPanelActionButton('接纳', -52, -252, () => {
+                    void this.acceptCandidateFromHUD().catch(() => undefined);
+                });
+                this.addSectPanelActionButton('拒绝', 52, -252, () => {
+                    void this.rejectCandidateFromHUD().catch(() => undefined);
+                });
+                this.addSectPanelActionButton('考核', 156, -252, () => {
+                    void this.startDiscipleAssessmentFromHUD().catch(() => undefined);
+                });
+                this.addSectPanelActionButton('晋升', -156, -296, () => {
+                    void this.promoteDiscipleFromHUD().catch(() => undefined);
+                });
+                this.addSectPanelActionButton('修炼', -52, -296, () => {
+                    void this.startCultivationFromHUD().catch(() => undefined);
+                });
+                this.addSectPanelActionButton('突破', 52, -296, () => {
+                    void this.attemptBreakthroughFromHUD().catch(() => undefined);
+                });
+                this.addSectPanelActionButton('服丹', 156, -296, () => {
+                    void this.useCultivationPillFromHUD().catch(() => undefined);
+                });
+                this.addSectPanelActionButton('洞府', -156, -338, () => {
+                    void this.reserveCaveFromHUD().catch(() => undefined);
+                });
+                this.addSectPanelActionButton('铸器', -52, -338, () => {
+                    void this.craftArtifactFromHUD().catch(() => undefined);
+                });
+                this.addSectPanelActionButton('装备', 52, -338, () => {
+                    void this.equipArtifactFromHUD().catch(() => undefined);
+                });
+                this.addSectPanelActionButton('卸具', 156, -338, () => {
+                    void this.unequipArtifactFromHUD().catch(() => undefined);
+                });
+                this.addSectPanelActionButton('修器', 0, -380, () => {
+                    void this.repairArtifactFromHUD().catch(() => undefined);
+                });
+                break;
+            case 'tasks':
+                this.addSectPanelActionButton('发任务', -150, -284, () => {
+                    void this.publishSectTaskFromHUD().catch(() => undefined);
+                });
+                this.addSectPanelActionButton('派遣', -50, -284, () => {
+                    void this.assignSectTaskFromHUD().catch(() => undefined);
+                });
+                this.addSectPanelActionButton('取消', 50, -284, () => {
+                    void this.cancelSectTaskFromHUD().catch(() => undefined);
+                });
+                this.addSectPanelActionButton('提优', 150, -284, () => {
+                    void this.raiseSectTaskPriorityFromHUD().catch(() => undefined);
+                });
+                this.addSectPanelActionButton('兑谷', 0, -328, () => {
+                    void this.exchangeSectContributionFromHUD().catch(() => undefined);
+                });
+                break;
+            case 'institutions':
+                this.addSectPanelActionButton('投产', -150, -284, () => {
+                    void this.startProductionFromHUD().catch(() => undefined);
+                });
+                this.addSectPanelActionButton('调产', -50, -284, () => {
+                    void this.adjustProductionFromHUD().catch(() => undefined);
+                });
+                this.addSectPanelActionButton('停产', 50, -284, () => {
+                    void this.cancelProductionFromHUD().catch(() => undefined);
+                });
+                this.addSectPanelActionButton('管事', 150, -284, () => {
+                    void this.assignInstitutionManagerFromHUD().catch(() => undefined);
+                });
+                this.addSectPanelActionButton('山门', -50, -328, () => {
+                    void this.toggleGatePolicyFromHUD().catch(() => undefined);
+                });
+                this.addSectPanelActionButton('兑规', 50, -328, () => {
+                    void this.toggleExchangeRuleFromHUD().catch(() => undefined);
+                });
+                break;
+            case 'events':
+                this.addSectPanelActionButton('选1', -150, -284, () => {
+                    void this.chooseSectEventOptionFromHUD(0).catch(() => undefined);
+                });
+                this.addSectPanelActionButton('选2', -50, -284, () => {
+                    void this.chooseSectEventOptionFromHUD(1).catch(() => undefined);
+                });
+                this.addSectPanelActionButton('选3', 50, -284, () => {
+                    void this.chooseSectEventOptionFromHUD(2).catch(() => undefined);
+                });
+                this.addSectPanelActionButton('搁置', 150, -284, () => {
+                    void this.dismissSectEventFromHUD().catch(() => undefined);
+                });
+                break;
+            case 'buildings':
+                break;
+        }
+    }
+
+    private addSectPanelActionButton(label: string, x: number, y: number, onClick: () => void): void {
+        if (!this.sectPanelRoot) {
+            return;
+        }
+
+        const button = this.createScreenButton(label, 86, 34, onClick, 15);
+        button.name = `SectPanelAction-${label}`;
+        button.setPosition(x, y, 0);
+        button.setParent(this.sectPanelRoot);
+    }
+
+    private setSectPanelTab(tab: SectPanelTabKey): void {
+        if (this.sectPanelTab === tab) {
+            return;
+        }
+
+        this.sectPanelTab = tab;
+        this.buildSectPanel();
+    }
+
+    private toggleSectPanel(): void {
+        this.sectPanelVisible = !this.sectPanelVisible;
+        if (this.sectPanelRoot) {
+            this.sectPanelRoot.active = this.sectPanelVisible;
+        }
+        this.refreshSectPanel();
+    }
+
+    private closeSectPanel(): void {
+        this.sectPanelVisible = false;
+        if (this.sectPanelRoot) {
+            this.sectPanelRoot.active = false;
+        }
+        this.refreshSectPanel();
+    }
+
+    private refreshSectPanel(): void {
+        if (this.sectPanelRoot) {
+            this.sectPanelRoot.active = this.sectPanelVisible;
+        }
+        if (!this.sectPanelLabel) {
+            return;
+        }
+        if (!this.sectAuthoritySnapshot) {
+            this.sectPanelLabel.string = `宗务堂口\n状态 ${this.sectAuthorityLastError ?? '等待 authority sect snapshot'}\n\n界面只消费权威 snapshot。`;
+            return;
+        }
+
+        const contribution = this.sectContributionViewModel;
+        const overview = this.sectAffairsOverviewViewModel;
+        const recruitment = this.sectAuthoritySnapshot.state.admissions?.current_recruitment ?? null;
+        const buildingSummary = this.sectBuildingSummaryViewModel;
+        const goals = this.sectGoalViewModels
+            .slice(0, 4)
+            .map(
+                (goal) =>
+                    `- ${goal.title} [${goal.status}] ${goal.progressText}\n  奖惩 ${goal.rewardText}\n  焦点 ${goal.focusDiscipleText} / ${goal.tagsText}\n  建议 ${goal.recommendationText}`,
+            )
+            .join('\n');
+        const resolvedGoals = this.sectResolvedGoalViewModels
+            .slice(0, 3)
+            .map((goal) => `- v${goal.resolvedAtVersion} [${goal.outcome}] ${goal.summary}`)
+            .join('\n');
+        const buildingCatalog = this.sectBuildingCatalogViewModels
+            .slice(0, 4)
+            .map((entry) => {
+                const instances =
+                    entry.instances.length > 0
+                        ? entry.instances
+                              .map(
+                                  (instance) =>
+                                      `${instance.id} Lv${instance.level} ${instance.phase} 效${instance.efficiency}% 耐${instance.durability}% 债${instance.maintenanceDebt}${
+                                          instance.damagedReason !== 'none' ? ` ${instance.damagedReason}` : ''
+                                      }`,
+                              )
+                              .join(' | ')
+                        : '未建';
+                return `- ${entry.label} ${entry.currentCount}/${entry.maxCount} ${entry.unlockText} ${entry.canBuild ? '可建' : `阻断 ${entry.blockerText}`}\n  建 ${entry.buildCostText} / 升 ${entry.upgradeText}\n  维护 ${entry.maintenanceText}\n  ${instances}`;
+            })
+            .join('\n');
+        const roster = this.sectRosterViewModels
+            .slice(0, 3)
+            .map(
+                (disciple) =>
+                    `- ${disciple.name} ${disciple.identityText} ${disciple.realmStage} ${disciple.assignmentKind}/${disciple.workTargetText} ${disciple.contributionText} ${disciple.hpText}\n  ${disciple.equipmentText}\n  晋升 ${disciple.promotion.readinessText} / 缺 ${disciple.promotion.blockersText}\n  收益 ${disciple.promotion.impactText}\n  ${disciple.promotion.assessmentText}`,
+            )
+            .join('\n');
+        const rosterStory = this.sectRosterViewModels
+            .slice(0, 3)
+            .map(
+                (disciple) =>
+                    `- ${disciple.name}\n  经历 ${disciple.recentExperienceText}\n  情绪 ${disciple.emotionText}\n  关系 ${disciple.relationshipText}\n  记忆 ${disciple.memoryText}\n  满忠因 ${disciple.moodReasonText}`,
+            )
+            .join('\n');
+        const artifacts = this.sectArtifactViewModels
+            .slice(0, 6)
+            .map(
+                (artifact) =>
+                    `- ${artifact.typeLabel} ${artifact.qualityText} ${artifact.slotLabel}槽 ${artifact.durabilityText}\n  绑定 ${artifact.boundDiscipleName}\n  加成 ${artifact.statsText}\n  修理 ${artifact.repairNeedText}\n  制作 ${artifact.craftMaterialText}`,
+            )
+            .join('\n');
+        const artifactCraft = this.sectArtifactCraftViewModels
+            .map((entry) => `${entry.typeLabel}/${entry.slotLabel} ${entry.materialText}`)
+            .join(' | ');
+        const candidates = this.sectCandidateViewModels
+            .slice(0, 3)
+            .map((candidate) => `- ${candidate.name} ${candidate.identity} ${candidate.realmStage} ${candidate.aptitudeText} ${candidate.hpText}`)
+            .join('\n');
+        const tasks = this.sectAuthorityTaskViewModels
+            .slice(0, 4)
+            .map((task) => {
+                const assigned = task.assignedDiscipleNames.length > 0 ? ` / ${task.assignedDiscipleNames.join(',')}` : '';
+                const recommended =
+                    task.recommendedDiscipleNames.length > 0 ? task.recommendedDiscipleNames.join(',') : task.dispatchBlockedReason ?? 'authority 未声明';
+                const dispatchText = task.canDispatch ? `可派 ${recommended}` : `阻断 ${task.dispatchBlockedReason ?? '不可派遣'}`;
+                return `- [${task.typeLabel}/${task.gradeText}] ${task.title} [${task.status}] P${task.priority} ${task.riskText} ${task.successRateText} ${task.evaluationText} ${task.progressText}${assigned}\n  队伍 ${task.teamRequirementText} / 推荐 ${recommended} / ${dispatchText}\n  奖 ${task.rewardText} / ${task.reputationRewardText} / ${task.relationRewardText}\n  代价 ${task.possibleCostText} / 线索 ${task.crisisClueText}`;
+            })
+            .join('\n');
+        const ruleText = contribution?.rules
+            .slice(0, 2)
+            .map((rule) => `${rule.name} ${rule.cost}贡 ${rule.purchased}/${Math.max(0, rule.monthlyLimit)}`)
+            .join(' | ');
+        const institutions = this.sectInstitutionViewModels
+            .slice(0, 4)
+            .map((institution) => {
+                const enabledText = institution.enabled ? '开' : '停';
+                return `- ${institution.label} Lv${institution.level} [${enabledText}] ${institution.efficiencyText} / ${institution.capacityText}\n  管事 ${institution.managerText} / ${institution.managerEffectText}\n  瓶颈 ${institution.bottleneckText}\n  ${institution.effectSummaryText}\n  ${institution.gatePolicyText} / ${institution.exchangeText} / ${institution.caveSlotText}\n  近期 ${institution.recentResultText}\n  意图 ${institution.operationHintText}`;
+            })
+            .join('\n');
+        const productions = this.sectProductionViewModels
+            .slice(0, 2)
+            .map((production) => {
+                const assigned = production.assignedDiscipleNames.length > 0 ? ` / ${production.assignedDiscipleNames.join(',')}` : '';
+                return `- ${production.kind} [${production.status}] P${production.priority} ${production.progressText} ${production.cycleText}/${production.targetCycleText}${assigned}\n  入 ${production.inputText} / 出 ${production.outputText} / 瓶颈 ${production.bottleneckText}`;
+            })
+            .join('\n');
+        const policies = this.sectPolicyViewModels
+            .map((policy) => {
+                const impactText = policy.impactSummary.length > 0 ? policy.impactSummary.join(' / ') : 'authority 未声明影响摘要';
+                const optionText =
+                    policy.options.length > 0
+                        ? policy.options.map((option) => `${option.label}:${option.value}`).join(' | ')
+                        : 'authority 未声明可选项';
+                return `- ${this.formatSectPolicyCategory(policy.category)} ${policy.label} (${policy.value})\n  ${policy.explanation}\n  影响 ${impactText}\n  可选 ${optionText}`;
+            })
+            .join('\n');
+        const cultivation = this.sectCultivationViewModel;
+        const crises = this.sectCrisisViewModels
+            .slice(0, 3)
+            .map(
+                (crisis) =>
+                    `- ${crisis.title} [${crisis.stageText}/${crisis.status}] ${crisis.expiresText}\n  ${crisis.detail}\n  来源 ${crisis.sourceText} / 预览 ${crisis.previewText}\n  ${crisis.optionSummaryText}\n  建议 ${crisis.recommendationText}`,
+            )
+            .join('\n');
+        const orderText = this.sectOrderViewModel
+            ? `${this.sectOrderViewModel.safetyText} / ${this.sectOrderViewModel.disciplineText} / ${this.sectOrderViewModel.strifeRiskText}\n${this.sectOrderViewModel.summaryText}\n建议 ${this.sectOrderViewModel.recommendationText}`
+            : '- authority 尚无安全/秩序投影';
+        const treatments = this.sectTreatmentViewModels
+            .slice(0, 3)
+            .map(
+                (entry) =>
+                    `- ${entry.discipleName} ${entry.queueText}\n  ${entry.injuryText} / ${entry.hpText} / ${entry.pressureText}\n  ${entry.recoveryText}\n  ${entry.herbCostText} / ${entry.institutionText}\n  建议 ${entry.recommendationText}`,
+            )
+            .join('\n');
+        const monthlyAssessment = this.sectMonthlyAssessmentViewModel
+            ? `${this.sectMonthlyAssessmentViewModel.latestMonthText}\n${this.sectMonthlyAssessmentViewModel.latestChampionText}\n${this.sectMonthlyAssessmentViewModel.latestRewardText}\n${this.sectMonthlyAssessmentViewModel.latestSummaryText}\n历史 ${this.sectMonthlyAssessmentViewModel.historyText}\n${this.sectMonthlyAssessmentViewModel.recommendationText}`
+            : '- authority 尚无月度小比结果';
+        const eventChoices = this.sectEventChoiceViewModels
+            .slice(0, 2)
+            .map((event) => {
+                const optionsText = event.options.length > 0
+                    ? event.options
+                          .map(
+                              (option, optionIndex) =>
+                                  `  ${optionIndex + 1}. ${option.label} / 条件 ${option.requirementsText} / 预览 ${option.previewText}${
+                                      option.description ? ` / ${option.description}` : ''
+                                  }`,
+                          )
+                          .join('\n')
+                    : '\n  无可提交选项';
+                return `- ${event.title} [${event.status}] ${event.expiresText}\n  ${event.detail}\n  条件 ${event.requirementsText} / 预览 ${event.previewText}\n${optionsText}`;
+            })
+            .join('\n');
+        const resolvedEvents = this.sectResolvedEventViewModels
+            .slice(0, 3)
+            .map((event) => `- v${event.resolvedAtVersion} [${event.outcome}] ${event.summary}`)
+            .join('\n');
+        const omens = this.sectOmenViewModels
+            .slice(0, 2)
+            .map((omen) => `- ${omen.title} [${omen.status}] ${omen.detail}\n  ${omen.tagsText}`)
+            .join('\n');
+        const diary = this.sectDiaryViewModels
+            .slice(0, 3)
+            .map((entry) => `- v${entry.version} ${entry.timingText} ${entry.storyText}\n  ${entry.summary}`)
+            .join('\n');
+        const eventFeedback = this.sectEventFeedbackViewModels
+            .slice(0, 4)
+            .map((entry) => `- v${entry.version} ${entry.timingText} ${entry.storyText}\n  ${entry.summary}`)
+            .join('\n');
+        const recentPolicyEvents = this.sectEventFeedbackViewModels
+            .filter((entry) => entry.category === 'policy')
+            .slice(0, 3)
+            .map((entry) => `- v${entry.version} ${entry.summary}`)
+            .join('\n');
+        const recentPromotionEvents = this.sectEventFeedbackViewModels
+            .filter((entry) => entry.category === 'promotion')
+            .slice(0, 3)
+            .map((entry) => `- v${entry.version} ${entry.summary}`)
+            .join('\n');
+
+        const header = `宗务堂口 | ${this.getSectPanelTabTitle(this.sectPanelTab)} | sect ${this.sectAuthoritySnapshot.sectId} v${this.sectAuthoritySnapshot.sceneVersion}`;
+        const thinClientNote = '只读 authority snapshot / patch / event_log；按钮只提交玩家意图。';
+
+        switch (this.sectPanelTab) {
+            case 'overview':
+                this.sectPanelLabel.string = [
+                    header,
+                    thinClientNote,
+                    `经营总览\n缺人 ${overview?.staffingText ?? 'authority 未声明'}\n维护 ${overview?.maintenanceText ?? 'authority 未声明'}\n材料 ${overview?.materialText ?? 'authority 未声明'}\n风险 ${overview?.riskText ?? 'authority 未声明'}\n满意 ${overview?.satisfactionText ?? 'authority 未声明'}\n机构 ${overview?.institutionEfficiencyText ?? 'authority 未声明'}\n建议 ${overview?.adviceText ?? 'authority 未声明'}`,
+                    `宗门目标\n${goals || '- authority 尚无目标投影'}\n近期结题\n${resolvedGoals || '- 暂无目标完成/失败摘要'}`,
+                    `月度小比\n${monthlyAssessment}`,
+                    `政策\n${policies || '- authority 尚无政策投影'}\n近期政策\n${recentPolicyEvents || '- event_log 暂无政策事件'}`,
+                ].join('\n\n');
+                break;
+            case 'buildings':
+                this.sectPanelLabel.string = [
+                    header,
+                    thinClientNote,
+                    `宗门等级 Lv${buildingSummary?.level ?? 0} | 扩张 ${buildingSummary?.expansion ?? 0}/${buildingSummary?.buildingLimit ?? 0}`,
+                    `受损 ${buildingSummary?.damagedCount ?? 0} | 低效 ${buildingSummary?.lowEfficiencyCount ?? 0}`,
+                    `维护压力 ${buildingSummary?.maintenancePressureText ?? '无'}`,
+                    `建筑解锁\n${buildingCatalog || '- authority 尚无建筑目录投影'}`,
+                    '建造、升级、修复仍从地图建筑交互提交 authority 意图。',
+                ].join('\n\n');
+                break;
+            case 'disciples':
+                this.sectPanelLabel.string = [
+                    header,
+                    thinClientNote,
+                    `名册 ${this.sectRosterViewModels.length}\n${roster || '- authority 尚无弟子名册'}`,
+                    `故事反馈\n${rosterStory || '- authority 尚无弟子记忆/关系摘要'}`,
+                    `近期晋升\n${recentPromotionEvents || '- event_log 暂无晋升/考核反馈'}`,
+                    `法器 ${this.sectArtifactViewModels.length}\n${artifacts || '- authority 尚无法器库存'}\n制作目录 ${artifactCraft || '- authority 未声明法器目录'}`,
+                    `候选 ${this.sectCandidateViewModels.length} ${recruitment ? `招收${recruitment.candidate_count}/${recruitment.type}` : '无进行中招收'}\n${candidates || '- 无候选，点“收徒”提交 authority 意图'}`,
+                ].join('\n\n');
+                break;
+            case 'tasks':
+                this.sectPanelLabel.string = [
+                    header,
+                    thinClientNote,
+                    `贡献 ${contribution?.starterDiscipleName ?? 'none'} ${contribution?.balance ?? 0} / 兑付率 ${(contribution?.redeemabilityRatio ?? 0).toFixed(2)} | 规则 ${ruleText ?? 'none'}`,
+                    `任务\n${tasks || '- 暂无权威任务'}`,
+                ].join('\n\n');
+                break;
+            case 'institutions':
+                this.sectPanelLabel.string = [
+                    header,
+                    thinClientNote,
+                    `机构\n${institutions || '- authority 尚无机构循环'}`,
+                    `生产\n${productions || '- authority 尚无生产条目'}\n投产/调产/停产只提交 authority 意图`,
+                    `修炼\n${
+                        cultivation
+                            ? `${cultivation.discipleName} ${cultivation.realmStage} / ${cultivation.cultivationProgressText}\n${cultivation.assignmentKind} / ${cultivation.workTargetText}\n${cultivation.breakthroughText} | ${cultivation.pressureText}\n${cultivation.decisionText}\n${cultivation.aidText}\n${cultivation.omenText}\n${cultivation.supportText}\n${cultivation.needsText} | ${cultivation.hpText}`
+                            : '- authority 尚无修炼快照'
+                    }`,
+                    `药庐 / 秩序\n秩序\n${orderText}\n治疗队列\n${treatments || '- 当前无待治疗弟子，药庐只显示 authority 恢复顺序'}`,
+                ].join('\n\n');
+                break;
+            case 'events':
+                this.sectPanelLabel.string = [
+                    header,
+                    thinClientNote,
+                    `危机链\n${crises || '- authority 尚无危机链阶段'}`,
+                    `待决事件\n${eventChoices || '- authority 尚无待选择事件'}\n已解决\n${resolvedEvents || '- authority 尚无已解决事件摘要'}`,
+                    `天机\n${omens || '- authority 尚无预兆'}`,
+                    `弟子日记\n${diary || '- event_log 暂无弟子日记'}`,
+                    `宗门事件\n${eventFeedback || '- event_log 暂无事件反馈'}`,
+                ].join('\n\n');
+                break;
+        }
+    }
+
+    private getSectPanelTabTitle(tab: SectPanelTabKey): string {
+        return SECT_PANEL_TABS.find((entry) => entry.key === tab)?.label ?? '总览';
+    }
+
+    private async ensureSectAuthorityIntentSurface(action: string): Promise<boolean> {
+        if (!this.authorityConnected || this.authorityRenderSource !== 'authority_snapshot') {
+            this.sectAuthorityLastError = 'authority_blocked';
+            this.logRuntime('WARN', 'SECT', 'sect_authority.intent_blocked', 'authority 未连接，宗务意图不允许本地推进', {
+                action,
+                authorityConnected: this.authorityConnected,
+                renderSource: this.authorityRenderSource,
+            });
+            this.setMessage(`authority 未连接，已阻止${action}本地推进`);
+            this.refreshSectPanel();
+            return false;
+        }
+        if (!this.sectAuthoritySnapshot || !this.sectAuthoritySectId) {
+            await this.joinSectAuthoritySurface();
+        }
+        return Boolean(this.sectAuthoritySnapshot && this.sectAuthoritySectId);
+    }
+
+    private getFirstPendingSectEventChoice(): SectEventChoiceRenderViewModel | null {
+        return (
+            this.sectEventChoiceViewModels
+                .filter((event) => event.status === 'foreshadowed' && event.options.length > 0)
+                .sort((left, right) => right.severity - left.severity || left.id.localeCompare(right.id))[0] ?? null
+        );
+    }
+
+    private getFirstSectCandidateId(): string | null {
+        return this.sectCandidateViewModels[0]?.id ?? null;
+    }
+
+    private getPrimaryPromotionRosterEntry(requirePassedAssessment: boolean): SectRosterRenderViewModel | null {
+        const eligible = this.sectRosterViewModels
+            .filter((disciple) =>
+                requirePassedAssessment
+                    ? disciple.promotion.canPromote
+                    : disciple.promotion.canRequestAssessment,
+            )
+            .sort((left, right) => left.id.localeCompare(right.id));
+        return eligible[0] ?? this.sectRosterViewModels[0] ?? null;
+    }
+
+    private getSectPolicyViewModel(category: SectAuthorityPolicyCategory): SectPolicyRenderViewModel | null {
+        return this.sectPolicyViewModels.find((policy) => policy.category === category) ?? null;
+    }
+
+    private getNextSectPolicyOption(policy: SectPolicyRenderViewModel): SectPolicyRenderViewModel['options'][number] | null {
+        if (policy.options.length === 0) {
+            return null;
+        }
+        const currentIndex = policy.options.findIndex((option) => option.value === policy.value);
+        const nextIndex = currentIndex >= 0 ? (currentIndex + 1) % policy.options.length : 0;
+        return policy.options[nextIndex] ?? null;
+    }
+
+    private async setNextSectPolicyFromHUD(category: SectAuthorityPolicyCategory): Promise<void> {
+        if (!(await this.ensureSectAuthorityIntentSurface('调整宗门政策'))) {
+            return;
+        }
+        if (!this.sectAuthoritySnapshot) {
+            this.sectAuthorityLastError = 'sect_policy_state_missing';
+            this.setMessage('authority 政策状态缺失，已阻止本地政策推进');
+            return;
+        }
+        const policy = this.getSectPolicyViewModel(category);
+        const nextOption = policy ? this.getNextSectPolicyOption(policy) : null;
+        if (!policy || !nextOption) {
+            this.sectAuthorityLastError = 'sect_policy_options_missing';
+            this.setMessage(`authority 未下发 ${category} 政策可选项，已阻止本地政策推进`);
+            this.refreshSectPanel();
+            return;
+        }
+
+        const payload: SectAuthoritySetPolicyPayload = {
+            policyCategory: category,
+            policyValue: nextOption.value,
+            policy_category: category,
+            policy_value: nextOption.value,
+        };
+        await this.executeSectAuthorityCommandAsync(
+            {
+                cmdId: `sect-set-policy-${category}-${Date.now()}`,
+                type: 'COMMAND_TYPE_SET_POLICY',
+                baseVersion: this.sectAuthoritySnapshot.sceneVersion,
+                payload,
+            },
+            { commandKey: `sect_set_policy:${category}` },
+        );
+    }
+
+    private getPrimaryInstitutionManagerCandidate(): SectRosterRenderViewModel | null {
+        return this.sectRosterViewModels
+            .slice()
+            .sort((left, right) => {
+                const leftIdle = left.assignmentKind === 'idle' ? 0 : 1;
+                const rightIdle = right.assignmentKind === 'idle' ? 0 : 1;
+                return leftIdle - rightIdle || left.id.localeCompare(right.id);
+            })[0] ?? null;
+    }
+
+    private getPrimaryInstitutionForManagerIntent(): SectInstitutionRenderViewModel | null {
+        const preferredOrder = ['task_hall', 'treasury', 'dormitory', 'canteen', 'medicine_hut', 'gate', 'cave', 'main_hall'];
+        const byId = new Map(this.sectInstitutionViewModels.map((institution) => [institution.id, institution]));
+        const ordered = preferredOrder
+            .map((institutionId) => byId.get(institutionId))
+            .filter((institution): institution is SectInstitutionRenderViewModel => Boolean(institution));
+        const candidates = ordered.length > 0 ? ordered : this.sectInstitutionViewModels;
+        return candidates.find((institution) => institution.enabled && !institution.managerDiscipleId) ?? candidates.find((institution) => institution.enabled) ?? null;
+    }
+
+    private async assignInstitutionManagerFromHUD(): Promise<void> {
+        if (!(await this.ensureSectAuthorityIntentSurface('任命管事'))) {
+            return;
+        }
+        if (!this.sectAuthoritySnapshot) {
+            return;
+        }
+        const institution = this.getPrimaryInstitutionForManagerIntent();
+        const disciple = this.getPrimaryInstitutionManagerCandidate();
+        if (!institution || !disciple) {
+            this.sectAuthorityLastError = 'institution_manager_target_missing';
+            this.setMessage('authority 未下发可任命机构或弟子，已阻止本地管事推进');
+            this.refreshSectPanel();
+            return;
+        }
+
+        const payload: SectAuthorityAssignInstitutionManagerPayload = {
+            institutionId: institution.id,
+            discipleId: disciple.id,
+        };
+        await this.executeSectAuthorityCommandAsync(
+            {
+                cmdId: `sect-assign-institution-manager-${institution.id}-${disciple.id}-${Date.now()}`,
+                type: 'COMMAND_TYPE_ASSIGN_INSTITUTION_MANAGER',
+                baseVersion: this.sectAuthoritySnapshot.sceneVersion,
+                payload,
+            },
+            { commandKey: `sect_assign_institution_manager:${institution.id}:${disciple.id}` },
+        );
+    }
+
+    private async toggleGatePolicyFromHUD(): Promise<void> {
+        if (!(await this.ensureSectAuthorityIntentSurface('调整山门'))) {
+            return;
+        }
+        if (!this.sectAuthoritySnapshot) {
+            return;
+        }
+        const gate = this.sectAuthoritySnapshot.state.institutions?.by_id?.gate;
+        if (!gate) {
+            this.sectAuthorityLastError = 'gate_institution_missing';
+            this.setMessage('authority 未下发山门机构，已阻止本地山门推进');
+            this.refreshSectPanel();
+            return;
+        }
+        const nextOpen = !(gate.gate_policy?.open_to_visitors ?? false);
+        const guard = this.getPrimaryInstitutionManagerCandidate();
+        const payload: SectAuthoritySetGatePolicyPayload = {
+            openToVisitors: nextOpen,
+            allowWanderingCultivators: nextOpen,
+            guardDiscipleIds: nextOpen && guard ? [guard.id] : gate.gate_policy?.guard_disciple_ids ?? [],
+        };
+        await this.executeSectAuthorityCommandAsync(
+            {
+                cmdId: `sect-set-gate-policy-${Date.now()}`,
+                type: 'COMMAND_TYPE_SET_GATE_POLICY',
+                baseVersion: this.sectAuthoritySnapshot.sceneVersion,
+                payload,
+            },
+            { commandKey: 'sect_set_gate_policy' },
+        );
+    }
+
+    private async toggleExchangeRuleFromHUD(): Promise<void> {
+        if (!(await this.ensureSectAuthorityIntentSurface('调整兑换规则'))) {
+            return;
+        }
+        if (!this.sectAuthoritySnapshot || !this.sectContributionViewModel) {
+            return;
+        }
+        const rule = this.sectContributionViewModel.rules[0] ?? null;
+        if (!rule) {
+            this.sectAuthorityLastError = 'exchange_rule_missing';
+            this.setMessage('authority 未下发功勋宝库兑换规则，已阻止本地兑规推进');
+            this.refreshSectPanel();
+            return;
+        }
+
+        const payload: SectAuthoritySetExchangeRulePayload = {
+            exchangeItemId: rule.id,
+            enabled: !rule.enabled,
+        };
+        await this.executeSectAuthorityCommandAsync(
+            {
+                cmdId: `sect-set-exchange-rule-${rule.id}-${Date.now()}`,
+                type: 'COMMAND_TYPE_SET_EXCHANGE_RULE',
+                baseVersion: this.sectAuthoritySnapshot.sceneVersion,
+                payload,
+            },
+            { commandKey: `sect_set_exchange_rule:${rule.id}` },
+        );
+    }
+
+    private async startDiscipleAssessmentFromHUD(): Promise<void> {
+        if (!(await this.ensureSectAuthorityIntentSurface('弟子考核'))) {
+            return;
+        }
+        if (!this.sectAuthoritySnapshot) {
+            return;
+        }
+        const disciple = this.getPrimaryPromotionRosterEntry(false);
+        if (!disciple || !disciple.promotion.targetRank) {
+            this.sectAuthorityLastError = 'sect_assessment_target_missing';
+            this.setMessage('authority 未下发可考核弟子或目标身份，已阻止本地考核推进');
+            this.refreshSectPanel();
+            return;
+        }
+        if (!disciple.promotion.canRequestAssessment) {
+            this.sectAuthorityLastError = 'authority_blocked';
+            this.setMessage(`authority 未允许 ${disciple.name} 考核提交：${disciple.promotion.blockersText}`);
+            this.refreshSectPanel();
+            return;
+        }
+
+        const payload: SectAuthorityStartAssessmentPayload = {
+            discipleId: disciple.id,
+            targetRank: disciple.promotion.targetRank,
+            target_rank: disciple.promotion.targetRank,
+        };
+        await this.executeSectAuthorityCommandAsync(
+            {
+                cmdId: `sect-start-assessment-${disciple.id}-${Date.now()}`,
+                type: 'COMMAND_TYPE_START_ASSESSMENT',
+                baseVersion: this.sectAuthoritySnapshot.sceneVersion,
+                payload,
+            },
+            { commandKey: `sect_start_assessment:${disciple.id}:${disciple.promotion.targetRank}` },
+        );
+    }
+
+    private async promoteDiscipleFromHUD(): Promise<void> {
+        if (!(await this.ensureSectAuthorityIntentSurface('弟子晋升'))) {
+            return;
+        }
+        if (!this.sectAuthoritySnapshot) {
+            return;
+        }
+        const disciple = this.getPrimaryPromotionRosterEntry(true);
+        if (!disciple || !disciple.promotion.targetRank) {
+            this.sectAuthorityLastError = 'sect_promotion_target_missing';
+            this.setMessage('authority 未下发可晋升弟子或目标身份，已阻止本地晋升推进');
+            this.refreshSectPanel();
+            return;
+        }
+        if (!disciple.promotion.canPromote) {
+            this.sectAuthorityLastError = 'sect_promotion_assessment_required';
+            this.setMessage(`authority 未允许 ${disciple.name} 晋升提交：${disciple.promotion.assessmentText}`);
+            this.refreshSectPanel();
+            return;
+        }
+
+        const payload: SectAuthorityPromoteDisciplePayload = {
+            discipleId: disciple.id,
+            targetRank: disciple.promotion.targetRank,
+            target_rank: disciple.promotion.targetRank,
+        };
+        await this.executeSectAuthorityCommandAsync(
+            {
+                cmdId: `sect-promote-disciple-${disciple.id}-${Date.now()}`,
+                type: 'COMMAND_TYPE_PROMOTE_DISCIPLE',
+                baseVersion: this.sectAuthoritySnapshot.sceneVersion,
+                payload,
+            },
+            { commandKey: `sect_promote_disciple:${disciple.id}:${disciple.promotion.targetRank}` },
+        );
+    }
+
+    private getFirstCraftableArtifactType(): SectAuthorityArtifactType | null {
+        return this.sectArtifactCraftViewModels[0]?.type ?? null;
+    }
+
+    private getFirstEquippableArtifact(): SectArtifactRenderViewModel | null {
+        return this.sectArtifactViewModels.find((artifact) => artifact.canEquip) ?? null;
+    }
+
+    private getFirstRepairableArtifact(): SectArtifactRenderViewModel | null {
+        return this.sectArtifactViewModels.find((artifact) => artifact.canRepair) ?? null;
+    }
+
+    private getFirstEquippedArtifact(): SectArtifactRenderViewModel | null {
+        return this.sectArtifactViewModels.find((artifact) => artifact.canUnequip) ?? null;
+    }
+
+    private getPreferredDiscipleForArtifactSlot(slot: SectAuthorityArtifactSlot): SectRosterRenderViewModel | null {
+        return (
+            this.sectRosterViewModels.find((disciple) => {
+                const snapshotDisciple = this.sectAuthoritySnapshot?.state.disciples?.[disciple.id];
+                return snapshotDisciple ? !this.getSectDiscipleEquippedArtifactId(snapshotDisciple, slot) : false;
+            }) ?? this.sectRosterViewModels[0] ?? null
+        );
+    }
+
+    private async craftArtifactFromHUD(): Promise<void> {
+        if (!(await this.ensureSectAuthorityIntentSurface('制作法器'))) {
+            return;
+        }
+        if (!this.sectAuthoritySnapshot) {
+            return;
+        }
+        const artifactType = this.getFirstCraftableArtifactType();
+        if (!artifactType) {
+            this.sectAuthorityLastError = 'artifact_craft_option_missing';
+            this.setMessage('authority 未下发可制作法器目录');
+            this.refreshSectPanel();
+            return;
+        }
+        const payload: SectAuthorityCraftArtifactPayload = {
+            artifactType,
+            type: artifactType,
+            quality: 1,
+        };
+        await this.executeSectAuthorityCommandAsync(
+            {
+                cmdId: `sect-craft-artifact-${artifactType}-${Date.now()}`,
+                type: 'COMMAND_TYPE_CRAFT_ARTIFACT',
+                baseVersion: this.sectAuthoritySnapshot.sceneVersion,
+                payload,
+            },
+            { commandKey: `sect_craft_artifact:${artifactType}` },
+        );
+    }
+
+    private async equipArtifactFromHUD(): Promise<void> {
+        if (!(await this.ensureSectAuthorityIntentSurface('装备法器'))) {
+            return;
+        }
+        if (!this.sectAuthoritySnapshot) {
+            return;
+        }
+        const artifact = this.getFirstEquippableArtifact();
+        if (!artifact) {
+            this.sectAuthorityLastError = 'artifact_equip_target_missing';
+            this.setMessage('authority 当前没有可装备法器');
+            this.refreshSectPanel();
+            return;
+        }
+        const disciple = this.getPreferredDiscipleForArtifactSlot(artifact.slot);
+        if (!disciple) {
+            this.sectAuthorityLastError = 'artifact_equip_disciple_missing';
+            this.setMessage('authority 当前没有可接收法器的弟子');
+            this.refreshSectPanel();
+            return;
+        }
+        const payload: SectAuthorityEquipArtifactPayload = {
+            itemId: artifact.id,
+            discipleId: disciple.id,
+        };
+        await this.executeSectAuthorityCommandAsync(
+            {
+                cmdId: `sect-equip-artifact-${artifact.id}-${disciple.id}-${Date.now()}`,
+                type: 'COMMAND_TYPE_EQUIP_ARTIFACT',
+                baseVersion: this.sectAuthoritySnapshot.sceneVersion,
+                payload,
+            },
+            { commandKey: `sect_equip_artifact:${artifact.id}:${disciple.id}` },
+        );
+    }
+
+    private async unequipArtifactFromHUD(): Promise<void> {
+        if (!(await this.ensureSectAuthorityIntentSurface('卸下法器'))) {
+            return;
+        }
+        if (!this.sectAuthoritySnapshot) {
+            return;
+        }
+        const artifact = this.getFirstEquippedArtifact();
+        if (!artifact) {
+            this.sectAuthorityLastError = 'artifact_unequip_target_missing';
+            this.setMessage('authority 当前没有已装备法器');
+            this.refreshSectPanel();
+            return;
+        }
+        const payload: SectAuthorityUnequipArtifactPayload = {
+            itemId: artifact.id,
+            discipleId: artifact.boundDiscipleId ?? undefined,
+        };
+        await this.executeSectAuthorityCommandAsync(
+            {
+                cmdId: `sect-unequip-artifact-${artifact.id}-${Date.now()}`,
+                type: 'COMMAND_TYPE_UNEQUIP_ARTIFACT',
+                baseVersion: this.sectAuthoritySnapshot.sceneVersion,
+                payload,
+            },
+            { commandKey: `sect_unequip_artifact:${artifact.id}` },
+        );
+    }
+
+    private async repairArtifactFromHUD(): Promise<void> {
+        if (!(await this.ensureSectAuthorityIntentSurface('修理法器'))) {
+            return;
+        }
+        if (!this.sectAuthoritySnapshot) {
+            return;
+        }
+        const artifact = this.getFirstRepairableArtifact();
+        if (!artifact) {
+            this.sectAuthorityLastError = 'artifact_repair_target_missing';
+            this.setMessage('authority 当前没有待修法器');
+            this.refreshSectPanel();
+            return;
+        }
+        const payload: SectAuthorityRepairArtifactPayload = {
+            itemId: artifact.id,
+        };
+        await this.executeSectAuthorityCommandAsync(
+            {
+                cmdId: `sect-repair-artifact-${artifact.id}-${Date.now()}`,
+                type: 'COMMAND_TYPE_REPAIR_ARTIFACT',
+                baseVersion: this.sectAuthoritySnapshot.sceneVersion,
+                payload,
+            },
+            { commandKey: `sect_repair_artifact:${artifact.id}` },
+        );
+    }
+
+    private async chooseSectEventOptionFromHUD(optionIndex: number): Promise<void> {
+        if (!(await this.ensureSectAuthorityIntentSurface('选择宗门事件'))) {
+            return;
+        }
+        if (!this.sectAuthoritySnapshot) {
+            this.sectAuthorityLastError = 'sect_event_state_missing';
+            this.setMessage('authority 事件状态缺失，已阻止本地事件结算');
+            return;
+        }
+        const event = this.getFirstPendingSectEventChoice();
+        const option = event?.options[optionIndex] ?? null;
+        if (!event || !option) {
+            this.setMessage(`authority 当前没有可选择的待决事件选项 ${optionIndex + 1}`);
+            return;
+        }
+
+        const payload: SectAuthorityChooseEventOptionPayload = {
+            eventId: event.id,
+            optionId: option.id,
+        };
+        await this.executeSectAuthorityCommandAsync(
+            {
+                cmdId: `sect-event-choice-${Date.now()}`,
+                type: 'COMMAND_TYPE_CHOOSE_EVENT_OPTION',
+                baseVersion: this.sectAuthoritySnapshot.sceneVersion,
+                payload,
+            },
+            { commandKey: `sect_event_choice:${event.id}:${option.id}` },
+        );
+    }
+
+    private async dismissSectEventFromHUD(): Promise<void> {
+        if (!(await this.ensureSectAuthorityIntentSurface('搁置宗门事件'))) {
+            return;
+        }
+        if (!this.sectAuthoritySnapshot) {
+            this.sectAuthorityLastError = 'sect_event_state_missing';
+            this.setMessage('authority 事件状态缺失，已阻止本地事件结算');
+            return;
+        }
+        const event = this.getFirstPendingSectEventChoice();
+        if (!event) {
+            this.setMessage('authority 当前没有可搁置的待决事件');
+            return;
+        }
+
+        const payload: SectAuthorityDismissEventPayload = {
+            eventId: event.id,
+        };
+        await this.executeSectAuthorityCommandAsync(
+            {
+                cmdId: `sect-event-dismiss-${Date.now()}`,
+                type: 'COMMAND_TYPE_DISMISS_EVENT',
+                baseVersion: this.sectAuthoritySnapshot.sceneVersion,
+                payload,
+            },
+            { commandKey: `sect_event_dismiss:${event.id}` },
+        );
+    }
+
+    private async startRecruitmentFromHUD(): Promise<void> {
+        if (!(await this.ensureSectAuthorityIntentSurface('收徒'))) {
+            return;
+        }
+        if (!this.sectAuthoritySnapshot) {
+            return;
+        }
+        if (this.sectCandidateViewModels.length > 0) {
+            this.setMessage('authority 已有候选池，请先接纳或拒绝当前候选');
+            return;
+        }
+
+        const payload: SectAuthorityStartRecruitmentPayload = {
+            candidateCount: 3,
+            investmentSpiritStone: 0,
+            durationDays: 7,
+        };
+        await this.executeSectAuthorityCommandAsync(
+            {
+                cmdId: `sect-recruit-${Date.now()}`,
+                type: 'COMMAND_TYPE_START_RECRUITMENT',
+                baseVersion: this.sectAuthoritySnapshot.sceneVersion,
+                payload,
+            },
+            { commandKey: 'sect_start_recruitment' },
+        );
+    }
+
+    private async acceptCandidateFromHUD(): Promise<void> {
+        if (!(await this.ensureSectAuthorityIntentSurface('接纳候选'))) {
+            return;
+        }
+        if (!this.sectAuthoritySnapshot) {
+            return;
+        }
+        const candidateId = this.getFirstSectCandidateId();
+        if (!candidateId) {
+            this.setMessage('authority 当前没有可接纳候选');
+            return;
+        }
+
+        const payload: SectAuthorityAcceptCandidatePayload = {
+            candidateId,
+        };
+        await this.executeSectAuthorityCommandAsync(
+            {
+                cmdId: `sect-accept-candidate-${Date.now()}`,
+                type: 'COMMAND_TYPE_ACCEPT_CANDIDATE',
+                baseVersion: this.sectAuthoritySnapshot.sceneVersion,
+                payload,
+            },
+            { commandKey: 'sect_accept_candidate' },
+        );
+    }
+
+    private async rejectCandidateFromHUD(): Promise<void> {
+        if (!(await this.ensureSectAuthorityIntentSurface('拒绝候选'))) {
+            return;
+        }
+        if (!this.sectAuthoritySnapshot) {
+            return;
+        }
+        const candidateId = this.getFirstSectCandidateId();
+        if (!candidateId) {
+            this.setMessage('authority 当前没有可拒绝候选');
+            return;
+        }
+
+        const payload: SectAuthorityRejectCandidatePayload = {
+            candidateId,
+        };
+        await this.executeSectAuthorityCommandAsync(
+            {
+                cmdId: `sect-reject-candidate-${Date.now()}`,
+                type: 'COMMAND_TYPE_REJECT_CANDIDATE',
+                baseVersion: this.sectAuthoritySnapshot.sceneVersion,
+                payload,
+            },
+            { commandKey: 'sect_reject_candidate' },
+        );
+    }
+
+    private async publishSectTaskFromHUD(): Promise<void> {
+        if (!(await this.ensureSectAuthorityIntentSurface('发布任务'))) {
+            return;
+        }
+        if (!this.sectAuthoritySnapshot) {
+            return;
+        }
+
+        const payload: SectAuthorityPublishTaskPayload = {
+            kind: 'merchant_commission',
+            type: 'external',
+            grade: 'ding',
+            title: `商会委托 ${this.sectAuthoritySnapshot.sceneVersion + 1}`,
+            description: '玩家发布的外务任务意图，成功、失败、奖励、伤病和名望只由服务器结算。',
+            priority: 55,
+            requiredProgressDays: 1,
+            risk: 10,
+            maxAssignees: 1,
+            minIdentity: 'outer_disciple',
+            minRealm: 'mortal',
+            requiredAptitude: {
+                mind: 5,
+            },
+            contributionReward: 10,
+            rewardResources: {
+                spirit_stone: 6,
+            },
+            reputationReward: 1,
+            relationReward: {
+                merchant_guild: 2,
+            },
+        };
+        await this.executeSectAuthorityCommandAsync(
+            {
+                cmdId: `sect-publish-${Date.now()}`,
+                type: 'COMMAND_TYPE_PUBLISH_TASK',
+                baseVersion: this.sectAuthoritySnapshot.sceneVersion,
+                payload,
+            },
+            { commandKey: 'sect_publish_task' },
+        );
+    }
+
+    private async assignSectTaskFromHUD(): Promise<void> {
+        if (!(await this.ensureSectAuthorityIntentSurface('派遣任务'))) {
+            return;
+        }
+        if (!this.sectAuthoritySnapshot) {
+            return;
+        }
+
+        const publishedTask = this.getFirstDispatchableSectTask();
+        if (!publishedTask) {
+            const blockedTask = this.getFirstPublishedSectTask();
+            this.setMessage(
+                blockedTask
+                    ? `authority 已阻止派遣：${blockedTask.dispatchBlockedReason ?? '任务不可派遣'}`
+                    : 'authority 任务堂当前没有可接取的任务',
+            );
+            return;
+        }
+        if (!publishedTask.canDispatch || publishedTask.recommendedDiscipleIds.length === 0) {
+            this.setMessage(`authority 已阻止派遣：${publishedTask.dispatchBlockedReason ?? '无推荐队伍'}`);
+            return;
+        }
+        const payload: SectAuthorityAssignDiscipleTaskPayload = {
+            taskId: publishedTask.id,
+            discipleId: publishedTask.recommendedDiscipleIds[0],
+            discipleIds: publishedTask.recommendedDiscipleIds,
+        };
+        await this.executeSectAuthorityCommandAsync(
+            {
+                cmdId: `sect-assign-${Date.now()}`,
+                type: 'COMMAND_TYPE_ASSIGN_DISCIPLE_TASK',
+                baseVersion: this.sectAuthoritySnapshot.sceneVersion,
+                payload,
+            },
+            { commandKey: 'sect_assign_task' },
+        );
+    }
+
+    private async cancelSectTaskFromHUD(): Promise<void> {
+        if (!(await this.ensureSectAuthorityIntentSurface('取消任务'))) {
+            return;
+        }
+        if (!this.sectAuthoritySnapshot) {
+            return;
+        }
+        const task = this.getFirstOpenSectTask();
+        if (!task) {
+            this.setMessage('authority 当前没有可取消任务');
+            return;
+        }
+        const payload: SectAuthorityCancelTaskPayload = {
+            taskId: task.id,
+        };
+        await this.executeSectAuthorityCommandAsync(
+            {
+                cmdId: `sect-cancel-task-${Date.now()}`,
+                type: 'COMMAND_TYPE_CANCEL_TASK',
+                baseVersion: this.sectAuthoritySnapshot.sceneVersion,
+                payload,
+            },
+            { commandKey: 'sect_cancel_task' },
+        );
+    }
+
+    private async raiseSectTaskPriorityFromHUD(): Promise<void> {
+        if (!(await this.ensureSectAuthorityIntentSurface('调整任务优先级'))) {
+            return;
+        }
+        if (!this.sectAuthoritySnapshot) {
+            return;
+        }
+        const task = this.getFirstPublishedSectTask();
+        if (!task) {
+            this.setMessage('authority 当前没有可调整优先级任务');
+            return;
+        }
+        const payload: SectAuthoritySetTaskPriorityPayload = {
+            taskId: task.id,
+            priority: Math.min(100, Math.max(0, task.priority + 10)),
+        };
+        await this.executeSectAuthorityCommandAsync(
+            {
+                cmdId: `sect-priority-task-${Date.now()}`,
+                type: 'COMMAND_TYPE_SET_TASK_PRIORITY',
+                baseVersion: this.sectAuthoritySnapshot.sceneVersion,
+                payload,
+            },
+            { commandKey: 'sect_set_task_priority' },
+        );
+    }
+
+    private getFirstPublishedSectTask(): SectTaskRenderViewModel | null {
+        return (
+            this.sectAuthorityTaskViewModels
+                .filter((task) => task.status === 'published')
+                .sort((left, right) => right.priority - left.priority || left.risk - right.risk || left.id.localeCompare(right.id))[0] ?? null
+        );
+    }
+
+    private getFirstDispatchableSectTask(): SectTaskRenderViewModel | null {
+        return (
+            this.sectAuthorityTaskViewModels
+                .filter((task) => task.status === 'published' && task.canDispatch)
+                .sort((left, right) => {
+                    const typePriority = this.getSectTaskDispatchTypePriority(right.taskType) - this.getSectTaskDispatchTypePriority(left.taskType);
+                    return typePriority || right.priority - left.priority || left.risk - right.risk || left.id.localeCompare(right.id);
+                })[0] ?? null
+        );
+    }
+
+    private getSectTaskDispatchTypePriority(taskType: string): number {
+        switch (taskType) {
+            case 'external':
+            case 'explore':
+            case 'combat':
+                return 2;
+            default:
+                return 1;
+        }
+    }
+
+    private getFirstOpenSectTask(): SectTaskRenderViewModel | null {
+        return (
+            this.sectAuthorityTaskViewModels
+                .filter((task) => task.status === 'published' || task.status === 'accepted')
+                .sort((left, right) => right.priority - left.priority || left.id.localeCompare(right.id))[0] ?? null
+        );
+    }
+
+    private getFirstOpenSectProduction(): SectAuthorityProductionSnapshot | null {
+        const productions = Object.values(this.sectAuthoritySnapshot?.state.productions ?? {});
+        return (
+            productions
+                .filter((production) => production.status === 'running' || production.status === 'blocked')
+                .sort((left, right) => (right.priority ?? 0) - (left.priority ?? 0) || left.production_id.localeCompare(right.production_id))[0] ?? null
+        );
+    }
+
+    private async startProductionFromHUD(): Promise<void> {
+        if (!(await this.ensureSectAuthorityIntentSurface('投产'))) {
+            return;
+        }
+        if (!this.sectAuthoritySnapshot) {
+            return;
+        }
+        const payload: SectAuthorityStartProductionPayload = {
+            recipeId: 'formation_refine_mvp',
+            priority: 65,
+            targetCycles: 1,
+        };
+        await this.executeSectAuthorityCommandAsync(
+            {
+                cmdId: `sect-start-production-${Date.now()}`,
+                type: 'COMMAND_TYPE_START_PRODUCTION',
+                baseVersion: this.sectAuthoritySnapshot.sceneVersion,
+                payload,
+            },
+            { commandKey: 'sect_start_production' },
+        );
+    }
+
+    private async adjustProductionFromHUD(): Promise<void> {
+        if (!(await this.ensureSectAuthorityIntentSurface('调产'))) {
+            return;
+        }
+        if (!this.sectAuthoritySnapshot) {
+            return;
+        }
+        const production = this.getFirstOpenSectProduction();
+        if (!production) {
+            this.setMessage('authority 当前没有可调整生产');
+            return;
+        }
+        const targetCycles = Math.max(1, (production.target_cycles ?? 0) + 1);
+        const payload: SectAuthorityAdjustProductionPayload = {
+            productionId: production.production_id,
+            priority: Math.min(100, Math.max(0, (production.priority ?? 0) + 10)),
+            targetCycles,
+        };
+        await this.executeSectAuthorityCommandAsync(
+            {
+                cmdId: `sect-adjust-production-${Date.now()}`,
+                type: 'COMMAND_TYPE_ADJUST_PRODUCTION',
+                baseVersion: this.sectAuthoritySnapshot.sceneVersion,
+                payload,
+            },
+            { commandKey: 'sect_adjust_production' },
+        );
+    }
+
+    private async cancelProductionFromHUD(): Promise<void> {
+        if (!(await this.ensureSectAuthorityIntentSurface('停产'))) {
+            return;
+        }
+        if (!this.sectAuthoritySnapshot) {
+            return;
+        }
+        const production = this.getFirstOpenSectProduction();
+        if (!production) {
+            this.setMessage('authority 当前没有可停止生产');
+            return;
+        }
+        const payload: SectAuthorityCancelProductionPayload = {
+            productionId: production.production_id,
+        };
+        await this.executeSectAuthorityCommandAsync(
+            {
+                cmdId: `sect-cancel-production-${Date.now()}`,
+                type: 'COMMAND_TYPE_CANCEL_PRODUCTION',
+                baseVersion: this.sectAuthoritySnapshot.sceneVersion,
+                payload,
+            },
+            { commandKey: 'sect_cancel_production' },
+        );
+    }
+
+    private async exchangeSectContributionFromHUD(): Promise<void> {
+        if (!this.sectAuthoritySnapshot || !this.sectAuthoritySectId) {
+            await this.joinSectAuthoritySurface();
+            return;
+        }
+
+        const contribution = this.sectContributionViewModel;
+        const rule = contribution?.rules.find((entry) => entry.enabled && entry.itemRef === 'spirit_grain') ?? contribution?.rules[0];
+        if (!rule || !contribution?.starterDiscipleId) {
+            this.setMessage('authority 功勋宝库当前没有可兑换规则');
+            return;
+        }
+        const payload: SectAuthorityExchangeContributionItemPayload = {
+            discipleId: contribution.starterDiscipleId,
+            exchangeItemId: rule.id,
+            quantity: 1,
+        };
+        await this.executeSectAuthorityCommandAsync(
+            {
+                cmdId: `sect-exchange-${Date.now()}`,
+                type: 'COMMAND_TYPE_EXCHANGE_CONTRIBUTION_ITEM',
+                baseVersion: this.sectAuthoritySnapshot.sceneVersion,
+                payload,
+            },
+            { commandKey: 'sect_exchange_contribution' },
+        );
+    }
+
+    private async useCultivationPillFromHUD(): Promise<void> {
+        if (!(await this.ensureSectAuthorityIntentSurface('服用修炼丹'))) {
+            return;
+        }
+        if (!this.sectAuthoritySnapshot) {
+            return;
+        }
+        const disciple = this.getPrimarySectDiscipleSnapshot(this.sectAuthoritySnapshot);
+        if (!disciple) {
+            this.setMessage('authority 当前没有可修炼弟子');
+            return;
+        }
+        if ((disciple.cultivation_decision?.cultivation_pill_available ?? 0) <= 0) {
+            this.setMessage('authority 当前没有可用修炼丹');
+            return;
+        }
+        const payload: SectAuthorityUsePillForCultivationPayload = {
+            discipleId: disciple.disciple_id,
+            pillType: 'cultivation_pill',
+            quantity: 1,
+        };
+        await this.executeSectAuthorityCommandAsync(
+            {
+                cmdId: `sect-use-cultivation-pill-${Date.now()}`,
+                type: 'COMMAND_TYPE_USE_PILL_FOR_CULTIVATION',
+                baseVersion: this.sectAuthoritySnapshot.sceneVersion,
+                payload,
+            },
+            { commandKey: 'sect_use_cultivation_pill' },
+        );
+    }
+
+    private async reserveCaveFromHUD(): Promise<void> {
+        if (!(await this.ensureSectAuthorityIntentSurface('预约洞府'))) {
+            return;
+        }
+        if (!this.sectAuthoritySnapshot) {
+            return;
+        }
+        const disciple = this.getPrimarySectDiscipleSnapshot(this.sectAuthoritySnapshot);
+        if (!disciple) {
+            this.setMessage('authority 当前没有可入洞府弟子');
+            return;
+        }
+        const payload: SectAuthorityReserveCavePayload = {
+            discipleId: disciple.disciple_id,
+            durationDays: 1,
+        };
+        await this.executeSectAuthorityCommandAsync(
+            {
+                cmdId: `sect-reserve-cave-${Date.now()}`,
+                type: 'COMMAND_TYPE_RESERVE_CAVE',
+                baseVersion: this.sectAuthoritySnapshot.sceneVersion,
+                payload,
+            },
+            { commandKey: 'sect_reserve_cave' },
+        );
+    }
+
+    private async startCultivationFromHUD(): Promise<void> {
+        if (!(await this.ensureSectAuthorityIntentSurface('修炼'))) {
+            return;
+        }
+        if (!this.sectAuthoritySnapshot) {
+            return;
+        }
+
+        const disciple = this.getPrimarySectDiscipleSnapshot(this.sectAuthoritySnapshot);
+        if (!disciple) {
+            this.setMessage('authority 当前没有可修炼弟子');
+            return;
+        }
+        const payload: SectAuthorityStartCultivationPayload = {
+            discipleId: disciple.disciple_id,
+        };
+        await this.executeSectAuthorityCommandAsync(
+            {
+                cmdId: `sect-start-cultivation-${Date.now()}`,
+                type: 'COMMAND_TYPE_START_CULTIVATION',
+                baseVersion: this.sectAuthoritySnapshot.sceneVersion,
+                payload,
+            },
+            { commandKey: 'sect_start_cultivation' },
+        );
+    }
+
+    private async attemptBreakthroughFromHUD(): Promise<void> {
+        if (!(await this.ensureSectAuthorityIntentSurface('突破'))) {
+            return;
+        }
+        if (!this.sectAuthoritySnapshot) {
+            return;
+        }
+
+        const disciple = this.getPrimarySectDiscipleSnapshot(this.sectAuthoritySnapshot);
+        if (!disciple) {
+            this.setMessage('authority 当前没有可突破弟子');
+            return;
+        }
+        const payload: SectAuthorityAttemptBreakthroughPayload = {
+            discipleId: disciple.disciple_id,
+        };
+        await this.executeSectAuthorityCommandAsync(
+            {
+                cmdId: `sect-attempt-breakthrough-${Date.now()}`,
+                type: 'COMMAND_TYPE_ATTEMPT_BREAKTHROUGH',
+                baseVersion: this.sectAuthoritySnapshot.sceneVersion,
+                payload,
+            },
+            { commandKey: 'sect_attempt_breakthrough' },
+        );
     }
 
     private createScreenButton(labelText: string, width: number, height: number, onClick: () => void, fontSize = 24): Node {
@@ -2270,7 +6508,7 @@ export class SectMapBootstrap extends Component {
         return node;
     }
 
-    private paintButtonBackground(node: Node, active: boolean): void {
+    private paintButtonBackground(node: Node, active: boolean, disabled = false): void {
         const graphics = node.getComponent(Graphics) ?? node.addComponent(Graphics);
         const transform = node.getComponent(UITransform);
         const width = transform?.width ?? 120;
@@ -2278,11 +6516,24 @@ export class SectMapBootstrap extends Component {
 
         graphics.clear();
         graphics.lineWidth = 2;
-        graphics.fillColor = active ? new Color(70, 122, 184, 245) : new Color(31, 43, 57, 224);
-        graphics.strokeColor = active ? new Color(180, 220, 255, 255) : new Color(102, 124, 148, 255);
+        graphics.fillColor = disabled
+            ? new Color(38, 42, 48, 184)
+            : active
+              ? new Color(70, 122, 184, 245)
+              : new Color(31, 43, 57, 224);
+        graphics.strokeColor = disabled
+            ? new Color(84, 92, 104, 196)
+            : active
+              ? new Color(180, 220, 255, 255)
+              : new Color(102, 124, 148, 255);
         graphics.roundRect(-width * 0.5, -height * 0.5, width, height, 12);
         graphics.fill();
         graphics.stroke();
+
+        const label = node.getChildByName('Label')?.getComponent(Label);
+        if (label) {
+            label.color = disabled ? new Color(154, 162, 174, 255) : new Color(236, 241, 248, 255);
+        }
     }
 
     private paintPanelBackground(node: Node, fill: Color, stroke: Color): void {
@@ -2305,9 +6556,10 @@ export class SectMapBootstrap extends Component {
             this.inputMode === 'build_select' || this.inputMode === 'build_place'
                 ? 'build'
                 : this.inputMode;
+        const gatherDisabled = !this.authorityConnected;
 
         for (const [key, node] of this.toolbarButtons) {
-            this.paintButtonBackground(node, key === activeKey);
+            this.paintButtonBackground(node, key === activeKey && !(key === 'gather' && gatherDisabled), key === 'gather' && gatherDisabled);
         }
     }
 
@@ -2317,6 +6569,7 @@ export class SectMapBootstrap extends Component {
         }
 
         this.preferredBuildTile = preferredTile;
+        this.buildBuildPanel();
         this.buildPanelRoot.active = true;
         this.clearBuildPlacement();
         this.logRuntime('INFO', 'BUILD', 'build.panel_open', '已打开建造面板', {
@@ -2568,6 +6821,9 @@ export class SectMapBootstrap extends Component {
 
         switch (this.inputMode) {
             case 'gather':
+                if (!this.ensureAuthorityMainlineAvailable('toggle_resource_designation')) {
+                    return;
+                }
                 this.toggleGatherDesignation(tile);
                 return;
             case 'demolish':
@@ -2684,8 +6940,18 @@ export class SectMapBootstrap extends Component {
     }
 
     private bindButtonActivation(node: Node, onClick: () => void): void {
-        node.on(Node.EventType.TOUCH_END, () => onClick());
-        node.on(Node.EventType.MOUSE_UP, () => onClick());
+        let lastActivationMs = 0;
+        const activateOnce = () => {
+            const now = Date.now();
+            if (now - lastActivationMs < 180) {
+                return;
+            }
+            lastActivationMs = now;
+            onClick();
+        };
+
+        node.on(Node.EventType.TOUCH_END, activateOnce);
+        node.on(Node.EventType.MOUSE_UP, activateOnce);
     }
 
     private getRadialActionsForTile(tile: TileCoord): RadialAction[] {
@@ -2697,6 +6963,13 @@ export class SectMapBootstrap extends Component {
                     key: 'upgrade',
                     label: '升级',
                     execute: () => this.requestBuildingUpgrade(building),
+                });
+            }
+            if (this.canRepairBuilding(building)) {
+                actions.push({
+                    key: 'repair',
+                    label: '修复',
+                    execute: () => this.requestBuildingRepair(building),
                 });
             }
             if (building.definition.id !== 'main_hall' && !building.markedForDemolition) {
@@ -2711,6 +6984,9 @@ export class SectMapBootstrap extends Component {
 
         const resource = this.resourceNodes.get(this.getTileKey(tile.col, tile.row));
         if (resource) {
+            if (this.isAuthorityMainlinePreview()) {
+                return [];
+            }
             return [
                 {
                     key: 'gather',
@@ -2734,32 +7010,108 @@ export class SectMapBootstrap extends Component {
     }
 
     private requestBuildingUpgrade(building: BuildingEntity): void {
-        if (!this.canUpgradeBuilding(building)) {
-            this.setMessage(`${building.definition.label} 当前不可升级`);
+        void this.submitSectBuildingUpgradeIntent(building).catch(() => undefined);
+    }
+
+    private requestBuildingRepair(building: BuildingEntity): void {
+        void this.submitSectBuildingRepairIntent(building).catch(() => undefined);
+    }
+
+    private async submitSectBuildingUpgradeIntent(building: BuildingEntity): Promise<void> {
+        if (!(await this.ensureSectAuthorityIntentSurface('升级建筑'))) {
+            return;
+        }
+        if (!this.sectAuthoritySnapshot) {
+            return;
+        }
+        const target = this.resolveSectAuthorityBuildingInstance(building);
+        if (!target || !target.catalog) {
+            this.sectAuthorityLastError = 'building_not_declared_by_authority';
+            this.setMessage(`${building.definition.label} 未由 authority snapshot 声明，已阻止本地升级`);
+            this.refreshSectPanel();
+            return;
+        }
+        if (target.instance.level >= target.catalog.maxLevel) {
+            this.sectAuthorityLastError = 'building_upgrade_max_level';
+            this.setMessage(`${target.catalog.label} 已达最高等级，未提交本地升级`);
+            this.refreshSectPanel();
             return;
         }
 
-        const upgradeCost = this.getBuildingUpgradeCost(building);
-        if (!upgradeCost) {
-            this.setMessage(`${building.definition.label} 已达当前版本最高等级`);
-            return;
-        }
-
-        if (!this.ensureAuthorityMainlineAvailable('request_upgrade')) {
-            return;
-        }
-
-        this.executeAuthorityCommand(
+        const payload: SectAuthorityUpgradeBuildingPayload = {
+            buildingId: target.instance.id,
+        };
+        await this.executeSectAuthorityCommandAsync(
             {
-                name: 'request_upgrade',
-                payload: {
-                    buildingId: building.id,
-                },
+                cmdId: `sect-upgrade-building-${target.instance.id}-${Date.now()}`,
+                type: 'COMMAND_TYPE_UPGRADE_BUILDING',
+                baseVersion: this.sectAuthoritySnapshot.sceneVersion,
+                payload,
             },
             {
-                commandKey: `request_upgrade:${building.id}`,
+                commandKey: `sect_upgrade_building:${target.instance.id}`,
             },
         );
+    }
+
+    private async submitSectBuildingRepairIntent(building: BuildingEntity): Promise<void> {
+        if (!(await this.ensureSectAuthorityIntentSurface('修复建筑'))) {
+            return;
+        }
+        if (!this.sectAuthoritySnapshot) {
+            return;
+        }
+        const target = this.resolveSectAuthorityBuildingInstance(building);
+        if (!target) {
+            this.sectAuthorityLastError = 'building_not_declared_by_authority';
+            this.setMessage(`${building.definition.label} 未由 authority snapshot 声明，已阻止本地修复`);
+            this.refreshSectPanel();
+            return;
+        }
+        const needsRepair =
+            target.instance.phase === 'damaged' ||
+            target.instance.efficiency < 100 ||
+            target.instance.durability < 100 ||
+            target.instance.maintenanceDebt > 0 ||
+            target.instance.damagedReason !== 'none';
+        if (!needsRepair) {
+            this.sectAuthorityLastError = 'building_repair_not_needed';
+            this.setMessage(`${target.catalog.label} 当前不需要修复，未提交本地修复`);
+            this.refreshSectPanel();
+            return;
+        }
+
+        const payload: SectAuthorityRepairBuildingPayload = {
+            buildingId: target.instance.id,
+        };
+        await this.executeSectAuthorityCommandAsync(
+            {
+                cmdId: `sect-repair-building-${target.instance.id}-${Date.now()}`,
+                type: 'COMMAND_TYPE_REPAIR_BUILDING',
+                baseVersion: this.sectAuthoritySnapshot.sceneVersion,
+                payload,
+            },
+            {
+                commandKey: `sect_repair_building:${target.instance.id}`,
+            },
+        );
+    }
+
+    private resolveSectAuthorityBuildingInstance(
+        building: BuildingEntity,
+    ): { catalog: SectBuildingCatalogRenderViewModel; instance: SectBuildingInstanceRenderViewModel } | null {
+        const catalog = this.getSectBuildingCatalogByDefinition(building.definition.id);
+        if (!catalog) {
+            return null;
+        }
+        const exact = catalog.instances.find((instance) => instance.id === building.id);
+        if (exact) {
+            return { catalog, instance: exact };
+        }
+        if (catalog.instances.length === 1) {
+            return { catalog, instance: catalog.instances[0] };
+        }
+        return null;
     }
 
     private getAuthorityBlockedGuidance(): SessionGuidance {
@@ -2904,7 +7256,7 @@ export class SectMapBootstrap extends Component {
         this.sessionRuinBuildingId = ruinWarehouse.id;
 
         this.disciple.tile = { ...INITIAL_DISCIPLE_TILE };
-        this.disciple.currentTask = null;
+        this.legacyDiscipleTask = null;
         this.disciple.carrying = null;
         this.disciple.path = [];
         this.disciple.pathIndex = 0;
@@ -2919,11 +7271,13 @@ export class SectMapBootstrap extends Component {
         this.hostileNpc.path = [];
         this.hostileNpc.pathIndex = 0;
         this.hostileNpc.visualState = 'idle';
-        this.hostileNpc.currentHp = this.hostileNpc.model.stats.maxHp;
+        this.hostileNpc.maxHp = this.hostileNpc.model.stats.maxHp;
+        this.hostileNpc.currentHp = this.hostileNpc.maxHp;
         this.hostileNpc.attackCooldownSeconds = 0;
         this.hostileNpc.hitFlashSeconds = 0;
         this.hostileNpc.respawnTimerSeconds = HOSTILE_RESPAWN_SECONDS;
         this.hostileNpc.targetBuildingId = null;
+        this.resetAuthorityHostileInterpolation();
 
         this.designateSessionStarterResources();
         this.setSessionPhase(
@@ -3099,7 +7453,8 @@ export class SectMapBootstrap extends Component {
         this.hostileNpc.pathIndex = 0;
         this.hostileNpc.targetBuildingId = null;
         this.hostileNpc.attackCooldownSeconds = 0;
-        this.disciple.currentTask = null;
+        this.resetAuthorityHostileInterpolation();
+        this.legacyDiscipleTask = null;
         this.disciple.path = [];
         this.disciple.pathIndex = 0;
         this.closeBuildPanel();
@@ -3293,8 +7648,12 @@ export class SectMapBootstrap extends Component {
 
     private advanceCombatFeedback(deltaTime: number): void {
         let needsBuildingRefresh = false;
+        this.advanceDamageFloaters(deltaTime);
 
-        for (const building of this.buildingEntities.values()) {
+        const feedbackBuildings = this.shouldUseAuthorityRenderViewModels()
+            ? this.authorityBuildingViewModels.values()
+            : this.buildingEntities.values();
+        for (const building of feedbackBuildings) {
             if (building.damageFlashSeconds > 0) {
                 building.damageFlashSeconds = Math.max(0, building.damageFlashSeconds - deltaTime);
                 needsBuildingRefresh ||= building.damageFlashSeconds <= 0;
@@ -3403,10 +7762,12 @@ export class SectMapBootstrap extends Component {
         this.hostileNpc.path = path ?? [];
         this.hostileNpc.pathIndex = 0;
         this.hostileNpc.visualState = 'moving';
-        this.hostileNpc.currentHp = this.hostileNpc.model.stats.maxHp;
+        this.hostileNpc.maxHp = this.hostileNpc.model.stats.maxHp;
+        this.hostileNpc.currentHp = this.hostileNpc.maxHp;
         this.hostileNpc.attackCooldownSeconds = 0;
         this.hostileNpc.hitFlashSeconds = 0;
         this.hostileNpc.targetBuildingId = targetBuilding.id;
+        this.resetAuthorityHostileInterpolation(this.hostileNpc.worldPosition);
         this.logRuntime('INFO', 'COMBAT', 'combat.hostile_spawned', '外敌已从地图边缘进入', {
             hostileId: this.hostileNpc.id,
             spawnTile: this.formatTile(spawnTile),
@@ -3425,6 +7786,7 @@ export class SectMapBootstrap extends Component {
         this.hostileNpc.attackCooldownSeconds = 0;
         this.hostileNpc.visualState = 'idle';
         this.hostileNpc.respawnTimerSeconds = 0;
+        this.resetAuthorityHostileInterpolation();
         this.setMessage(message);
         this.refreshHostileNpcToken();
     }
@@ -3498,7 +7860,7 @@ export class SectMapBootstrap extends Component {
             this.logRuntime('INFO', 'COMBAT', 'combat.guard_tower_attack', '护山台命中外敌', {
                 buildingId: building.id,
                 hostileId: this.hostileNpc.id,
-                hostileHp: `${Math.ceil(this.hostileNpc.currentHp)}/${this.hostileNpc.model.stats.maxHp}`,
+                hostileHp: `${Math.ceil(this.hostileNpc.currentHp)}/${this.hostileNpc.maxHp}`,
             });
         }
     }
@@ -3581,6 +7943,10 @@ export class SectMapBootstrap extends Component {
             level: 1,
             markedForDemolition: false,
             currentHp: definition.maxHp,
+            durability: 100,
+            efficiency: 100,
+            maintenanceDebt: 0,
+            damagedReason: null,
             damageFlashSeconds: 0,
             attackCooldownSeconds: 0,
             pendingAction: state === 'active' ? null : 'build',
@@ -3594,6 +7960,10 @@ export class SectMapBootstrap extends Component {
     }
 
     private toggleGatherDesignation(tile: TileCoord): void {
+        if (!this.ensureAuthorityMainlineAvailable('toggle_resource_designation')) {
+            return;
+        }
+
         const resource = this.resourceNodes.get(this.getTileKey(tile.col, tile.row));
         if (!resource) {
             this.logRuntime('WARN', 'RESOURCE', 'resource.designation_missing', '尝试标记不存在的资源格', {
@@ -3603,21 +7973,33 @@ export class SectMapBootstrap extends Component {
             return;
         }
 
-        resource.designated = !resource.designated;
-        this.refreshResourceMarkers();
+        const nextDesignated = !resource.designated;
         this.logRuntime('INFO', 'RESOURCE', 'resource.designation_toggle', '资源采集标记已切换', {
             tile: this.formatTile(tile),
             resourceKind: resource.kind,
-            designated: resource.designated,
+            designated: nextDesignated,
             resourceState: resource.state,
             remainingCharges: resource.remainingCharges,
         });
         this.setMessage(
-            resource.designated
-                ? resource.state === 'available'
-                    ? `已标记 ${RESOURCE_DISPLAY[resource.kind].title} 采集点，剩余 ${resource.remainingCharges}/${resource.maxCharges}`
-                    : `已标记 ${RESOURCE_DISPLAY[resource.kind].title} 采集点，当前待刷新 ${Math.ceil(resource.regenTimerSeconds)}s`
-                : `已取消 ${RESOURCE_DISPLAY[resource.kind].title} 采集点`,
+            nextDesignated
+                ? `正在向 authority 标记 ${RESOURCE_DISPLAY[resource.kind].title} 采集目标`
+                : `正在向 authority 取消 ${RESOURCE_DISPLAY[resource.kind].title} 采集目标`,
+        );
+        this.executeAuthorityCommand(
+            {
+                name: 'set_resource_designation',
+                payload: {
+                    resourceTile: {
+                        col: tile.col,
+                        row: tile.row,
+                    },
+                    designated: nextDesignated,
+                },
+            },
+            {
+                commandKey: `set_resource_designation:${tile.col},${tile.row}:${nextDesignated ? 'on' : 'off'}`,
+            },
         );
     }
 
@@ -3663,26 +8045,54 @@ export class SectMapBootstrap extends Component {
             return;
         }
 
-        if (!this.ensureAuthorityMainlineAvailable('place_building')) {
+        void this.submitSectBuildingBuildIntent(definition, origin).catch(() => undefined);
+    }
+
+    private async submitSectBuildingBuildIntent(definition: BuildingDefinition, origin: TileCoord): Promise<void> {
+        if (!(await this.ensureSectAuthorityIntentSurface('建造建筑'))) {
+            return;
+        }
+        if (!this.sectAuthoritySnapshot) {
+            return;
+        }
+        const definitionKey = this.getSectAuthorityBuildingDefinitionKey(definition.id);
+        if (!definitionKey) {
+            this.sectAuthorityLastError = 'building_definition_not_authority_supported';
+            this.setMessage(`${definition.label} 未进入 authority 建筑目录，已阻止本地建造`);
+            this.refreshSectPanel();
+            return;
+        }
+        const catalog = this.getSectBuildingCatalogByDefinition(definition.id);
+        if (!catalog) {
+            this.sectAuthorityLastError = 'building_catalog_missing';
+            this.setMessage(`${definition.label} 缺少 authority 建筑目录，已阻止本地建造`);
+            this.refreshSectPanel();
+            return;
+        }
+        if (!catalog.canBuild) {
+            this.sectAuthorityLastError = 'building_catalog_blocked';
+            this.setMessage(`${catalog.label} 尚不可建：${catalog.blockerText}`);
+            this.refreshSectPanel();
             return;
         }
 
-        this.executeAuthorityCommand(
+        const payload: SectAuthorityBuildBuildingPayload = {
+            definitionKey,
+            origin: { col: origin.col, row: origin.row },
+        };
+        await this.executeSectAuthorityCommandAsync(
             {
-                name: 'place_building',
-                payload: {
-                    buildingType: definition.id as AuthorityBuildingType,
-                    origin,
-                },
+                cmdId: `sect-build-building-${definitionKey}-${origin.col}-${origin.row}-${Date.now()}`,
+                type: 'COMMAND_TYPE_BUILD_BUILDING',
+                baseVersion: this.sectAuthoritySnapshot.sceneVersion,
+                payload,
             },
             {
-                commandKey: `place_building:${definition.id}:${origin.col},${origin.row}`,
-                onAccepted: () => {
-                    this.clearBuildPlacement();
-                    this.setMode('browse');
-                },
+                commandKey: `sect_build_building:${definitionKey}:${origin.col},${origin.row}`,
             },
         );
+        this.clearBuildPlacement();
+        this.setMode('browse');
     }
 
     private refreshResourceMarkers(): void {
@@ -4110,6 +8520,7 @@ export class SectMapBootstrap extends Component {
         const repairCost = this.getBuildingRepairCost(building);
         const targetLevel = building.pendingAction === 'upgrade' ? building.pendingLevel ?? building.level + 1 : null;
         const hpText = `HP ${Math.ceil(building.currentHp)}/${maxHp}`;
+        const maintenanceText = `效${building.efficiency}% 耐${building.durability}%`;
         if (building.state === 'planned') {
             return building.pendingAction === 'upgrade'
                 ? `${building.definition.label} 升级 Lv.${targetLevel}\n${this.getSupplyProgressText(building)}`
@@ -4117,9 +8528,10 @@ export class SectMapBootstrap extends Component {
         }
 
         if (building.state === 'damaged') {
+            const reasonText = building.damagedReason ? `\n${building.damagedReason}` : '';
             return building.currentHp <= 0
-                ? `${building.definition.label} 瘫痪\n修 ${this.getCostText(repairCost)}`
-                : `${building.definition.label} 受损\n${hpText} 修 ${this.getCostText(repairCost)}`;
+                ? `${building.definition.label} 瘫痪 ${maintenanceText}${reasonText}\n修 ${this.getCostText(repairCost)}`
+                : `${building.definition.label} 受损 ${maintenanceText}${reasonText}\n${hpText} 修 ${this.getCostText(repairCost)}`;
         }
 
         if (building.state === 'constructing') {
@@ -4134,7 +8546,7 @@ export class SectMapBootstrap extends Component {
                 : `${building.definition.label} 待施工`;
         }
 
-        return `${building.definition.label} Lv.${building.level}`;
+        return `${building.definition.label} Lv.${building.level}\n${maintenanceText}`;
     }
 
     private getSupplyProgressText(building: BuildingEntity): string {
@@ -4561,12 +8973,12 @@ export class SectMapBootstrap extends Component {
         const damagedBuilding = this.getPrimaryDamagedBuilding();
         const ruinBuilding = this.getSessionRuinBuilding();
         const threatText = this.hostileNpc.active
-            ? `${this.hostileNpc.name} ${Math.ceil(this.hostileNpc.currentHp)}/${this.hostileNpc.model.stats.maxHp} 正在袭扰`
+            ? `${this.hostileNpc.name} ${Math.ceil(this.hostileNpc.currentHp)}/${this.hostileNpc.maxHp} 正在袭扰`
             : session.phase === 'raid_countdown'
-              ? `首袭 ${Math.ceil(this.authorityRaidCountdownSeconds)}s 后抵达`
+              ? `${session.omenStatus} · ${Math.ceil(this.authorityRaidCountdownSeconds)}s 后抵达 · ${session.omenText || '预兆待同步'}`
               : session.firstRaidResolved
-                ? this.getAuthorityPostRaidThreatText()
-                : '暂无外敌贴脸';
+                ? `${this.getAuthorityPostRaidThreatText()} · ${session.repairSuggestion || '等待恢复摘要'}`
+                : `暂无外敌贴脸 · ${session.defenseSummary || '守备摘要待同步'}`;
 
         switch (session.phase) {
             case 'clear_ruin':
@@ -4607,7 +9019,9 @@ export class SectMapBootstrap extends Component {
             case 'raid_countdown':
                 return {
                     headline: '准备首袭',
-                    detail: '倒计时结束后外敌会直扑建筑，先确保护山台可守御',
+                    detail: session.omenText
+                        ? `${session.omenText} 守备值 ${session.defenseRating}，守卫 ${session.guardDiscipleCount}。`
+                        : '倒计时结束后外敌会直扑建筑，先确保护山台可守御',
                     threat: threatText,
                     markerText: guardTower ? '守塔' : null,
                     markerTile: guardTower ? { ...guardTower.origin } : null,
@@ -4619,8 +9033,8 @@ export class SectMapBootstrap extends Component {
                 return {
                     headline: this.hostileNpc.active ? '击退外敌' : '守住首袭',
                     detail: this.hostileNpc.active
-                        ? `authority 正在结算守御窗口，剩余约 ${Math.ceil(this.authorityDefendRemainingSeconds)}s`
-                        : '等待 authority 快照结束守御窗口并切入 recover',
+                        ? `${session.defenseSummary || 'authority 正在结算守御窗口'} 剩余约 ${Math.ceil(this.authorityDefendRemainingSeconds)}s`
+                        : session.damageSummary || '等待 authority 快照结束守御窗口并切入 recover',
                     threat: threatText,
                     markerText: this.hostileNpc.active ? '迎敌' : damagedBuilding ? '稳住' : null,
                     markerTile: this.hostileNpc.active
@@ -4639,7 +9053,7 @@ export class SectMapBootstrap extends Component {
             case 'recover':
                 return {
                     headline: this.getRecoverGuidanceHeadline(damagedBuilding),
-                    detail: this.getRecoverGuidanceDetail(damagedBuilding),
+                    detail: `${this.getRecoverGuidanceDetail(damagedBuilding)}${session.repairSuggestion ? ` ${session.repairSuggestion}` : ''}`,
                     threat: threatText,
                     markerText:
                         this.authoritySessionDamagedBuildingCount === 0
@@ -4779,17 +9193,17 @@ export class SectMapBootstrap extends Component {
     private advanceDisciple(deltaTime: number): void {
         this.promoteReadyBlueprints();
 
-        if (!this.disciple.currentTask) {
+        if (!this.legacyDiscipleTask) {
             this.assignNextTask();
         }
 
-        if (!this.disciple.currentTask) {
+        if (!this.legacyDiscipleTask) {
             this.disciple.visualState = this.disciple.carrying ? 'carrying' : 'idle';
             this.refreshDiscipleToken();
             return;
         }
 
-        const task = this.disciple.currentTask;
+        const task = this.legacyDiscipleTask;
         if (task.kind === 'guard') {
             this.advanceGuardTask(task, deltaTime);
             this.refreshDiscipleToken();
@@ -4888,7 +9302,7 @@ export class SectMapBootstrap extends Component {
         deltaTime: number,
     ): void {
         if (!this.hostileNpc.active || this.hostileNpc.id !== task.hostileId) {
-            this.disciple.currentTask = null;
+            this.legacyDiscipleTask = null;
             this.disciple.path = [];
             this.disciple.pathIndex = 0;
             return;
@@ -4910,7 +9324,7 @@ export class SectMapBootstrap extends Component {
             if (needsPath) {
                 const path = this.findPath(this.disciple.tile, targetTile);
                 if (!path) {
-                    this.disciple.currentTask = null;
+                    this.legacyDiscipleTask = null;
                     this.disciple.path = [];
                     this.disciple.pathIndex = 0;
                     this.logRuntime('WARN', 'TASK', 'task.assign_failed', '守御目标当前不可达', {
@@ -4943,7 +9357,7 @@ export class SectMapBootstrap extends Component {
             discipleId: this.disciple.id,
             hostileId: this.hostileNpc.id,
             damage,
-            hostileHp: `${Math.ceil(this.hostileNpc.currentHp)}/${this.hostileNpc.model.stats.maxHp}`,
+            hostileHp: `${Math.ceil(this.hostileNpc.currentHp)}/${this.hostileNpc.maxHp}`,
         });
     }
 
@@ -4975,7 +9389,7 @@ export class SectMapBootstrap extends Component {
     }
 
     private completeCurrentTaskPhase(): void {
-        const task = this.disciple.currentTask;
+        const task = this.legacyDiscipleTask;
         if (!task) {
             return;
         }
@@ -4985,7 +9399,7 @@ export class SectMapBootstrap extends Component {
                 if (task.phase === 'harvest') {
                     const resource = this.resourceNodes.get(this.getTileKey(task.resourceTile.col, task.resourceTile.row));
                     if (!resource || !this.isResourceHarvestable(resource)) {
-                        this.disciple.currentTask = null;
+                        this.legacyDiscipleTask = null;
                         this.disciple.path = [];
                         this.disciple.pathIndex = 0;
                         this.logRuntime('WARN', 'TASK', 'task.cancelled', '采集节点在采集阶段变为不可用，任务已取消', {
@@ -5065,7 +9479,7 @@ export class SectMapBootstrap extends Component {
                                 commandKey: `collect_stockpile:${resourceKind}:${task.resourceTile.col},${task.resourceTile.row}`,
                                 onAccepted: () => {
                                     this.disciple.carrying = null;
-                                    this.disciple.currentTask = null;
+                                    this.legacyDiscipleTask = null;
                                     this.disciple.path = [];
                                     this.disciple.pathIndex = 0;
                                     this.logRuntime('INFO', 'TASK', 'task.completed', '采集任务已完成', {
@@ -5087,7 +9501,7 @@ export class SectMapBootstrap extends Component {
                         });
                     }
                     this.disciple.carrying = null;
-                    this.disciple.currentTask = null;
+                    this.legacyDiscipleTask = null;
                     this.disciple.path = [];
                     this.disciple.pathIndex = 0;
                     this.logRuntime('INFO', 'TASK', 'task.completed', '采集任务已完成', {
@@ -5114,7 +9528,7 @@ export class SectMapBootstrap extends Component {
                                 commandKey: `deliver_build_resource:${task.buildingId}:${task.resourceKind}`,
                                 onAccepted: () => {
                                     this.disciple.carrying = null;
-                                    this.disciple.currentTask = null;
+                                    this.legacyDiscipleTask = null;
                                     this.disciple.path = [];
                                     this.disciple.pathIndex = 0;
                                     this.logRuntime('INFO', 'TASK', 'task.completed', '搬运任务已完成', {
@@ -5169,7 +9583,7 @@ export class SectMapBootstrap extends Component {
                         this.refreshBuildings();
                     }
                     this.disciple.carrying = null;
-                    this.disciple.currentTask = null;
+                    this.legacyDiscipleTask = null;
                     this.disciple.path = [];
                     this.disciple.pathIndex = 0;
                     this.logRuntime('INFO', 'TASK', 'task.completed', '搬运任务已完成', {
@@ -5201,7 +9615,7 @@ export class SectMapBootstrap extends Component {
                             isUpgrade ? `${building.definition.label} 已升至 Lv.${building.level}` : `${building.definition.label} 已完工`,
                         );
                     }
-                    this.disciple.currentTask = null;
+                    this.legacyDiscipleTask = null;
                     this.disciple.path = [];
                     this.disciple.pathIndex = 0;
                     this.logRuntime('INFO', 'TASK', 'task.completed', '施工任务已完成', {
@@ -5214,32 +9628,16 @@ export class SectMapBootstrap extends Component {
             }
             case 'repair': {
                 if (task.phase === 'repair') {
-                    if (this.authorityConnected) {
-                        return;
-                    }
                     const building = this.buildingEntities.get(task.buildingId);
-                    if (building && this.canRepairBuilding(building)) {
-                        const repairCost = this.getBuildingRepairCost(building);
-                        this.spendStockpile(repairCost);
-                        building.currentHp = this.getBuildingMaxHp(building);
-                        building.damageFlashSeconds = 0;
-                        this.setBuildingState(building, 'active', 'repair_completed');
-                        this.refreshBuildings();
-                        this.logRuntime('INFO', 'BUILD', 'build.repaired', '建筑已完成修复', {
-                            buildingId: building.id,
-                            buildingType: building.definition.id,
-                            hp: `${Math.ceil(building.currentHp)}/${this.getBuildingMaxHp(building)}`,
-                            stockpile: this.summarizeStockpile(),
-                        });
-                        this.setMessage(`${building.definition.label} 已修复完毕`);
-                    }
-                    this.disciple.currentTask = null;
+                    this.legacyDiscipleTask = null;
                     this.disciple.path = [];
                     this.disciple.pathIndex = 0;
-                    this.logRuntime('INFO', 'TASK', 'task.completed', '修复任务已完成', {
+                    this.logRuntime('WARN', 'TASK', 'task.repair_blocked_local_completion', '客户端不再本地宣布修复完成，修复必须提交 authority 意图', {
                         taskKind: task.kind,
                         buildingId: task.buildingId,
+                        buildingType: building?.definition.id ?? null,
                     });
+                    this.setMessage('修复必须由 authority 处理，已清除本地修复表现任务');
                     return;
                 }
                 break;
@@ -5257,7 +9655,7 @@ export class SectMapBootstrap extends Component {
                             {
                                 commandKey: `complete_demolition:${task.buildingId}`,
                                 onAccepted: () => {
-                                    this.disciple.currentTask = null;
+                                    this.legacyDiscipleTask = null;
                                     this.disciple.path = [];
                                     this.disciple.pathIndex = 0;
                                     this.logRuntime('INFO', 'TASK', 'task.completed', '拆除任务已完成', {
@@ -5296,7 +9694,7 @@ export class SectMapBootstrap extends Component {
                                 : `${building.definition.label} 已拆除`,
                         );
                     }
-                    this.disciple.currentTask = null;
+                    this.legacyDiscipleTask = null;
                     this.disciple.path = [];
                     this.disciple.pathIndex = 0;
                     this.logRuntime('INFO', 'TASK', 'task.completed', '拆除任务已完成', {
@@ -5309,7 +9707,7 @@ export class SectMapBootstrap extends Component {
             }
         }
 
-        this.disciple.currentTask = null;
+        this.legacyDiscipleTask = null;
         this.disciple.path = [];
         this.disciple.pathIndex = 0;
     }
@@ -5332,7 +9730,8 @@ export class SectMapBootstrap extends Component {
     }
 
     private assignNextTask(): void {
-        if (this.authorityConnected) {
+        if (this.authorityConnected || this.authorityMode === 'authority_required' || this.authorityRenderSource === 'authority_blocked') {
+            this.legacyDiscipleTask = null;
             this.disciple.visualState = this.disciple.carrying ? 'carrying' : 'idle';
             return;
         }
@@ -5588,7 +9987,7 @@ export class SectMapBootstrap extends Component {
             return;
         }
 
-        this.disciple.currentTask = {
+        this.legacyDiscipleTask = {
             kind: 'gather',
             resourceTile: { ...resource.tile },
             resourceKind: resource.kind,
@@ -5599,7 +9998,7 @@ export class SectMapBootstrap extends Component {
         this.disciple.path = path;
         this.disciple.pathIndex = 0;
         this.logRuntime('INFO', 'TASK', 'task.assigned', '已分配采集任务', {
-            task: this.describeTask(this.disciple.currentTask),
+            task: this.describeTask(this.legacyDiscipleTask),
             resourceKind: resource.kind,
             targetTile: this.formatTile(resource.tile),
             pathLength: path.length,
@@ -5633,7 +10032,7 @@ export class SectMapBootstrap extends Component {
         }
 
         this.disciple.carrying = resourceKind;
-        this.disciple.currentTask = {
+        this.legacyDiscipleTask = {
             kind: 'haul',
             buildingId: building.id,
             resourceKind,
@@ -5644,7 +10043,7 @@ export class SectMapBootstrap extends Component {
         this.disciple.path = path;
         this.disciple.pathIndex = 0;
         this.logRuntime('INFO', 'TASK', 'task.assigned', '已分配搬运任务', {
-            task: this.describeTask(this.disciple.currentTask),
+            task: this.describeTask(this.legacyDiscipleTask),
             buildingId: building.id,
             buildingType: building.definition.id,
             resourceKind,
@@ -5680,7 +10079,7 @@ export class SectMapBootstrap extends Component {
             this.setBuildingState(building, 'constructing', 'disciple_started_construction');
             this.refreshBuildings();
         }
-        this.disciple.currentTask = {
+        this.legacyDiscipleTask = {
             kind: 'build',
             buildingId: building.id,
             phase: 'move-to-site',
@@ -5690,7 +10089,7 @@ export class SectMapBootstrap extends Component {
         this.disciple.path = path;
         this.disciple.pathIndex = 0;
         this.logRuntime('INFO', 'TASK', 'task.assigned', '已分配施工任务', {
-            task: this.describeTask(this.disciple.currentTask),
+            task: this.describeTask(this.legacyDiscipleTask),
             buildingId: building.id,
             buildingType: building.definition.id,
             targetTile: this.formatTile(standTile),
@@ -5721,7 +10120,7 @@ export class SectMapBootstrap extends Component {
             return;
         }
 
-        this.disciple.currentTask = {
+        this.legacyDiscipleTask = {
             kind: 'repair',
             buildingId: building.id,
             phase: 'move-to-site',
@@ -5731,7 +10130,7 @@ export class SectMapBootstrap extends Component {
         this.disciple.path = path;
         this.disciple.pathIndex = 0;
         this.logRuntime('INFO', 'TASK', 'task.assigned', '已分配修复任务', {
-            task: this.describeTask(this.disciple.currentTask),
+            task: this.describeTask(this.legacyDiscipleTask),
             buildingId: building.id,
             buildingType: building.definition.id,
             targetTile: this.formatTile(standTile),
@@ -5760,7 +10159,7 @@ export class SectMapBootstrap extends Component {
             path = resolvedPath;
         }
 
-        this.disciple.currentTask = {
+        this.legacyDiscipleTask = {
             kind: 'guard',
             hostileId: hostile.id,
             phase: inRange ? 'attack' : 'move-to-site',
@@ -5770,7 +10169,7 @@ export class SectMapBootstrap extends Component {
         this.disciple.path = path;
         this.disciple.pathIndex = 0;
         this.logRuntime('INFO', 'TASK', 'task.assigned', '已分配守御任务', {
-            task: this.describeTask(this.disciple.currentTask),
+            task: this.describeTask(this.legacyDiscipleTask),
             hostileId: hostile.id,
             hostileTile: this.formatTile(hostile.tile),
             targetTile: this.formatTile(standTile),
@@ -5801,7 +10200,7 @@ export class SectMapBootstrap extends Component {
             return;
         }
 
-        this.disciple.currentTask = {
+        this.legacyDiscipleTask = {
             kind: 'demolish',
             buildingId: building.id,
             phase: 'move-to-site',
@@ -5811,7 +10210,7 @@ export class SectMapBootstrap extends Component {
         this.disciple.path = path;
         this.disciple.pathIndex = 0;
         this.logRuntime('INFO', 'TASK', 'task.assigned', '已分配拆除任务', {
-            task: this.describeTask(this.disciple.currentTask),
+            task: this.describeTask(this.legacyDiscipleTask),
             buildingId: building.id,
             buildingType: building.definition.id,
             targetTile: this.formatTile(standTile),
@@ -5890,8 +10289,9 @@ export class SectMapBootstrap extends Component {
             const upgradeHint = this.canUpgradeBuilding(building)
                 ? `，可长按升级到 Lv.${building.level + 1}`
                 : '';
+            const damagedReason = building.damagedReason ? `，损坏原因：${building.damagedReason}` : '';
             this.setMessage(
-                `已选中 ${building.definition.label} Lv.${building.level}，状态：${building.state}，HP ${Math.ceil(building.currentHp)}/${this.getBuildingMaxHp(building)}${upgradeHint}`,
+                `已选中 ${building.definition.label} Lv.${building.level}，状态：${building.state}，效${building.efficiency}% 耐${building.durability}% 债${building.maintenanceDebt}，HP ${Math.ceil(building.currentHp)}/${this.getBuildingMaxHp(building)}${damagedReason}${upgradeHint}`,
             );
             return;
         }
@@ -6207,24 +10607,8 @@ export class SectMapBootstrap extends Component {
     private renderStatus(): void {
         const guidance = this.getSessionGuidance();
         const session = this.getCurrentSessionViewModel();
-        const modeText =
-            this.inputMode === 'build_select'
-                ? '建造-选型'
-                : this.inputMode === 'build_place'
-                  ? '建造-摆放'
-                  : this.inputMode === 'gather'
-                    ? '采集'
-                    : this.inputMode === 'demolish'
-                      ? '拆除'
-                      : '查看';
-
         const stockText = `木 ${this.stockpile.spirit_wood} / 石 ${this.stockpile.spirit_stone} / 药 ${this.stockpile.herb}`;
-        const buildingCounts = this.getBuildingStateCounts();
-        const discipleTask =
-            this.authorityConnected || this.authorityRenderSource === 'authority_blocked'
-                ? this.authorityDiscipleViewModel?.taskText ?? '待命'
-                : this.describeTask(this.disciple.currentTask) ?? '待命';
-        const elapsedText = this.authorityConnected
+        const elapsedText = this.isAuthorityMainlinePreview()
             ? `tick ${this.authorityGameTick}`
             : `${Math.floor(this.sessionElapsedSeconds / 60)
                   .toString()
@@ -6235,20 +10619,11 @@ export class SectMapBootstrap extends Component {
                   .padStart(2, '0')}:${Math.floor(SESSION_TARGET_SECONDS % 60)
                   .toString()
                   .padStart(2, '0')}`;
-        const authorityText = this.authorityConnected
-            ? `权威 ${this.authorityPlayerId} ${this.authoritySessionId} ${this.authorityRenderSource === 'authority_snapshot' ? '快照渲染' : '阻断渲染'}`
-            : `authority 必需 ${this.authorityLastError ?? 'offline'}`;
-        const authorityCombatText = this.authorityConnected
-            ? `权威战况 ${this.getSessionPhaseLabel()}/${session.outcome} 首袭${this.getAuthorityCombatStatusText()} 事件 ${this.authorityLastEvent ?? 'none'} 错误 ${this.authorityLastError ?? 'none'}`
-            : `权威战况 blocked 事件 ${this.authorityLastEvent ?? 'none'} 错误 ${this.authorityLastError ?? 'none'}`;
 
         const lines = [
             `阶段 ${this.getSessionPhaseLabel()} ${elapsedText} | ${guidance.headline}`,
             `目标 ${guidance.detail}`,
-            `局势 ${guidance.threat} | 库存 ${stockText}`,
-            `模式 ${modeText} | ${authorityText} | 弟子 ${discipleTask} HP ${Math.ceil(this.disciple.currentHp)}/${this.disciple.model.stats.maxHp} | 建筑 启${buildingCounts.active} 损${buildingCounts.damaged} 蓝${buildingCounts.planned}`,
-            authorityCombatText,
-            `提示 ${this.lastMessage}`,
+            `库存 ${stockText} | ${guidance.threat}`,
         ];
 
         if (this.statusLabel) {
@@ -6256,6 +10631,7 @@ export class SectMapBootstrap extends Component {
         } else {
             console.log(`[SectMapBootstrap] ${lines.join(' | ')}`);
         }
+        this.refreshStatusDetailPanel();
     }
 
     private setMessage(message: string): void {
@@ -6294,6 +10670,12 @@ export class SectMapBootstrap extends Component {
             fetchAuthoritySnapshot: async () => this.fetchAuthoritySnapshotNow(),
             executeAuthorityCommand: async (command, options) =>
                 this.executeAuthorityCommandAsync(command, options),
+            joinSectAuthority: async () => {
+                await this.joinSectAuthoritySurface();
+                return this.getRuntimeSnapshot();
+            },
+            executeSectAuthorityCommand: async (command, options) =>
+                this.executeSectAuthorityCommandAsync(command, options),
         };
     }
 
@@ -6302,6 +10684,7 @@ export class SectMapBootstrap extends Component {
         delete runtimeGlobal.__MIS_RUNTIME_DEBUG__;
     }
 
+    // Keep runtime snapshot fully authority-shaped for debug and acceptance gates.
     private getRuntimeSnapshot(): RuntimeSnapshot {
         const visibleSize = view.getVisibleSize();
         const designResolution = view.getDesignResolutionSize();
@@ -6310,9 +10693,7 @@ export class SectMapBootstrap extends Component {
         const guidance = this.getSessionGuidance();
         const session = this.getCurrentSessionViewModel();
         const discipleTask =
-            this.authorityConnected || this.authorityRenderSource === 'authority_blocked'
-                ? this.authorityDiscipleViewModel?.taskText ?? null
-                : this.describeTask(this.disciple.currentTask);
+            this.isAuthorityMainlinePreview() ? this.authorityDiscipleViewModel?.taskText ?? null : this.describeTask(this.legacyDiscipleTask);
 
         return {
             mapReady: this.mapReady,
@@ -6338,7 +10719,7 @@ export class SectMapBootstrap extends Component {
             session: {
                 phase: session.phase,
                 outcome: session.outcome,
-                elapsedSeconds: this.authorityConnected ? this.authorityGameTick : Number(this.sessionElapsedSeconds.toFixed(2)),
+                elapsedSeconds: this.isAuthorityMainlinePreview() ? this.authorityGameTick : Number(this.sessionElapsedSeconds.toFixed(2)),
                 limitSeconds: SESSION_TARGET_SECONDS,
                 objective: session.objective,
                 guidanceHeadline: guidance.headline,
@@ -6356,6 +10737,17 @@ export class SectMapBootstrap extends Component {
                 recoverReason: session.recoverReason,
                 damagedBuildingCount: session.damagedBuildingCount,
                 regeneratingNodeCount: session.regeneratingNodeCount,
+                riskIntensity: session.riskIntensity,
+                riskMitigation: session.riskMitigation,
+                threatCurve: session.threatCurve,
+                defenseRating: session.defenseRating,
+                guardDiscipleCount: session.guardDiscipleCount,
+                omenStatus: session.omenStatus,
+                omenText: session.omenText,
+                defenseSummary: session.defenseSummary,
+                damageSummary: session.damageSummary,
+                repairSuggestion: session.repairSuggestion,
+                sourceSummary: session.sourceSummary.map((entry) => ({ ...entry })),
             },
             disciple: {
                 tile: this.formatTile(this.disciple.tile) ?? 'unknown',
@@ -6367,6 +10759,7 @@ export class SectMapBootstrap extends Component {
                 model: this.disciple.model,
             },
             hostiles: this.getRuntimeHostileSnapshots(),
+            damageFloaters: this.getRuntimeDamageFloaters(),
             authority: {
                 mode: this.authorityMode,
                 connected: this.authorityConnected,
@@ -6388,11 +10781,102 @@ export class SectMapBootstrap extends Component {
                     recoverReason: session.recoverReason,
                     damagedBuildingCount: session.damagedBuildingCount,
                     regeneratingNodeCount: session.regeneratingNodeCount,
+                    riskIntensity: session.riskIntensity,
+                    riskMitigation: session.riskMitigation,
+                    threatCurve: session.threatCurve,
+                    defenseRating: session.defenseRating,
+                    guardDiscipleCount: session.guardDiscipleCount,
+                    omenStatus: session.omenStatus,
+                    omenText: session.omenText,
+                    defenseSummary: session.defenseSummary,
+                    damageSummary: session.damageSummary,
+                    repairSuggestion: session.repairSuggestion,
+                    sourceSummary: session.sourceSummary.map((entry) => ({ ...entry })),
                     activeHostiles: this.hostileNpc.active ? 1 : 0,
                 },
                 pendingCommands: [...this.authorityPendingCommands.values()].sort(),
                 lastEvent: this.authorityLastEvent,
                 lastError: this.authorityLastError,
+            },
+            sectAuthority: {
+                connected: !!this.sectAuthoritySnapshot,
+                sectId: this.sectAuthoritySnapshot?.sectId ?? null,
+                sceneVersion: this.sectAuthoritySnapshot?.sceneVersion ?? 0,
+                rosterCount: this.sectRosterViewModels.length,
+                roster: this.sectRosterViewModels.map((disciple) => ({ ...disciple })),
+                artifactCount: this.sectArtifactViewModels.length,
+                artifacts: this.sectArtifactViewModels.map((artifact) => ({ ...artifact })),
+                artifactCraftOptions: this.sectArtifactCraftViewModels.map((entry) => ({ ...entry })),
+                candidateCount: this.sectCandidateViewModels.length,
+                candidates: this.sectCandidateViewModels.map((candidate) => ({ ...candidate })),
+                taskCount: this.sectAuthorityTaskViewModels.length,
+                tasks: this.sectAuthorityTaskViewModels.map((task) => ({
+                    ...task,
+                    recommendedDiscipleIds: [...task.recommendedDiscipleIds],
+                    recommendedDiscipleNames: [...task.recommendedDiscipleNames],
+                    assignedDiscipleNames: [...task.assignedDiscipleNames],
+                })),
+                contribution: this.sectContributionViewModel
+                    ? {
+                          ...this.sectContributionViewModel,
+                          rules: this.sectContributionViewModel.rules.map((rule) => ({ ...rule })),
+                      }
+                    : null,
+                overview: this.sectAffairsOverviewViewModel ? { ...this.sectAffairsOverviewViewModel } : null,
+                institutionCount: this.sectInstitutionViewModels.length,
+                institutions: this.sectInstitutionViewModels.map((institution) => ({ ...institution })),
+                productionCount: this.sectProductionViewModels.length,
+                productions: this.sectProductionViewModels.map((production) => ({
+                    ...production,
+                    assignedDiscipleNames: [...production.assignedDiscipleNames],
+                })),
+                buildingSummary: this.sectBuildingSummaryViewModel ? { ...this.sectBuildingSummaryViewModel } : null,
+                buildingCatalog: this.sectBuildingCatalogViewModels.map((entry) => ({
+                    ...entry,
+                    instances: entry.instances.map((instance) => ({ ...instance })),
+                })),
+                cultivation: this.sectCultivationViewModel ? { ...this.sectCultivationViewModel } : null,
+                eventChoiceCount: this.sectEventChoiceViewModels.length,
+                eventChoices: this.sectEventChoiceViewModels.map((event) => ({
+                    ...event,
+                    options: event.options.map((option) => ({ ...option })),
+                })),
+                resolvedEventCount: this.sectResolvedEventViewModels.length,
+                resolvedEvents: this.sectResolvedEventViewModels.map((event) => ({ ...event })),
+                omenCount: this.sectOmenViewModels.length,
+                omens: this.sectOmenViewModels.map((omen) => ({ ...omen })),
+                diaryCount: this.sectDiaryViewModels.length,
+                diary: this.sectDiaryViewModels.map((entry) => ({ ...entry })),
+                eventFeedbackCount: this.sectEventFeedbackViewModels.length,
+                eventFeedback: this.sectEventFeedbackViewModels.map((entry) => ({ ...entry })),
+                policies: this.sectPolicyViewModels.map((policy) => ({
+                    ...policy,
+                    impactSummary: [...policy.impactSummary],
+                    options: policy.options.map((option) => ({
+                        ...option,
+                        impactSummary: [...option.impactSummary],
+                    })),
+                })),
+                goalCount: this.sectGoalViewModels.length,
+                goals: this.sectGoalViewModels.map((goal) => ({ ...goal })),
+                resolvedGoalCount: this.sectResolvedGoalViewModels.length,
+                resolvedGoals: this.sectResolvedGoalViewModels.map((goal) => ({ ...goal })),
+                crisisCount: this.sectCrisisViewModels.length,
+                crises: this.sectCrisisViewModels.map((crisis) => ({ ...crisis })),
+                treatmentCount: this.sectTreatmentViewModels.length,
+                treatments: this.sectTreatmentViewModels.map((entry) => ({ ...entry })),
+                order: this.sectOrderViewModel ? { ...this.sectOrderViewModel } : null,
+                monthlyAssessment: this.sectMonthlyAssessmentViewModel ? { ...this.sectMonthlyAssessmentViewModel } : null,
+                recentPolicyEvents: this.sectEventFeedbackViewModels
+                    .filter((entry) => entry.category === 'policy')
+                    .map((entry) => ({ ...entry })),
+                recentPromotionEvents: this.sectEventFeedbackViewModels
+                    .filter((entry) => entry.category === 'promotion')
+                    .map((entry) => ({ ...entry })),
+                pendingCommands: [...this.sectAuthorityPendingCommands.values()].sort(),
+                lastError: this.sectAuthorityLastError,
+                lastPatchFromVersion: this.sectAuthorityPatchFromVersion,
+                lastPatchToVersion: this.sectAuthorityPatchToVersion,
             },
         };
     }
@@ -6487,6 +10971,10 @@ export class SectMapBootstrap extends Component {
                 level: building.level,
                 hp: Math.ceil(building.currentHp),
                 maxHp: this.getBuildingMaxHp(building),
+                durability: building.durability,
+                efficiency: building.efficiency,
+                maintenanceDebt: building.maintenanceDebt,
+                damagedReason: building.damagedReason,
                 markedForDemolition: building.markedForDemolition,
                 pendingAction: building.pendingAction,
             }))
@@ -6498,18 +10986,48 @@ export class SectMapBootstrap extends Component {
             return [];
         }
 
+        const interpolationDuration = this.hostileNpc.authorityInterpolationDurationSeconds;
+        const interpolationProgress =
+            interpolationDuration > 0
+                ? Math.min(1, this.hostileNpc.authorityInterpolationElapsedSeconds / interpolationDuration)
+                : 1;
+
         return [
             {
                 id: this.hostileNpc.id,
                 archetypeId: this.hostileNpc.model.archetypeId,
                 tile: this.formatTile(this.hostileNpc.tile) ?? 'unknown',
+                renderPosition: {
+                    x: Number(this.hostileNpc.worldPosition.x.toFixed(2)),
+                    y: Number(this.hostileNpc.worldPosition.y.toFixed(2)),
+                },
+                interpolationProgress,
+                interpolationTargetTile:
+                    interpolationDuration > 0 ? this.formatTile(this.hostileNpc.tile) ?? null : null,
                 visualState: this.hostileNpc.visualState,
                 hp: Math.ceil(this.hostileNpc.currentHp),
-                maxHp: this.hostileNpc.model.stats.maxHp,
+                maxHp: this.hostileNpc.maxHp,
                 active: this.hostileNpc.active,
                 targetBuildingId: this.hostileNpc.targetBuildingId,
             },
         ];
+    }
+
+    private getRuntimeDamageFloaters(): RuntimeDamageFloaterSnapshot[] {
+        return this.damageFloaters
+            .map((floater) => ({
+                id: floater.id,
+                targetKind: floater.targetKind,
+                targetId: floater.targetId,
+                targetName: floater.targetName,
+                amount: floater.amount,
+                remainingSeconds: Number(Math.max(0, floater.durationSeconds - floater.elapsedSeconds).toFixed(2)),
+                position: {
+                    x: Number((floater.node?.position.x ?? floater.anchorPosition.x).toFixed(2)),
+                    y: Number((floater.node?.position.y ?? floater.anchorPosition.y).toFixed(2)),
+                },
+            }))
+            .sort((left, right) => left.id.localeCompare(right.id));
     }
 
     private getBuildingStateCounts(): Record<BuildingState, number> {
@@ -6655,7 +11173,7 @@ export class SectMapBootstrap extends Component {
     }
 
     private isLocationBlockedByScreenUI(location: Readonly<Vec3>): boolean {
-        const blockers = [this.toolbarRoot, this.buildPanelRoot, this.radialMenuRoot];
+        const blockers = [this.toolbarRoot, this.buildPanelRoot, this.radialMenuRoot, this.sectPanelRoot, this.statusDetailRoot];
         return blockers.some((node) => this.isPointInsideNode(node, location));
     }
 

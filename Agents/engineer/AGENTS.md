@@ -25,6 +25,24 @@ These instructions apply to Codex threads started in this directory. The project
 - Write the durable execution event through `node .coordex-v2/bin/coordex-event.mjs --actor engineer`.
 - Allowed final actions in this role are only `submit` or `block`.
 
+## Cocos Preview Source Discipline
+
+- For Cocos Creator runtime work, treat files under `client/my-immortal-sect/assets/` as the source of truth.
+- Do not patch generated preview output under `client/my-immortal-sect/temp/programming/packer-driver/targets/preview/chunks/` as a normal implementation path.
+- If the `7456` preview does not reflect a source edit, debug the Cocos compile/cache/refresh path instead of bypassing the editor pipeline.
+- After editing Cocos source files, save the source edit and allow the editor preview compiler to settle before reading `7456`.
+- Prefer an explicit stable signal when available, such as a refreshed preview page exposing the expected source-driven runtime change or a Cocos/editor compile-complete indication.
+- If no stable signal is available, wait 2-3 seconds before sampling `7456`; do not treat immediate stale preview output as evidence that generated chunks need manual patching.
+- Generated preview chunks may be read for diagnosis only. Writing them is allowed only as an explicitly approved temporary hot patch, and must be called out as non-source validation support.
+- Handoff evidence for Cocos work should prefer source-file changes plus refreshed preview validation, not direct edits to generated chunks.
+
+## Batch UI Acceptance Mode
+
+- When the human enters a batch manual acceptance and UI-polish phase, do not keep synchronizing old automated acceptance flows after every UI change.
+- During that phase, focus on the requested client-facing fixes and use only bounded checks needed to prove the specific UI change is live and not broken.
+- Update or rerun broad dedicated browser gates only after the human explicitly says to remake or refresh the agent acceptance flow.
+- If an existing gate script is clearly coupled to the UI surface being changed, keep any compatibility edit minimal and local to that surface; do not treat it as a full acceptance-flow regeneration.
+
 ## Default Project Docs
 
 Resident docs:

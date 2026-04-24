@@ -4,24 +4,20 @@ Record only accepted work here.
 
 ## Current Release Or Milestone
 
-- Name: `Authority Runtime Rebuild`
-- Goal: 把当前宗门地图短会话从 hybrid preview/runtime 重构为 authority-only 主线，彻底收回 disciple assignment、build/repair completion、raid damage closure 与 post-raid continuity，并建立 engineer/supervisor 双重独立 replay 验收门槛。
+- Name: `GDD v3.1 Authority Core Bootstrap`
+- Goal: 以 GDD v3.1 为唯一主规范，建立 protobuf-first、snapshot-first、SectActor big-state 的最小权威后端骨架，并让后续资源、建筑、弟子、任务、贡献与事件系统都落在同一套命令、事件、存档与同步路径上。
 - Acceptance owner: `supervisor`
 
 ### Current Acceptance Boundary
 
-- Hybrid preview success, fallback-assisted continuity, or isolated subfunction green checks are not sufficient evidence that the sect-map mainline is established.
-- Validation surface: 复用专用 Chrome `http://127.0.0.1:9333` 下已有 `http://localhost:7456/` 预览页，并启动本地 authority server `go run ./cmd/gameserver`。
-- Required flow:
-  1. `reset` 新档 mainline replay：`clear_ruin -> place_guard_tower -> upgrade_guard_tower -> raid_countdown -> defend -> recover -> repair closure -> second-cycle continuity`。
-  2. `restore_latest` replay：恢复后的 preview / authority snapshot 关键字段保持一致，且主链可继续推进。
-  3. 如果当前任务涉及 authority reject，则必须补一条 rejection recovery replay，证明不会无限重试旧命令。
-  4. 上述 replay 必须证明主链是在 authority-only 条件下推进，而不是被 client-local fallback 或 hybrid 补丁偷偷接管。
-- Keep only bounded evidence: `authority.mode`、`authority.connected`、`authority.sessionId`、`authority.lastEvent`、`authority.lastError`、`authority.pendingCommands`、`session.phase`、`session.outcome`、`session.objective`、`session.firstRaidTriggered`、`session.firstRaidResolved`、至少一个关键 `buildings[*].state/level/hp`、当前 worker/disciple assignment、`stockpile`、至少一个关键 `resourceNodes[*].remainingCharges/state/regenTimerSeconds` 对照。
-- Fail closed when: `authority.lastError != null` 出现在主链 checkpoint、preview / authority drift、client-local fallback 参与主链、同一 authority reject 被重复触发、需要刷新/reset 才能继续流程、或证据只能证明 hybrid/fallback success 而不能证明 authority-only mainline。
-- Exclude from acceptance notes: oversized runtime logs、完整 network traces、逐帧路径细节、小游戏容器结论、以及任何超出 authority runtime rebuild 范围的后续平台/扩张项。
+- 文档、ADR、计划、激活指针之间不得再出现并行真相。
+- `ClientCommand / CommandResult / StatePatch`、`SectState`、`DomainEvent / ApplyEvent`、`sect_snapshots / sect_events / command_log` 必须都沿同一条 GDD v3.1 路径定义。
+- Fail closed when：仍保留 JSON 权威协议、仍保留共享房间式 V1 同步表述、仍把 `DiscipleActor / BuildingActor / StoryletActor` 当作 V1 默认 actor 粒度、或仍允许 `F-004` / sect-map 历史文档作为 active 主线。
+- 当前里程碑的实现验收以 `development-plan.json` 的 Phase A 子功能为准；本台账只保留 accepted 历史，不再把旧 sect-map authority rebuild 继续当作当前 release 说明。
 
 ## Accepted Deliveries
+
+以下记录保留为已接受历史，尤其包含一段完整的 sect-map authority rebuild 轨迹；它们不再定义当前产品主线，只作为可追溯的基线证据。
 
 | Date | Scope | Evidence | Accepted By |
 | --- | --- | --- | --- |

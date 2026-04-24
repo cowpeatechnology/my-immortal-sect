@@ -5,7 +5,8 @@
 当前项目的默认原则是：
 
 - 平时先读少量高权威文档，不默认通读整棵 `docs/`
-- 当前真实计划只保留一套，以 `docs/project/development-plan.json` 为准
+- 产品与后端实现主规范只保留一套，以 `docs/vision/gdd_v3_backend_design.md` 为准
+- `docs/project/development-plan.json` 是从主规范导出的当前执行拆解，不反向定义产品方向
 - 其他文档按需进入，不把每次任务都变成长篇补课
 
 ## 默认阅读顺序
@@ -14,11 +15,13 @@
 
 1. 根 [AGENTS.md](/Users/mawei/MyWork/SlgGame/AGENTS.md)
    - 项目身份、权威顺序、角色体系、硬约束
-2. [vision/design-decisions.md](/Users/mawei/MyWork/SlgGame/docs/vision/design-decisions.md)
-   - 项目 North Star
-3. [project/development-plan.json](/Users/mawei/MyWork/SlgGame/docs/project/development-plan.json)
-   - 当前完整研发路线、phase / milestone / subfunction
-4. [project/development.active.json](/Users/mawei/MyWork/SlgGame/docs/project/development.active.json)
+2. [vision/gdd_v3_backend_design.md](/Users/mawei/MyWork/SlgGame/docs/vision/gdd_v3_backend_design.md)
+   - 当前产品闭环与权威后端实现主规范
+3. [decisions/0012-adopt-gdd-v3-authoritative-backend-gdd.md](/Users/mawei/MyWork/SlgGame/docs/decisions/0012-adopt-gdd-v3-authoritative-backend-gdd.md)
+   - 采纳 GDD v3.1 为唯一主规范的正式裁决
+4. [project/development-plan.json](/Users/mawei/MyWork/SlgGame/docs/project/development-plan.json)
+   - 从主规范导出的当前执行路线、phase / milestone / subfunction
+5. [project/development.active.json](/Users/mawei/MyWork/SlgGame/docs/project/development.active.json)
    - 当前激活子功能和必须先读的文件
 
 如果当前没有激活子功能，通常不需要先读 `development.active.json` 以外的大量流程文档。
@@ -26,10 +29,13 @@
 ## 当前最高权威
 
 - 项目章程：根 [AGENTS.md](/Users/mawei/MyWork/SlgGame/AGENTS.md)
-- North Star： [vision/design-decisions.md](/Users/mawei/MyWork/SlgGame/docs/vision/design-decisions.md)
-- 当前计划： [project/development-plan.json](/Users/mawei/MyWork/SlgGame/docs/project/development-plan.json)
+- Product / Backend North Star： [vision/gdd_v3_backend_design.md](/Users/mawei/MyWork/SlgGame/docs/vision/gdd_v3_backend_design.md)
+- Adoption Decision： [decisions/0012-adopt-gdd-v3-authoritative-backend-gdd.md](/Users/mawei/MyWork/SlgGame/docs/decisions/0012-adopt-gdd-v3-authoritative-backend-gdd.md)
+- Protocol / Persistence Constraint： [decisions/0008-save-protocol-and-pgstore-schema.md](/Users/mawei/MyWork/SlgGame/docs/decisions/0008-save-protocol-and-pgstore-schema.md)
+- Runtime Simulation Constraint： [decisions/0010-offline-deterministic-simulation.md](/Users/mawei/MyWork/SlgGame/docs/decisions/0010-offline-deterministic-simulation.md)
+- V1 Sync Boundary： [decisions/0011-v1-sync-model-and-multiplayer-pattern.md](/Users/mawei/MyWork/SlgGame/docs/decisions/0011-v1-sync-model-and-multiplayer-pattern.md)
+- 当前执行计划： [project/development-plan.json](/Users/mawei/MyWork/SlgGame/docs/project/development-plan.json)
 - 当前激活指针： [project/development.active.json](/Users/mawei/MyWork/SlgGame/docs/project/development.active.json)
-- 重要增量决策： [project/decision-log.md](/Users/mawei/MyWork/SlgGame/docs/project/decision-log.md)
 - 已验收交付： [project/delivery-ledger.md](/Users/mawei/MyWork/SlgGame/docs/project/delivery-ledger.md)
 
 ## 按需阅读
@@ -58,11 +64,7 @@
 
 用于持续迭代中的功能主文档，不是默认启动文档。
 
-当前建议理解为：
-
-- `F-001`：治理地基，已接受
-- `F-002`：宗门地图可玩性验证基线，偏历史基线
-- `F-004`：当前宗门地图 M1 主功能文档
+当前作为历史功能循环目录保留，不再承载 active 主线。
 
 知识采集与本地知识库整理工具已迁出主仓库，当前外部项目路径为：
 
@@ -74,9 +76,9 @@
 
 注意：
 
-- `plans/` 不是当前唯一计划真相
-- 当前活跃执行状态以 `project/development-plan.json` 为准
-- `plans/` 更适合作为专题拆解、阶段背景或历史计划
+- `plans/` 只保存阶段拆解或专题实施计划
+- 历史计划已迁入 `legacy/`
+- 当前活跃执行状态以 `project/development-plan.json` 为准，但其路线必须服从 `vision/gdd_v3_backend_design.md`
 
 ### `process/`
 
@@ -105,7 +107,7 @@
 
 ## 文档维护规则
 
-- 不再维护第二套并行“当前计划”文档
+- 不再维护第二套并行“产品主规范”或“当前计划”文档
 - 不再让索引页列出大量尚不存在的“未来文档”作为默认入口
 - 短文档如果只是在复述根规则，应缩短并回链到权威文档
-- 功能文档负责功能循环；ADR 负责架构决策；`development-plan.json` 负责当前整体路线
+- 功能文档负责局部循环；ADR 负责约束与补丁；`development-plan.json` 负责当前执行路线；GDD 负责产品与后端主规范

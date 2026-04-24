@@ -1,9 +1,11 @@
-# F-001-project-governance-foundation
+# Governance Foundation
 
-**状态**: accepted  
-**Area**: process / architecture  
-**Owner**: `supervisor`  
-**Reviewer**: `human`  
+> 本文件记录项目治理基础设施，不再作为 gameplay feature 文档维护。
+
+**状态**: accepted
+**Area**: process / architecture
+**Owner**: `supervisor`
+**Reviewer**: `human`
 **最后更新**: 2026-04-19
 
 ## Context
@@ -34,7 +36,7 @@
 
 - `AGENTS.md`
 - `docs/process/engineering-standards.md`
-- `docs/vision/design-decisions.md`
+- `docs/vision/gdd_v3_backend_design.md`
 - `docs/project/project-method.md`
 
 ## Acceptance Criteria

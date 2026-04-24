@@ -1,8 +1,8 @@
 # Sect Map Building Asset Footprint And State Spec
 
-**Status**: draft  
-**Owner**: `art_asset_producer`  
-**Scope**: `F-004` sect-map building assets only  
+**Status**: draft
+**Owner**: `art_asset_producer`
+**Scope**: `F-004` sect-map building assets only
 **Last Updated**: 2026-04-22
 
 ## Purpose

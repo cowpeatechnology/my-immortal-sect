@@ -34,6 +34,7 @@ export type AuthorityResourceNodeState = 'available' | 'regenerating';
 export type AuthorityResourceNodeSnapshot = {
     tile: AuthorityTileCoord;
     kind: AuthorityResourceKind;
+    designated: boolean;
     state: AuthorityResourceNodeState;
     remainingCharges: number;
     maxCharges: number;
@@ -49,6 +50,10 @@ export type AuthorityBuildingSnapshot = {
     level: number;
     hp: number;
     maxHp: number;
+    durability?: number;
+    efficiency?: number;
+    maintenanceDebt?: number;
+    damagedReason?: string | null;
     markedForDemolition: boolean;
     pendingAction: AuthorityBuildingWorkKind | null;
     pendingLevel: number | null;
@@ -101,6 +106,21 @@ export type AuthoritySessionSnapshot = {
     recoverReason: AuthoritySessionRecoverReason;
     damagedBuildingCount: number;
     regeneratingNodeCount: number;
+    riskIntensity: number;
+    riskMitigation: number;
+    threatCurve: number;
+    defenseRating: number;
+    guardDiscipleCount: number;
+    omenStatus: string;
+    omenText: string;
+    defenseSummary: string;
+    damageSummary: string;
+    repairSuggestion: string;
+    sourceSummary?: Array<{
+        source: string;
+        label: string;
+        delta: number;
+    }>;
 };
 
 export type AuthoritySnapshot = {
@@ -118,6 +138,7 @@ export type AuthorityCommandName =
     | 'place_building'
     | 'request_upgrade'
     | 'toggle_demolition'
+    | 'set_resource_designation'
     | 'collect_stockpile'
     | 'deliver_build_resource'
     | 'complete_demolition'

@@ -1,6 +1,7 @@
 package authority
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -33,6 +34,9 @@ type buildingEntity struct {
 	State               BuildingState
 	Level               int
 	HP                  int
+	Durability          int
+	DamagedReason       string
+	RepairPressure      int
 	MarkedForDemolition bool
 	PendingAction       *BuildingWorkKind
 	PendingLevel        *int
@@ -47,6 +51,9 @@ type hostileEntity struct {
 	Name             string
 	Tile             TileCoord
 	HP               int
+	MaxHP            int
+	AttackPower      int
+	Defense          int
 	VisualState      UnitVisualState
 	TargetBuildingID *string
 	AttackCooldown   int
@@ -56,6 +63,7 @@ type hostileEntity struct {
 type resourceNodeEntity struct {
 	Kind              ResourceKind
 	Tile              TileCoord
+	Designated        bool
 	State             ResourceNodeState
 	RemainingCharges  int
 	MaxCharges        int
@@ -82,6 +90,12 @@ type sessionState struct {
 	FirstRaidResolved      bool
 	RaidCountdownSeconds   int
 	DefendRemainingSeconds int
+	ExternalDefense        ExternalDefenseContext
+	LastDefenseSummary     string
+	LastDamageSummary      string
+	snapshotBase           persistedSessionState
+	postSnapshotReplay     []persistedReplayEntry
+	commandLog             map[string]persistedCommandLogEntry
 }
 
 const (
@@ -112,6 +126,7 @@ func newSessionState(sessionID string) *sessionState {
 		state.ResourceNodes[resourceTileKey(seed.Tile)] = &resourceNodeEntity{
 			Kind:              seed.Kind,
 			Tile:              seed.Tile,
+			Designated:        true,
 			State:             ResourceNodeStateAvailable,
 			RemainingCharges:  rule.MaxCharges,
 			MaxCharges:        rule.MaxCharges,
@@ -123,23 +138,186 @@ func newSessionState(sessionID string) *sessionState {
 	mainHall := state.addBuilding(BuildingMainHall, sharedAuthorityConfig.initialMainHallTile, BuildingStateActive)
 	mainHall.Level = 1
 	mainHall.HP = getBuildingMaxHP(mainHall.Type, mainHall.Level)
+	mainHall.Durability = 100
 	mainHall.PendingAction = nil
 	mainHall.PendingLevel = nil
 
 	ruin := state.addBuilding(BuildingWarehouse, sharedAuthorityConfig.initialRuinTile, BuildingStateDamaged)
 	ruin.Level = 1
 	ruin.HP = 0
+	ruin.Durability = 0
+	ruin.DamagedReason = "initial_ruin"
 	ruin.PendingAction = nil
 	ruin.PendingLevel = nil
 	state.RuinBuildingID = stringPtr(ruin.ID)
 
 	state.syncDerivedProgress()
+	state.resetPersistenceBaseline()
 	return state
+}
+
+func (s *sessionState) syncExternalDefenseContext(context ExternalDefenseContext) {
+	s.ensurePersistenceState()
+	normalized := normalizeExternalDefenseContext(context)
+	if !externalDefenseContextsEqual(s.ExternalDefense, normalized) {
+		s.recordReplayDefenseContext(normalized)
+	}
+	s.ExternalDefense = normalized
+	if s.Phase == SessionPhaseRaidCountdown && !s.FirstRaidTriggered {
+		target := s.currentRaidCountdownTarget()
+		if s.RaidCountdownSeconds == 0 || s.RaidCountdownSeconds > target {
+			s.RaidCountdownSeconds = target
+		}
+	}
+	if s.Phase == SessionPhaseDefend && s.FirstRaidTriggered && !s.FirstRaidResolved {
+		target := s.currentDefendWindowTarget()
+		if s.DefendRemainingSeconds == 0 || s.DefendRemainingSeconds > target {
+			s.DefendRemainingSeconds = target
+		}
+	}
+	s.syncDerivedProgress()
+}
+
+func normalizeExternalDefenseContext(context ExternalDefenseContext) ExternalDefenseContext {
+	context.RiskIntensity = clampInt(context.RiskIntensity, 0, 100)
+	context.RiskMitigation = clampInt(context.RiskMitigation, 0, 100)
+	context.ThreatCurve = clampInt(context.ThreatCurve, 1, 5)
+	context.GuardDiscipleCount = maxInt(0, context.GuardDiscipleCount)
+	context.DefenseFormationLevel = maxInt(0, context.DefenseFormationLevel)
+	context.CombatEquipmentBonus = maxInt(0, context.CombatEquipmentBonus)
+	context.InjuryMitigation = maxInt(0, context.InjuryMitigation)
+	context.PolicyDefenseBonus = maxInt(0, context.PolicyDefenseBonus)
+	context.OmenStatus = defaultString(context.OmenStatus, "steady")
+	context.OmenText = defaultString(context.OmenText, "")
+	context.Summary = defaultString(context.Summary, "")
+	if len(context.SourceSummary) == 0 {
+		context.SourceSummary = nil
+	} else {
+		context.SourceSummary = append([]DefenseSourceSummary(nil), context.SourceSummary...)
+	}
+	return context
+}
+
+func externalDefenseContextsEqual(left, right ExternalDefenseContext) bool {
+	if left.RiskIntensity != right.RiskIntensity ||
+		left.RiskMitigation != right.RiskMitigation ||
+		left.ThreatCurve != right.ThreatCurve ||
+		left.GuardDiscipleCount != right.GuardDiscipleCount ||
+		left.DefenseFormationLevel != right.DefenseFormationLevel ||
+		left.CombatEquipmentBonus != right.CombatEquipmentBonus ||
+		left.InjuryMitigation != right.InjuryMitigation ||
+		left.PolicyDefenseBonus != right.PolicyDefenseBonus ||
+		left.OmenStatus != right.OmenStatus ||
+		left.OmenText != right.OmenText ||
+		left.Summary != right.Summary ||
+		len(left.SourceSummary) != len(right.SourceSummary) {
+		return false
+	}
+	for idx := range left.SourceSummary {
+		if left.SourceSummary[idx] != right.SourceSummary[idx] {
+			return false
+		}
+	}
+	return true
+}
+
+func (s *sessionState) currentThreatCurve() int {
+	curve := s.ExternalDefense.ThreatCurve
+	if curve > 0 {
+		return clampInt(curve, 1, 5)
+	}
+	return clampInt(1+(s.ExternalDefense.RiskIntensity-s.ExternalDefense.RiskMitigation+18)/24, 1, 5)
+}
+
+func (s *sessionState) currentRaidCountdownTarget() int {
+	base := sharedAuthorityConfig.firstRaidPrepSeconds
+	curve := s.currentThreatCurve()
+	bonus := s.ExternalDefense.RiskMitigation / 18
+	return clampInt(base-(curve-1)+bonus, maxInt(5, base-4), base+3)
+}
+
+func (s *sessionState) currentDefendWindowTarget() int {
+	base := sharedAuthorityConfig.firstRaidPrepSeconds
+	curve := s.currentThreatCurve()
+	guardBonus := minInt(2, s.ExternalDefense.GuardDiscipleCount/2)
+	return clampInt(base+curve+guardBonus, base, base+8)
+}
+
+func (s *sessionState) currentDefenseRating() int {
+	return clampInt(
+		12+
+			s.ExternalDefense.GuardDiscipleCount*4+
+			s.ExternalDefense.DefenseFormationLevel/4+
+			s.ExternalDefense.CombatEquipmentBonus/3+
+			s.ExternalDefense.PolicyDefenseBonus+
+			s.ExternalDefense.RiskMitigation/5,
+		0,
+		100,
+	)
+}
+
+func (s *sessionState) currentOmenText() string {
+	if s.ExternalDefense.OmenText != "" {
+		return s.ExternalDefense.OmenText
+	}
+	switch s.currentThreatCurve() {
+	case 4, 5:
+		return "山门外灵潮躁动，护山台需提前稳住阵脚。"
+	case 3:
+		return "山门气机偏紧，外敌试探随时会压上来。"
+	default:
+		return "山门暂稳，但仍需维持守备与修缮节奏。"
+	}
+}
+
+func (s *sessionState) currentDefenseSummary(defenseRating int) string {
+	if s.LastDefenseSummary != "" {
+		return s.LastDefenseSummary
+	}
+	base := fmt.Sprintf(
+		"守备值 %d，守卫%d，守御阵%d，装备加成%d，政策防御加成%d。",
+		defenseRating,
+		s.ExternalDefense.GuardDiscipleCount,
+		s.ExternalDefense.DefenseFormationLevel,
+		s.ExternalDefense.CombatEquipmentBonus,
+		s.ExternalDefense.PolicyDefenseBonus,
+	)
+	if s.ExternalDefense.Summary != "" {
+		return fmt.Sprintf("%s %s", s.ExternalDefense.Summary, base)
+	}
+	return base
+}
+
+func (s *sessionState) currentDamageSummary() string {
+	if s.LastDamageSummary != "" {
+		return s.LastDamageSummary
+	}
+	if s.damagedBuildingCount() == 0 {
+		return "当前权威快照未记录新的战损。"
+	}
+	return "敌袭已留下战损，优先处理耐久最低的建筑。"
+}
+
+func (s *sessionState) currentRepairSuggestion() string {
+	priority := s.lowestDurabilityDamagedBuilding()
+	if priority == nil {
+		if s.regeneratingNodeCount() > 0 {
+			return "暂无建筑战损，等待资源点恢复后再推进下一轮筹备。"
+		}
+		return "暂无战后修复压力，可继续当前权威管理循环。"
+	}
+	return fmt.Sprintf(
+		"优先修复 %s，当前修复压力 %d，耐久 %d%%。",
+		labelForBuilding(priority.Type),
+		priority.RepairPressure,
+		buildingDurabilityPercent(priority),
+	)
 }
 
 func (s *sessionState) snapshot() SessionSnapshot {
 	buildings := make([]BuildingSnapshot, 0, len(s.Buildings))
 	for _, building := range s.Buildings {
+		damagedReason := nullableString(building.DamagedReason)
 		buildings = append(buildings, BuildingSnapshot{
 			ID:                  building.ID,
 			Type:                building.Type,
@@ -148,6 +326,10 @@ func (s *sessionState) snapshot() SessionSnapshot {
 			Level:               building.Level,
 			HP:                  building.HP,
 			MaxHP:               getBuildingMaxHP(building.Type, building.Level),
+			Durability:          buildingDurabilityPercent(building),
+			Efficiency:          buildingEffectiveEfficiency(building),
+			MaintenanceDebt:     maxInt(0, building.RepairPressure),
+			DamagedReason:       damagedReason,
 			MarkedForDemolition: building.MarkedForDemolition,
 			PendingAction:       building.PendingAction,
 			PendingLevel:        building.PendingLevel,
@@ -164,6 +346,7 @@ func (s *sessionState) snapshot() SessionSnapshot {
 		resourceNodes = append(resourceNodes, ResourceNodeSnapshot{
 			Tile:              node.Tile,
 			Kind:              node.Kind,
+			Designated:        node.Designated,
 			State:             node.State,
 			RemainingCharges:  node.RemainingCharges,
 			MaxCharges:        node.MaxCharges,
@@ -181,6 +364,8 @@ func (s *sessionState) snapshot() SessionSnapshot {
 	disciples := []DiscipleSnapshot{s.currentDiscipleSnapshot()}
 	hostiles := s.currentHostileSnapshots()
 	recoverReason, damagedBuildingCount, regeneratingNodeCount := s.sessionRecoveryStatus()
+	defenseRating := s.currentDefenseRating()
+	repairSuggestion := s.currentRepairSuggestion()
 
 	return SessionSnapshot{
 		SessionID:     s.SessionID,
@@ -203,6 +388,17 @@ func (s *sessionState) snapshot() SessionSnapshot {
 			RecoverReason:          recoverReason,
 			DamagedBuildingCount:   damagedBuildingCount,
 			RegeneratingNodeCount:  regeneratingNodeCount,
+			RiskIntensity:          clampInt(s.ExternalDefense.RiskIntensity, 0, 100),
+			RiskMitigation:         clampInt(s.ExternalDefense.RiskMitigation, 0, 100),
+			ThreatCurve:            clampInt(s.currentThreatCurve(), 1, 5),
+			DefenseRating:          defenseRating,
+			GuardDiscipleCount:     maxInt(0, s.ExternalDefense.GuardDiscipleCount),
+			OmenStatus:             defaultString(s.ExternalDefense.OmenStatus, "steady"),
+			OmenText:               s.currentOmenText(),
+			DefenseSummary:         s.currentDefenseSummary(defenseRating),
+			DamageSummary:          s.currentDamageSummary(),
+			RepairSuggestion:       repairSuggestion,
+			SourceSummary:          append([]DefenseSourceSummary(nil), s.ExternalDefense.SourceSummary...),
 		},
 	}
 }
@@ -221,7 +417,7 @@ func (s *sessionState) currentDiscipleSnapshot() DiscipleSnapshot {
 	plan := s.currentDiscipleAssignment()
 	disciple := mustUnitArchetype(UnitArchetypeSectDisciple)
 	return DiscipleSnapshot{
-		ArchetypeID:         disciple.ID,
+		ArchetypeID:        disciple.ID,
 		ID:                 authorityDiscipleID,
 		Name:               authorityDiscipleName,
 		AssignmentKind:     plan.kind,
@@ -252,7 +448,7 @@ func (s *sessionState) currentHostileSnapshots() []HostileSnapshot {
 		Name:             s.Hostile.Name,
 		Tile:             s.Hostile.Tile,
 		HP:               s.Hostile.HP,
-		MaxHP:            archetype.Stats.MaxHP,
+		MaxHP:            maxInt(1, choosePositiveInt(s.Hostile.MaxHP, archetype.Stats.MaxHP)),
 		VisualState:      s.Hostile.VisualState,
 		Active:           s.Hostile.Active,
 		TargetBuildingID: s.Hostile.TargetBuildingID,
@@ -587,6 +783,9 @@ func (s *sessionState) firstAvailableResourceNode(kind ResourceKind) *resourceNo
 		if node.Kind != kind {
 			continue
 		}
+		if !node.Designated {
+			continue
+		}
 		if node.State != ResourceNodeStateAvailable || node.RemainingCharges <= 0 {
 			continue
 		}
@@ -613,6 +812,31 @@ func (s *sessionState) sortedBuildings() []*buildingEntity {
 }
 
 func (s *sessionState) executeCommand(envelope CommandEnvelope) (CommandResult, error) {
+	s.ensurePersistenceState()
+
+	if envelope.CommandID != "" {
+		if cached, ok := s.commandLog[envelope.CommandID]; ok {
+			if cached.CommandName != envelope.Name || !bytes.Equal(cached.CommandPayload, envelope.Payload) {
+				return CommandResult{}, fmt.Errorf("cmd_id %s was already used for a different authority command", envelope.CommandID)
+			}
+			return cached.outcome()
+		}
+	}
+
+	result, err := s.executeCommandOnce(envelope)
+	if result.CommandID == "" {
+		result.CommandID = envelope.CommandID
+	}
+	if envelope.CommandID != "" {
+		s.commandLog[envelope.CommandID] = newPersistedCommandLogEntry(envelope, result, err)
+	}
+	if err == nil {
+		s.recordReplayCommand(envelope)
+	}
+	return result, err
+}
+
+func (s *sessionState) executeCommandOnce(envelope CommandEnvelope) (CommandResult, error) {
 	switch envelope.Name {
 	case "place_building":
 		var payload struct {
@@ -649,6 +873,15 @@ func (s *sessionState) executeCommand(envelope CommandEnvelope) (CommandResult, 
 			return CommandResult{}, err
 		}
 		return s.collectStockpile(payload.ResourceKind, payload.Amount, payload.ResourceTile)
+	case "set_resource_designation":
+		var payload struct {
+			ResourceTile TileCoord `json:"resourceTile"`
+			Designated   bool      `json:"designated"`
+		}
+		if err := json.Unmarshal(envelope.Payload, &payload); err != nil {
+			return CommandResult{}, err
+		}
+		return s.setResourceDesignation(payload.ResourceTile, payload.Designated)
 	case "deliver_build_resource":
 		var payload struct {
 			BuildingID   string       `json:"buildingId"`
@@ -691,13 +924,14 @@ func (s *sessionState) addBuilding(buildingType BuildingType, origin TileCoord, 
 	s.nextBuildingSeq++
 
 	entity := &buildingEntity{
-		ID:       buildingID,
-		Type:     buildingType,
-		Origin:   origin,
-		State:    state,
-		Level:    1,
-		HP:       getBuildingMaxHP(buildingType, 1),
-		Supplied: zeroStockpile(),
+		ID:         buildingID,
+		Type:       buildingType,
+		Origin:     origin,
+		State:      state,
+		Level:      1,
+		HP:         getBuildingMaxHP(buildingType, 1),
+		Durability: 100,
+		Supplied:   zeroStockpile(),
 	}
 
 	if state == BuildingStateActive {
@@ -751,6 +985,8 @@ func (s *sessionState) requestUpgrade(buildingID string) (CommandResult, error) 
 	building.Supplied = zeroStockpile()
 	building.MarkedForDemolition = false
 	building.WorkProgressTicks = 0
+	building.DamagedReason = ""
+	building.RepairPressure = 0
 	pending := BuildingWorkUpgrade
 	nextLevel := building.Level + 1
 	building.PendingAction = &pending
@@ -831,6 +1067,33 @@ func (s *sessionState) collectStockpile(kind ResourceKind, amount int, resourceT
 	return CommandResult{
 		Accepted: true,
 		Event:    "resource.stockpile_gain",
+		Message:  message,
+	}, nil
+}
+
+func (s *sessionState) setResourceDesignation(tile TileCoord, designated bool) (CommandResult, error) {
+	node, err := s.getResourceNode(tile)
+	if err != nil {
+		return CommandResult{}, err
+	}
+
+	if node.Designated == designated {
+		return CommandResult{
+			Accepted: true,
+			Event:    "resource.designation_unchanged",
+			Message:  fmt.Sprintf("%s 采集标记未变化", labelForResource(node.Kind)),
+		}, nil
+	}
+
+	node.Designated = designated
+	s.syncDerivedProgress()
+	message := fmt.Sprintf("已取消 %s 采集标记", labelForResource(node.Kind))
+	if designated {
+		message = fmt.Sprintf("已标记 %s 采集目标", labelForResource(node.Kind))
+	}
+	return CommandResult{
+		Accepted: true,
+		Event:    "resource.designation_changed",
 		Message:  message,
 	}, nil
 }
@@ -917,7 +1180,7 @@ func (s *sessionState) triggerFirstRaid() (CommandResult, error) {
 
 	s.FirstRaidTriggered = true
 	s.RaidCountdownSeconds = 0
-	s.DefendRemainingSeconds = sharedAuthorityConfig.firstRaidPrepSeconds
+	s.DefendRemainingSeconds = s.currentDefendWindowTarget()
 	s.syncDerivedProgress()
 	return CommandResult{
 		Accepted: true,
@@ -984,6 +1247,8 @@ func (s *sessionState) advanceResourceNodes(seconds int) {
 	if seconds <= 0 {
 		return
 	}
+	s.ensurePersistenceState()
+	s.recordReplayAdvance(seconds)
 
 	changed := false
 	for step := 0; step < seconds; step++ {
@@ -1032,7 +1297,7 @@ func (s *sessionState) advanceRaidClock(seconds int) bool {
 	changed := false
 	if s.Phase == SessionPhaseRaidCountdown && !s.FirstRaidTriggered {
 		if s.RaidCountdownSeconds <= 0 {
-			s.RaidCountdownSeconds = sharedAuthorityConfig.firstRaidPrepSeconds
+			s.RaidCountdownSeconds = s.currentRaidCountdownTarget()
 			changed = true
 		}
 		nextCountdown := maxInt(0, s.RaidCountdownSeconds-seconds)
@@ -1042,14 +1307,14 @@ func (s *sessionState) advanceRaidClock(seconds int) bool {
 		}
 		if s.RaidCountdownSeconds == 0 {
 			s.FirstRaidTriggered = true
-			s.DefendRemainingSeconds = sharedAuthorityConfig.firstRaidPrepSeconds
+			s.DefendRemainingSeconds = s.currentDefendWindowTarget()
 			changed = true
 		}
 	}
 
 	if s.Phase == SessionPhaseDefend && s.FirstRaidTriggered && !s.FirstRaidResolved {
 		if s.DefendRemainingSeconds <= 0 {
-			s.DefendRemainingSeconds = sharedAuthorityConfig.firstRaidPrepSeconds
+			s.DefendRemainingSeconds = s.currentDefendWindowTarget()
 			changed = true
 		}
 		nextDefend := maxInt(0, s.DefendRemainingSeconds-seconds)
@@ -1101,6 +1366,10 @@ func (s *sessionState) advanceCombatStep() bool {
 	}
 
 	if s.Hostile != nil && s.Hostile.Active && s.Hostile.HP <= 0 {
+		s.LastDefenseSummary = fmt.Sprintf("敌袭已被压退，当前守备值 %d 生效。", s.currentDefenseRating())
+		if s.LastDamageSummary == "" {
+			s.LastDamageSummary = "本轮守御未新增建筑战损。"
+		}
 		s.FirstRaidResolved = true
 		s.DefendRemainingSeconds = 0
 		s.clearHostile()
@@ -1108,6 +1377,59 @@ func (s *sessionState) advanceCombatStep() bool {
 	}
 
 	return changed
+}
+
+func (s *sessionState) currentHostileMaxHP() int {
+	base := mustUnitArchetype(UnitArchetypeBanditScout).Stats.MaxHP
+	return maxInt(12, base+s.currentThreatCurve()*5+maxInt(0, s.ExternalDefense.RiskIntensity-s.ExternalDefense.RiskMitigation)/8)
+}
+
+func (s *sessionState) currentHostileAttackPower() int {
+	base := mustUnitArchetype(UnitArchetypeBanditScout).Stats.AttackPower
+	return maxInt(2, base+s.currentThreatCurve()+maxInt(0, s.ExternalDefense.RiskIntensity-s.ExternalDefense.RiskMitigation)/20)
+}
+
+func (s *sessionState) currentHostileDefense() int {
+	base := mustUnitArchetype(UnitArchetypeBanditScout).Stats.Defense
+	return maxInt(1, base+(s.currentThreatCurve()-1)/2)
+}
+
+func (s *sessionState) currentTowerAttackBonus() int {
+	return s.ExternalDefense.DefenseFormationLevel/6 + s.ExternalDefense.PolicyDefenseBonus/2
+}
+
+func (s *sessionState) currentDiscipleAttackBonus() int {
+	return s.ExternalDefense.CombatEquipmentBonus/5 + s.ExternalDefense.GuardDiscipleCount
+}
+
+func (s *sessionState) currentBuildingDefenseBonus(building *buildingEntity) int {
+	return s.ExternalDefense.RiskMitigation/6 + buildingDurabilityPercent(building)/22
+}
+
+func (s *sessionState) currentDurabilityHit(building *buildingEntity) int {
+	raw := s.currentThreatCurve()*7 + maxInt(0, s.ExternalDefense.RiskIntensity-s.ExternalDefense.RiskMitigation)/14
+	return clampInt(raw-s.currentBuildingDefenseBonus(building)/3, 3, 18)
+}
+
+func (s *sessionState) currentRepairPressureHit() int {
+	raw := s.currentThreatCurve()*2 + maxInt(0, s.ExternalDefense.RiskIntensity-s.ExternalDefense.RiskMitigation)/20
+	return clampInt(raw-s.ExternalDefense.RiskMitigation/15, 1, 8)
+}
+
+func (s *sessionState) maybeApplyDiscipleRaidInjury() {
+	if s.DiscipleHP <= 0 {
+		return
+	}
+	plan := s.currentDiscipleAssignment()
+	if plan.kind != DiscipleAssignmentGuard {
+		return
+	}
+	raw := s.currentThreatCurve()*2 + maxInt(0, s.ExternalDefense.RiskIntensity-s.ExternalDefense.RiskMitigation)/24
+	injury := clampInt(raw-s.ExternalDefense.InjuryMitigation/4, 0, 6)
+	if injury <= 0 {
+		return
+	}
+	s.DiscipleHP = maxInt(1, s.DiscipleHP-injury)
 }
 
 func (s *sessionState) spawnHostile() {
@@ -1126,11 +1448,22 @@ func (s *sessionState) spawnHostile() {
 		ArchetypeID:      archetype.ID,
 		Name:             archetype.DisplayName,
 		Tile:             spawnTile,
-		HP:               archetype.Stats.MaxHP,
+		HP:               s.currentHostileMaxHP(),
+		MaxHP:            s.currentHostileMaxHP(),
+		AttackPower:      s.currentHostileAttackPower(),
+		Defense:          s.currentHostileDefense(),
 		VisualState:      UnitVisualStateMoving,
 		TargetBuildingID: stringPtr(target.ID),
 		Active:           true,
 	}
+	s.LastDefenseSummary = fmt.Sprintf(
+		"敌袭逼近，风险 %d / 缓冲 %d / 曲线 %d，守备值 %d。",
+		s.ExternalDefense.RiskIntensity,
+		s.ExternalDefense.RiskMitigation,
+		s.currentThreatCurve(),
+		s.currentDefenseRating(),
+	)
+	s.LastDamageSummary = ""
 }
 
 func (s *sessionState) clearHostile() bool {
@@ -1186,13 +1519,15 @@ func (s *sessionState) advanceHostileAttack() bool {
 		return true
 	}
 
-	archetype := mustUnitArchetype(s.Hostile.ArchetypeID)
-	damage := getMitigatedDamage(archetype.Stats.AttackPower, getBuildingStructureDefense(target))
+	damage := getMitigatedDamage(s.Hostile.AttackPower, getBuildingStructureDefense(target)+s.currentBuildingDefenseBonus(target))
 	if damage <= 0 {
 		return false
 	}
 
 	target.HP = maxInt(0, target.HP-damage)
+	target.Durability = maxInt(0, target.Durability-s.currentDurabilityHit(target))
+	target.RepairPressure += s.currentRepairPressureHit()
+	target.DamagedReason = "raid_damage"
 	target.WorkProgressTicks = 0
 	if target.HP < getBuildingMaxHP(target.Type, target.Level) {
 		target.State = BuildingStateDamaged
@@ -1200,8 +1535,17 @@ func (s *sessionState) advanceHostileAttack() bool {
 	if target.HP == 0 && target.Type == BuildingMainHall {
 		s.Outcome = SessionOutcomeDefeat
 	}
+	s.maybeApplyDiscipleRaidInjury()
 	s.Hostile.VisualState = UnitVisualStateAttacking
-	s.Hostile.AttackCooldown = maxInt(0, archetype.Stats.AttackIntervalTicks-1)
+	s.Hostile.AttackCooldown = maxInt(0, mustUnitArchetype(s.Hostile.ArchetypeID).Stats.AttackIntervalTicks-1)
+	s.LastDamageSummary = fmt.Sprintf(
+		"%s 对 %s 造成 %d 点伤害，耐久降至 %d%%，修复压力 %d。",
+		s.Hostile.Name,
+		labelForBuilding(target.Type),
+		damage,
+		buildingDurabilityPercent(target),
+		target.RepairPressure,
+	)
 	return true
 }
 
@@ -1228,11 +1572,18 @@ func (s *sessionState) advanceGuardTowerFire() bool {
 			continue
 		}
 
-		damage := getMitigatedDamage(profile.AttackPower, mustUnitArchetype(s.Hostile.ArchetypeID).Stats.Defense)
+		damage := getMitigatedDamage(profile.AttackPower+s.currentTowerAttackBonus(), s.Hostile.Defense)
 		s.Hostile.HP = maxInt(0, s.Hostile.HP-damage)
-		if s.Hostile.HP < mustUnitArchetype(s.Hostile.ArchetypeID).Stats.MaxHP {
+		if s.Hostile.HP < maxInt(1, s.Hostile.MaxHP) {
 			s.Hostile.VisualState = UnitVisualStateInjured
 		}
+		s.LastDefenseSummary = fmt.Sprintf(
+			"%s 火力命中外敌 %d 点，敌方剩余 %d/%d。",
+			labelForBuilding(building.Type),
+			damage,
+			s.Hostile.HP,
+			maxInt(1, s.Hostile.MaxHP),
+		)
 		changed = true
 		if s.Hostile.HP <= 0 {
 			return true
@@ -1266,11 +1617,17 @@ func (s *sessionState) advanceDiscipleGuardFire() bool {
 		return true
 	}
 
-	damage := getMitigatedDamage(disciple.Stats.AttackPower, mustUnitArchetype(s.Hostile.ArchetypeID).Stats.Defense)
+	damage := getMitigatedDamage(disciple.Stats.AttackPower+s.currentDiscipleAttackBonus(), s.Hostile.Defense)
 	s.Hostile.HP = maxInt(0, s.Hostile.HP-damage)
-	if s.Hostile.HP < mustUnitArchetype(s.Hostile.ArchetypeID).Stats.MaxHP {
+	if s.Hostile.HP < maxInt(1, s.Hostile.MaxHP) {
 		s.Hostile.VisualState = UnitVisualStateInjured
 	}
+	s.LastDefenseSummary = fmt.Sprintf(
+		"守卫弟子反击 %d 点，外敌剩余 %d/%d。",
+		damage,
+		s.Hostile.HP,
+		maxInt(1, s.Hostile.MaxHP),
+	)
 	s.DiscipleAttackCooldown = maxInt(0, disciple.Stats.AttackIntervalTicks-1)
 	return true
 }
@@ -1358,6 +1715,9 @@ func (s *sessionState) advanceBuildingWork(building *buildingEntity, seconds int
 	building.PendingLevel = nil
 	building.State = BuildingStateActive
 	building.HP = getBuildingMaxHP(building.Type, building.Level)
+	building.Durability = 100
+	building.DamagedReason = ""
+	building.RepairPressure = 0
 	building.MarkedForDemolition = false
 	building.WorkProgressTicks = 0
 	return true
@@ -1399,6 +1759,7 @@ func (s *sessionState) advanceRepairWork(building *buildingEntity, seconds int) 
 	changed := false
 	if building.WorkProgressTicks == 0 {
 		repairCost := repairCostForBuilding(building.Type, building.Level)
+		repairCost = applyRepairPressureCost(repairCost, building.RepairPressure)
 		if !hasStockpile(s.Stockpile, repairCost) {
 			return false
 		}
@@ -1413,6 +1774,9 @@ func (s *sessionState) advanceRepairWork(building *buildingEntity, seconds int) 
 	}
 
 	building.HP = maxHP
+	building.Durability = 100
+	building.DamagedReason = ""
+	building.RepairPressure = 0
 	building.State = BuildingStateActive
 	building.WorkProgressTicks = 0
 	return true
@@ -1439,6 +1803,8 @@ func (s *sessionState) syncDerivedProgress() {
 		s.Hostile = nil
 		s.RaidCountdownSeconds = 0
 		s.DefendRemainingSeconds = 0
+		s.LastDefenseSummary = ""
+		s.LastDamageSummary = ""
 		if s.Outcome == SessionOutcomeVictory {
 			s.Phase = SessionPhaseVictory
 			s.Objective = "本轮短会话已完成，可继续自由观察"
@@ -1453,6 +1819,8 @@ func (s *sessionState) syncDerivedProgress() {
 		if _, ok := s.Buildings[*s.RuinBuildingID]; ok {
 			s.RaidCountdownSeconds = 0
 			s.DefendRemainingSeconds = 0
+			s.LastDefenseSummary = ""
+			s.LastDamageSummary = ""
 			s.Phase = SessionPhaseClearRuin
 			s.Objective = "长按废弃仓房并拆除，为护山台腾出位置"
 			return
@@ -1464,6 +1832,8 @@ func (s *sessionState) syncDerivedProgress() {
 	if guardTower == nil {
 		s.RaidCountdownSeconds = 0
 		s.DefendRemainingSeconds = 0
+		s.LastDefenseSummary = ""
+		s.LastDamageSummary = ""
 		s.Phase = SessionPhasePlaceGuardTower
 		s.Objective = "在空地上放下第一座护山台"
 		return
@@ -1472,10 +1842,10 @@ func (s *sessionState) syncDerivedProgress() {
 	if s.FirstRaidTriggered && !s.FirstRaidResolved {
 		s.RaidCountdownSeconds = 0
 		if s.DefendRemainingSeconds <= 0 {
-			s.DefendRemainingSeconds = sharedAuthorityConfig.firstRaidPrepSeconds
+			s.DefendRemainingSeconds = s.currentDefendWindowTarget()
 		}
 		s.Phase = SessionPhaseDefend
-		s.Objective = "守住首波敌袭，不要让主殿瘫痪"
+		s.Objective = fmt.Sprintf("守住敌袭（曲线 %d），不要让主殿瘫痪", s.currentThreatCurve())
 		return
 	}
 
@@ -1496,10 +1866,14 @@ func (s *sessionState) syncDerivedProgress() {
 			default:
 				s.Objective = "首波敌袭已退去，等待 authority 完成战后收口"
 			}
+			if s.LastDamageSummary == "" {
+				s.LastDamageSummary = s.currentRepairSuggestion()
+			}
 			return
 		}
 
 		s.Phase = SessionPhaseSecondCycleReady
+		s.LastDamageSummary = ""
 		if damagedBuildingCount == 0 && regeneratingNodeCount == 0 {
 			s.Objective = "战后修复与资源刷新已完成，可继续当前 authority 下一轮筹备"
 		} else {
@@ -1518,11 +1892,11 @@ func (s *sessionState) syncDerivedProgress() {
 
 	if !s.FirstRaidTriggered {
 		if s.RaidCountdownSeconds <= 0 {
-			s.RaidCountdownSeconds = sharedAuthorityConfig.firstRaidPrepSeconds
+			s.RaidCountdownSeconds = s.currentRaidCountdownTarget()
 		}
 		s.DefendRemainingSeconds = 0
 		s.Phase = SessionPhaseRaidCountdown
-		s.Objective = "护山台已就位，准备迎接第一波敌袭"
+		s.Objective = fmt.Sprintf("护山台已就位，风险 %d，准备迎接敌袭预兆与首波冲击", s.ExternalDefense.RiskIntensity)
 		return
 	}
 }
@@ -1794,6 +2168,19 @@ func repairCostForBuilding(buildingType BuildingType, level int) Stockpile {
 	return pile
 }
 
+func applyRepairPressureCost(base Stockpile, repairPressure int) Stockpile {
+	if repairPressure <= 0 {
+		return base
+	}
+	pile := base
+	pile.SpiritWood += repairPressure / 3
+	pile.SpiritStone += repairPressure / 4
+	if repairPressure >= 6 {
+		pile.Herb++
+	}
+	return pile
+}
+
 func demolitionYield(building *buildingEntity, ruinBuildingID *string) Stockpile {
 	if ruinBuildingID != nil && *ruinBuildingID == building.ID {
 		return Stockpile{SpiritWood: 1, SpiritStone: 1, Herb: 0}
@@ -1849,11 +2236,80 @@ func tilePtr(v TileCoord) *TileCoord {
 	return &v
 }
 
+func nullableString(value string) *string {
+	if value == "" {
+		return nil
+	}
+	return &value
+}
+
+func defaultString(value string, fallback string) string {
+	if value == "" {
+		return fallback
+	}
+	return value
+}
+
+func choosePositiveInt(primary, fallback int) int {
+	if primary > 0 {
+		return primary
+	}
+	return fallback
+}
+
+func minInt(left, right int) int {
+	if left < right {
+		return left
+	}
+	return right
+}
+
 func maxInt(left, right int) int {
 	if left > right {
 		return left
 	}
 	return right
+}
+
+func clampInt(value, minValue, maxValue int) int {
+	if value < minValue {
+		return minValue
+	}
+	if value > maxValue {
+		return maxValue
+	}
+	return value
+}
+
+func buildingDurabilityPercent(building *buildingEntity) int {
+	if building == nil {
+		return 0
+	}
+	if building.Durability > 0 {
+		return clampInt(building.Durability, 0, 100)
+	}
+	return clampInt(int(float64(building.HP)/float64(maxInt(1, getBuildingMaxHP(building.Type, building.Level)))*100), 0, 100)
+}
+
+func buildingEffectiveEfficiency(building *buildingEntity) int {
+	efficiency := buildingDurabilityPercent(building) - building.RepairPressure*3
+	if building.State == BuildingStateDamaged {
+		efficiency -= 15
+	}
+	return clampInt(efficiency, 15, 100)
+}
+
+func (s *sessionState) lowestDurabilityDamagedBuilding() *buildingEntity {
+	var selected *buildingEntity
+	for _, building := range s.Buildings {
+		if building.State != BuildingStateDamaged {
+			continue
+		}
+		if selected == nil || buildingDurabilityPercent(building) < buildingDurabilityPercent(selected) {
+			selected = building
+		}
+	}
+	return selected
 }
 
 func manhattanDistance(left, right TileCoord) int {

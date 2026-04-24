@@ -48,11 +48,13 @@ Resolve conflicts in this order:
 
 1. Direct user instruction
 2. This [AGENTS.md](/Users/mawei/MyWork/SlgGame/AGENTS.md)
-3. [docs/vision/design-decisions.md](/Users/mawei/MyWork/SlgGame/docs/vision/design-decisions.md)
-4. [docs/process/engineering-standards.md](/Users/mawei/MyWork/SlgGame/docs/process/engineering-standards.md)
-5. Relevant ADRs under `docs/decisions/`
-6. [docs/README.md](/Users/mawei/MyWork/SlgGame/docs/README.md) and current plans under `docs/plans/`
-7. `docs/legacy/` for reference only
+3. [docs/vision/gdd_v3_backend_design.md](/Users/mawei/MyWork/SlgGame/docs/vision/gdd_v3_backend_design.md)
+4. [docs/decisions/0012-adopt-gdd-v3-authoritative-backend-gdd.md](/Users/mawei/MyWork/SlgGame/docs/decisions/0012-adopt-gdd-v3-authoritative-backend-gdd.md) and relevant ADRs under `docs/decisions/`
+5. [docs/process/engineering-standards.md](/Users/mawei/MyWork/SlgGame/docs/process/engineering-standards.md)
+6. [docs/project/development-plan.json](/Users/mawei/MyWork/SlgGame/docs/project/development-plan.json), [docs/project/development.active.json](/Users/mawei/MyWork/SlgGame/docs/project/development.active.json), and current plans under `docs/plans/`
+7. [docs/README.md](/Users/mawei/MyWork/SlgGame/docs/README.md)
+8. [docs/vision/design-decisions.md](/Users/mawei/MyWork/SlgGame/docs/vision/design-decisions.md) as a superseded shim only
+9. `docs/legacy/` for reference only
 
 If a required authority doc is missing, do not invent it. Draft the missing doc or escalate to the user.
 
@@ -64,7 +66,7 @@ If a required authority doc is missing, do not invent it. Draft the missing doc 
 - Do not replace the big-head-first presentation strategy with full-body animation-heavy solutions.
 - Do not move economy, battle settlement, karma triggers, or authoritative state decisions to the client.
 - Do not modify Hollywood upstream source for business logic.
-- Do not model disciples, buildings, or active storylets as standalone server actors in V1. They belong inside the simulation big-State handled by one `SimulationActor`.
+- Do not model disciples, buildings, or active storylets as standalone server actors in V1. They belong inside the simulation big-state handled by one `SectActor`.
 - Do not use wall-clock time or package-level randomness inside simulation logic.
 - Do not create a second event system, second save protocol, or second content pipeline because it feels faster in the moment.
 
@@ -186,10 +188,12 @@ For iterative development work:
 
 Default document read path for ordinary work:
 - read this root `AGENTS.md` first
-- then read [docs/vision/design-decisions.md](/Users/mawei/MyWork/SlgGame/docs/vision/design-decisions.md)
+- then read [docs/vision/gdd_v3_backend_design.md](/Users/mawei/MyWork/SlgGame/docs/vision/gdd_v3_backend_design.md)
+- then read [docs/decisions/0012-adopt-gdd-v3-authoritative-backend-gdd.md](/Users/mawei/MyWork/SlgGame/docs/decisions/0012-adopt-gdd-v3-authoritative-backend-gdd.md)
 - then read [docs/project/development-plan.json](/Users/mawei/MyWork/SlgGame/docs/project/development-plan.json)
 - if a subfunction is active for your role, read [docs/project/development.active.json](/Users/mawei/MyWork/SlgGame/docs/project/development.active.json)
-- only then jump into ADRs, feature docs, architecture docs, or process docs that the current task actually needs
+- use [docs/vision/design-decisions.md](/Users/mawei/MyWork/SlgGame/docs/vision/design-decisions.md) only as a superseded pointer file
+- only then jump into other ADRs, architecture docs, process docs, or historical docs that the current task actually needs
 
 Documentation simplification rule:
 - do not make `docs/README.md` a second North Star
@@ -215,7 +219,7 @@ Documentation simplification rule:
 - If the user asks for art-pipeline work, isolate it from gameplay/system design work unless the request explicitly joins them.
 - If the task depends on external platform, engine, editor, or build behavior, check official docs first and freeze the contract before implementation.
 - If the task is configuration-class work, prefer editor/config paths first, then human assist if MCP is insufficient, and only then consider code fallback.
-- For the current client-local phase, treat `Cocos Creator` compile/export capability plus the documented preview path as the primary validation surface. Do not schedule WeChat/Douyin developer-tool or real mini-game container testing by default; defer that work until the human explicitly asks to switch into platform-container validation.
+- For the current authority-core bootstrap phase, prioritize server tests, contract validation, and bounded browser/runtime verification. Do not schedule WeChat/Douyin developer-tool or real mini-game container testing by default; defer that work until the human explicitly asks to switch into platform-container validation.
 
 ## Coordex Workflow
 

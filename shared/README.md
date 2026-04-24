@@ -28,10 +28,17 @@ Until a generated pipeline exists, client and server work should treat this JSON
 `M1-D` now freezes the minimum authority-backed short-session contract in:
 
 - `contracts/m1-authority-short-session-v1.md`
+- `../server/internal/proto/slggame/protocol/v1/authority_runtime.proto`
 
 That contract is the current source of truth for:
 
-- authority session endpoints
-- command names and payload shapes
+- the formal protobuf-first `ClientCommand / CommandResult / StatePatch` runtime boundary
+- the preview-only HTTP JSON shim used by the current Cocos local validation loop
 - snapshot fields consumed by the Cocos preview runtime
 - the explicit in-scope / out-of-scope boundary for the first `shared + Go + Hollywood` bridge
+
+Interpretation rule:
+
+- `authority_runtime.proto` is the formal authority protocol to extend
+- `contracts/m1-authority-short-session-v1.md` documents the current preview shim and feature-slice payload semantics
+- new authority work must not introduce a second JSON-first runtime protocol alongside the protobuf path

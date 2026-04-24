@@ -4,1281 +4,1617 @@
     "id": "project-SlgGame",
     "name": "SlgGame",
     "status": "active",
-    "current_phase_id": "phase-authority-runtime-rebuild",
-    "current_milestone_id": "milestone-authority-thin-client-cutover",
-    "current_subfunction_id": "subfunction-consume-authority-worker-state-through-render-only-view-model",
+    "current_phase_id": null,
+    "current_milestone_id": null,
+    "current_subfunction_id": null,
     "created_at": "2026-04-21T13:24:26.123Z",
-    "updated_at": "2026-04-22T05:56:14.544Z"
+    "updated_at": "2026-04-24T00:27:12.061Z"
   },
   "phases": [
     {
-      "id": "phase-foundation-and-bootstrap",
-      "title": "基础与引导搭建",
+      "id": "phase-docs-rebase-to-gdd-v3",
+      "title": "GDD v3.1 权威文档重置",
       "status": "accepted",
-      "summary": "仓库权责、可见角色工作流以及真实客户端/服务端写入边界，已经冻结为后续所有工作的已接受基础。",
+      "summary": "完成 North Star、ADR、features、design、plans 与 project 入口的统一收口，消除旧 F-004 / authority debt 目录级并行真相。",
       "current_milestone_id": null,
       "milestones": [
         {
-          "id": "milestone-project-governance-foundation",
-          "title": "项目治理基础",
+          "id": "milestone-adopt-gdd-v31-authoritative-spec",
+          "title": "采纳 GDD v3.1 为唯一主规范",
           "status": "accepted",
-          "summary": "冻结根级权责顺序、Coordex V2 执行模型以及单根仓库策略。",
+          "summary": "通过 ADR 0012、GDD v3.1 修订、目录迁移与入口重写，把项目主线正式 rebase 到新的权威规范上。",
           "acceptance_owner": "supervisor",
           "current_subfunction_id": null,
           "subfunctions": [
             {
-              "id": "subfunction-freeze-role-and-authority-order",
-              "title": "冻结角色与权责顺序",
-              "owner_role": "engineer",
+              "id": "subfunction-write-adr0012",
+              "title": "新增 ADR 0012 并裁决文档权威顺序",
+              "owner_role": "supervisor",
               "status": "accepted",
-              "objective": "冻结项目权责顺序、持久角色名册以及由 supervisor 主导的验收工作流，使后续执行统一采用同一套可见协作模型。",
+              "objective": "新增正式 ADR，明确 GDD v3.1 是产品与权威后端的唯一主规范，并把旧的 design-decisions、F-004 与 authority-first 计划降级为历史基线。",
               "done_when": [
-                "The root project charter defines the authority order, visible durable roles, and the supervisor acceptance model.",
-                "The execution-state files and recovery/read-order rules are identified as the default path for non-trivial work."
+                "存在一份已接受的 ADR，明确 GDD v3.1 的最高权威地位。",
+                "文档层级不再允许 design-decisions 或 F-004 与 GDD 并列竞争主规范地位。"
               ],
               "refs": [
                 "AGENTS.md",
-                "docs/features/F-001-project-governance-foundation.md",
-                "docs/project/project-method.md"
+                "docs/vision/gdd_v3_backend_design.md",
+                "docs/decisions/0012-adopt-gdd-v3-authoritative-backend-gdd.md"
               ],
-              "updated_at": "2026-04-21T16:40:00.000Z"
+              "updated_at": "2026-04-23T00:00:00.000Z"
             },
             {
-              "id": "subfunction-close-root-repository-policy",
-              "title": "收口根仓策略",
-              "owner_role": "engineer",
+              "id": "subfunction-revise-gdd-v3-to-v31",
+              "title": "修订 GDD v3 为 protobuf-first v3.1",
+              "owner_role": "supervisor",
               "status": "accepted",
-              "objective": "建立单根 Git 拓扑与受保护区域规则，使 Cocos、服务端与工具链工作都继承同一条规范仓库边界。",
+              "objective": "把 GDD 改成 v3.1，明确 protobuf-first、V1 单玩家云存档边界、SectActor big-state、事件应用流水线但非 pure event sourcing、以及分阶段 MVP。",
               "done_when": [
-                "Project authority docs record `~/MyWork/SlgGame/.git` as the only canonical repository root.",
-                "Decision and delivery records capture the removal of nested repository ownership from the active workflow."
+                "GDD 不再保留 JSON 权威协议或 JSONB 主存储路线。",
+                "GDD 不再把共享房间式多人同步当作 V1 默认实现。"
               ],
               "refs": [
-                "AGENTS.md",
-                "docs/features/F-001-project-governance-foundation.md",
-                "docs/project/decision-log.md"
-              ],
-              "updated_at": "2026-04-21T16:40:00.000Z"
-            }
-          ],
-          "updated_at": "2026-04-21T16:40:00.000Z"
-        },
-        {
-          "id": "milestone-real-stack-bootstrap",
-          "title": "真实技术栈引导搭建",
-          "status": "accepted",
-          "summary": "在仓库内冻结当前激活的 Cocos 客户端根目录与初始 Go/Hollywood authority 服务端骨架。",
-          "acceptance_owner": "supervisor",
-          "current_subfunction_id": null,
-          "subfunctions": [
-            {
-              "id": "subfunction-bootstrap-cocos-client-worktree",
-              "title": "引导搭建 Cocos 客户端工作树",
-              "owner_role": "engineer",
-              "status": "accepted",
-              "objective": "确认 `client/my-immortal-sect/` 是权威的 Cocos Creator 客户端根目录，并在根仓下固定已提交设置与 MCP 扩展归属。",
-              "done_when": [
-                "The client architecture contract points to `client/my-immortal-sect/` as the active Cocos project root.",
-                "Project-local MCP settings and extension ownership are documented under the root repository policy."
-              ],
-              "refs": [
-                "AGENTS.md",
-                "docs/architecture/client-structure.md",
-                "docs/features/F-002-sect-map-playability-validation.md"
-              ],
-              "updated_at": "2026-04-21T16:40:00.000Z"
-            },
-            {
-              "id": "subfunction-bootstrap-go-authority-worktree",
-              "title": "引导搭建 Go Authority 工作树",
-              "owner_role": "engineer",
-              "status": "accepted",
-              "objective": "预留并文档化真实的 Go/Hollywood 服务端结构，使 authority 工作后续可以直接落地，而无需再次重排目录。",
-              "done_when": [
-                "The server architecture contract defines the Go entrypoint, Hollywood authority areas, gateway area, storage area, and test/tool roots.",
-                "The repository already contains the initial server scaffold and the narrow M1 authority entrypoint under the documented structure."
-              ],
-              "refs": [
-                "AGENTS.md",
-                "docs/architecture/server-structure.md",
-                "docs/features/F-002-sect-map-playability-validation.md"
-              ],
-              "updated_at": "2026-04-21T16:40:00.000Z"
-            }
-          ],
-          "updated_at": "2026-04-21T16:40:00.000Z"
-        }
-      ],
-      "updated_at": "2026-04-21T16:40:00.000Z"
-    },
-    {
-      "id": "phase-sect-map-m1-baseline",
-      "title": "宗门地图 M1 基线",
-      "status": "accepted",
-      "summary": "宗门地图切片已经从客户端本地建造/运营验证，推进到了最小 authority-backed 短会话桥接。",
-      "current_milestone_id": null,
-      "milestones": [
-        {
-          "id": "milestone-m1a-client-local-build-operate-baseline",
-          "title": "M1-A 客户端本地建造运营基线",
-          "status": "accepted",
-          "summary": "在宗门地图上建立第一条真实的 Cocos 客户端本地 `建 + 运` 循环。",
-          "acceptance_owner": "supervisor",
-          "current_subfunction_id": null,
-          "subfunctions": [
-            {
-              "id": "subfunction-deliver-client-local-build-operate-loop",
-              "title": "交付客户端本地建造运营循环",
-              "owner_role": "engineer",
-              "status": "accepted",
-              "objective": "证明真实的 Cocos 客户端构建能够跑通包含采集、搬运、入库、放置以及地图可见状态变化的宗门地图循环。",
-              "done_when": [
-                "The feature records and delivery ledger accept a real client-local `gather -> haul -> build` sect-map loop in the documented Cocos project path.",
-                "The accepted result is explicitly bounded as client-local and not overstated as a completed authority path."
-              ],
-              "refs": [
-                "docs/features/F-002-sect-map-playability-validation.md",
-                "docs/features/F-004-sect-map-m1-gameplay-foundation.md",
-                "docs/project/delivery-ledger.md"
-              ],
-              "updated_at": "2026-04-21T16:40:00.000Z"
-            },
-            {
-              "id": "subfunction-lock-sect-map-validation-contract",
-              "title": "冻结宗门地图验证合同",
-              "owner_role": "engineer",
-              "status": "accepted",
-              "objective": "冻结宗门地图验证边界，使预览证据、竖屏基线与功能表述始终与真实技术栈保持一致。",
-              "done_when": [
-                "The phase-validation docs define the sect-map preview baseline, map contract snapshot, and bounded validation language for M1.",
-                "Decision and delivery records preserve the rule that M1-A acceptance is only a client-local baseline."
-              ],
-              "refs": [
-                "docs/features/F-002-sect-map-playability-validation.md",
-                "docs/project/decision-log.md"
-              ],
-              "updated_at": "2026-04-21T16:40:00.000Z"
-            }
-          ],
-          "updated_at": "2026-04-21T16:40:00.000Z"
-        },
-        {
-          "id": "milestone-m1b-client-local-defend-repair-depth",
-          "title": "M1-B 客户端本地防守修复深化",
-          "status": "accepted",
-          "summary": "通过战斗伤害、修复以及更清晰的建筑状态反馈，深化本地宗门地图循环。",
-          "acceptance_owner": "supervisor",
-          "current_subfunction_id": null,
-          "subfunctions": [
-            {
-              "id": "subfunction-expand-client-local-damage-repair-loop",
-              "title": "扩展客户端本地伤害修复循环",
-              "owner_role": "engineer",
-              "status": "accepted",
-              "objective": "扩展客户端本地宗门地图运行时，引入伤害、修复、守卫行为与资源驱动恢复，使第一轮威胁循环具备实际玩法意义。",
-              "done_when": [
-                "The accepted delivery covers building HP, damage, repair cost, guard behavior, and recovery inside the real Cocos client path.",
-                "The result is still described as client-local gameplay deepening rather than a completed authority implementation."
-              ],
-              "refs": [
-                "docs/features/F-004-sect-map-m1-gameplay-foundation.md",
-                "docs/project/delivery-ledger.md",
-                "docs/project/decision-log.md"
-              ],
-              "updated_at": "2026-04-21T16:40:00.000Z"
-            },
-            {
-              "id": "subfunction-produce-readable-building-state-asset-pack",
-              "title": "产出可读的建筑状态资源包",
-              "owner_role": "art_asset_producer",
-              "status": "accepted",
-              "objective": "打包第一版可读的宗门地图资源表现，使受损、修复中与防守中的建筑状态无需仅依赖调试色也能被理解。",
-              "done_when": [
-                "The accepted records include a readable asset package or readability pass tied to the real sect-map runtime.",
-                "The building-state visuals support the M1-B damage and repair loop without changing the project’s big-head and sect-map presentation strategy."
-              ],
-              "refs": [
-                "AGENTS.md",
-                "docs/features/F-004-sect-map-m1-gameplay-foundation.md",
-                "docs/project/delivery-ledger.md"
-              ],
-              "updated_at": "2026-04-21T16:40:00.000Z"
-            }
-          ],
-          "updated_at": "2026-04-21T16:40:00.000Z"
-        },
-        {
-          "id": "milestone-m1c-client-local-completable-short-session",
-          "title": "M1-C 客户端本地可完成短会话",
-          "status": "accepted",
-          "summary": "收口第一条客户端本地短会话，使一次新开局能在一轮宗门地图循环内到达胜利或失败。",
-          "acceptance_owner": "supervisor",
-          "current_subfunction_id": null,
-          "subfunctions": [
-            {
-              "id": "subfunction-close-client-local-session-phase-machine",
-              "title": "收口客户端本地会话阶段机",
-              "owner_role": "engineer",
-              "status": "accepted",
-              "objective": "完成从 `clear_ruin` 到 `victory / defeat` 的本地会话阶段机，使地图切片表现为一条真实短会话，而不是若干彼此割裂的系统。",
-              "done_when": [
-                "The sect-map feature record and delivery ledger accept a client-local short session that can complete from a new run to victory or defeat.",
-                "The accepted result explicitly stays within client-local validation bounds and does not claim platform-host or authority completion."
-              ],
-              "refs": [
-                "docs/features/F-004-sect-map-m1-gameplay-foundation.md",
-                "docs/project/delivery-ledger.md",
-                "docs/project/decision-log.md"
-              ],
-              "updated_at": "2026-04-21T16:40:00.000Z"
-            },
-            {
-              "id": "subfunction-polish-objective-hud-and-guidance-kit",
-              "title": "打磨目标 HUD 与引导组件包",
-              "owner_role": "art_asset_producer",
-              "status": "accepted",
-              "objective": "加入第一版面向目标的 HUD 与地图引导视觉，使玩家无需开发者旁白也能读懂阶段目标、压力状态与关键目标。",
-              "done_when": [
-                "The accepted records include objective HUD, guidance markers, and readable threat/state signals tied to the real sect-map runtime.",
-                "The visual pass supports the same `clear_ruin -> defend -> recover -> victory / defeat` flow that the gameplay slice validates."
-              ],
-              "refs": [
-                "docs/features/F-004-sect-map-m1-gameplay-foundation.md",
-                "docs/project/delivery-ledger.md",
-                "docs/vision/design-decisions.md"
-              ],
-              "updated_at": "2026-04-21T16:40:00.000Z"
-            }
-          ],
-          "updated_at": "2026-04-21T16:40:00.000Z"
-        },
-        {
-          "id": "milestone-m1d-minimal-authority-bridge",
-          "title": "M1-D 最小 Authority 桥接",
-          "status": "accepted",
-          "summary": "将客户端本地宗门地图切片桥接到第一份共享合同以及 Go/Hollywood authority 运行时，用于建造状态和资源结算。",
-          "acceptance_owner": "supervisor",
-          "current_subfunction_id": null,
-          "subfunctions": [
-            {
-              "id": "subfunction-freeze-m1d-shared-authority-contract",
-              "title": "冻结 M1-D 共享 Authority 合同",
-              "owner_role": "engineer",
-              "status": "accepted",
-              "objective": "冻结 authority-backed 建筑状态、库存结算以及短会话快照字段所需的最小共享合同。",
-              "done_when": [
-                "The shared contract defines the canonical snapshot shape, command surface, session phases, and authority base URL for the M1-D slice.",
-                "The accepted result is explicitly narrow and keeps combat resolution, pathfinding, and broader persistence out of scope."
-              ],
-              "refs": [
-                "shared/contracts/m1-authority-short-session-v1.md",
-                "docs/features/F-004-sect-map-m1-gameplay-foundation.md",
-                "docs/project/decision-log.md"
-              ],
-              "updated_at": "2026-04-21T16:40:00.000Z"
-            },
-            {
-              "id": "subfunction-wire-client-and-server-minimal-authority-bridge",
-              "title": "接通客户端与服务端的最小 Authority 桥接",
-              "owner_role": "engineer",
-              "status": "accepted",
-              "objective": "接通 Cocos 客户端、Go 网关与 Hollywood 会话 actor，使放置、升级、拆除与库存结算都通过 authority 快照和命令推进。",
-              "done_when": [
-                "The server provides the local authority HTTP entrypoint and actor-backed session state for the M1-D bridge.",
-                "The client boots from authority snapshot data and advances `clear_ruin -> raid_countdown` through authority command results in preview validation."
-              ],
-              "refs": [
-                "docs/architecture/client-structure.md",
-                "docs/architecture/server-structure.md",
-                "shared/contracts/m1-authority-short-session-v1.md"
-              ],
-              "updated_at": "2026-04-21T16:40:00.000Z"
-            }
-          ],
-          "updated_at": "2026-04-21T16:40:00.000Z"
-        }
-      ],
-      "updated_at": "2026-04-21T16:40:00.000Z"
-    },
-    {
-      "id": "phase-m1-authority-closure",
-      "title": "M1 Authority 收口",
-      "status": "accepted",
-      "summary": "通过将战斗结果以及资源/会话推进从客户端本地真相迁入 Go/Hollywood 路径，完成第一轮 authority 边界收口。",
-      "current_milestone_id": null,
-      "milestones": [
-        {
-          "id": "milestone-m1e-authority-combat-closure",
-          "title": "M1-E Authority 战斗收口",
-          "status": "accepted",
-          "summary": "完成 M1-D 之后已经冻结的下一步，将 `defend / recover / victory / defeat` 判定迁入 authority 运行时。",
-          "acceptance_owner": "supervisor",
-          "current_subfunction_id": null,
-          "subfunctions": [
-            {
-              "id": "subfunction-authority-defend-recover-state-machine",
-              "title": "Authority 防守恢复状态机",
-              "owner_role": "engineer",
-              "status": "accepted",
-              "objective": "在不超出已冻结 M1-E 范围的前提下，将从 `raid_countdown` 到 `defend`、`recover`、`victory` 与 `defeat` 的权威会话状态机迁入 Go/Hollywood 运行时。",
-              "done_when": [
-                "The authority snapshot and command flow own the phase and outcome transitions for `defend`, `recover`, `victory`, and `defeat`.",
-                "Client-local combat presentation is no longer the final source of truth for session outcome in the M1-E slice."
-              ],
-              "refs": [
-                "AGENTS.md",
-                "docs/project/decision-log.md",
-                "docs/features/F-004-sect-map-m1-gameplay-foundation.md",
-                "shared/contracts/m1-authority-short-session-v1.md",
-                "docs/decisions/0007-hollywood-actor-framework.md",
-                "docs/decisions/0010-offline-deterministic-simulation.md"
-              ],
-              "updated_at": "2026-04-21T21:46:31.371Z"
-            },
-            {
-              "id": "subfunction-client-authority-combat-consumption",
-              "title": "客户端消费 Authority 战斗状态",
-              "owner_role": "engineer",
-              "status": "accepted",
-              "objective": "调整 Cocos 客户端，使其消费 authority 的战斗阶段更新、伤害结果与会话完成信号，而不重新引入本地 authority 漂移。",
-              "done_when": [
-                "A preview run can advance from bootstrap through first raid into authority-driven `victory` or `defeat` while the client renders from authority state.",
-                "The client runtime debug surface exposes authority combat status and bounded last-error information for supervisor verification."
-              ],
-              "refs": [
-                "docs/architecture/client-structure.md",
-                "docs/features/F-004-sect-map-m1-gameplay-foundation.md",
-                "shared/contracts/m1-authority-short-session-v1.md"
-              ],
-              "updated_at": "2026-04-21T21:53:02.614Z"
-            },
-            {
-              "id": "subfunction-m1e-preview-verification-and-acceptance-bounds",
-              "title": "M1-E 预览验证与验收边界",
-              "owner_role": "engineer",
-              "status": "accepted",
-              "objective": "为 authority 战斗切片产出一条有界验证流程，使 supervisor 能在不读取超大 runtime trace 的情况下接受或拒绝 M1-E。",
-              "done_when": [
-                "There is a reproducible preview validation flow covering bootstrap, first raid, defend, recover, and session completion under the dedicated browser workflow.",
-                "The evidence boundaries needed for acceptance are clear enough to update the feature and delivery records without reopening scope."
-              ],
-              "refs": [
-                "docs/process/dedicated-browser-workflow.md",
-                "docs/process/browser-runtime-workflow.md",
-                "docs/project/delivery-ledger.md",
-                "docs/features/F-004-sect-map-m1-gameplay-foundation.md"
-              ],
-              "updated_at": "2026-04-21T21:57:11.233Z"
-            }
-          ],
-          "updated_at": "2026-04-21T21:57:11.233Z"
-        },
-        {
-          "id": "milestone-m1f-authority-resource-refresh-and-session-loop",
-          "title": "M1-F Authority 资源刷新与会话循环",
-          "status": "accepted",
-          "summary": "在战斗收口之后，将资源节点耗尽/刷新以及下一轮短会话循环迁入 authority 拥有的主循环。",
-          "acceptance_owner": "supervisor",
-          "current_subfunction_id": null,
-          "subfunctions": [
-            {
-              "id": "subfunction-authority-resource-node-depletion-and-refresh",
-              "title": "Authority 资源节点耗尽与刷新",
-              "owner_role": "engineer",
-              "status": "accepted",
-              "objective": "将资源节点耗尽、刷新计时与战后会话推进迁入 authority 运行时，使库存增长与下一轮就绪不再依赖客户端猜测。",
-              "done_when": [
-                "Authority state owns resource-node depletion and refresh timing for the sect-map short-session loop.",
-                "The session can progress past first-raid recovery into a second-cycle-ready state without client-only resource resets."
-              ],
-              "refs": [
-                "docs/features/F-004-sect-map-m1-gameplay-foundation.md",
-                "docs/plans/m0-vertical-slice.md",
-                "docs/decisions/0010-offline-deterministic-simulation.md"
-              ],
-              "updated_at": "2026-04-22T01:22:54.949Z"
-            },
-            {
-              "id": "subfunction-produce-authority-aligned-node-and-phase-visuals",
-              "title": "产出与 Authority 对齐的节点与阶段视觉",
-              "owner_role": "art_asset_producer",
-              "status": "accepted",
-              "objective": "为已耗尽节点、已刷新节点以及战后恢复/就绪状态设计可读视觉，使 authority 拥有的循环变化在竖屏宗门地图上保持可理解。",
-              "done_when": [
-                "The node and phase visuals map cleanly onto the authority-owned states introduced by M1-F.",
-                "The resulting visuals fit the sect-map readability strategy without requiring debug-only labels to understand state changes."
-              ],
-              "refs": [
-                "AGENTS.md",
-                "docs/features/F-004-sect-map-m1-gameplay-foundation.md",
-                "docs/vision/design-decisions.md"
-              ],
-              "updated_at": "2026-04-22T01:30:43.959Z"
-            },
-            {
-              "id": "subfunction-close-multi-cycle-authority-short-session",
-              "title": "收口多轮 Authority 短会话",
-              "owner_role": "engineer",
-              "status": "accepted",
-              "objective": "将新的 authority 战斗与资源刷新工作整合进一条可重复执行的多轮短会话验证流程。",
-              "done_when": [
-                "A preview run can complete one full authority-owned raid cycle and begin a second coherent cycle without desync between client and authority state.",
-                "Supervisor acceptance can be based on bounded runtime evidence instead of raw full-log ingestion."
-              ],
-              "refs": [
-                "docs/process/dedicated-browser-workflow.md",
-                "docs/project/delivery-ledger.md",
-                "docs/features/F-004-sect-map-m1-gameplay-foundation.md"
-              ],
-              "updated_at": "2026-04-22T01:54:13.611Z"
-            }
-          ],
-          "updated_at": "2026-04-22T01:54:13.611Z"
-        }
-      ],
-      "updated_at": "2026-04-22T01:54:13.611Z"
-    },
-    {
-      "id": "phase-authority-runtime-rebuild",
-      "title": "Authority 运行时重构",
-      "status": "planned",
-      "summary": "围绕严格的 authority 所有权重构宗门地图运行时，使客户端从混合玩法驱动器转为轻量渲染/输入外壳。",
-      "current_milestone_id": "milestone-authority-thin-client-cutover",
-      "milestones": [
-        {
-          "id": "milestone-shared-config-and-content-source",
-          "title": "共享配置与内容源",
-          "status": "accepted",
-          "summary": "将共享配置与共享资源标识保留为本轮重构的已接受内容基线。",
-          "acceptance_owner": "supervisor",
-          "current_subfunction_id": null,
-          "subfunctions": [
-            {
-              "id": "subfunction-define-shared-config-sources-for-buildings-resources-phases",
-              "title": "定义建筑资源阶段的共享配置源",
-              "owner_role": "engineer",
-              "status": "accepted",
-              "objective": "定义第一份建筑、资源与短会话阶段数据的共享配置源，使客户端和服务端不再各自维护一份分叉规则。",
-              "done_when": [
-                "There is a canonical shared config location and schema for M1 buildings, resources, and phase-driving values under the repository's shared area.",
-                "Client and server implementation plans can reference the same config source without inventing a second pipeline."
-              ],
-              "refs": [
-                "AGENTS.md",
-                "docs/plans/m0-vertical-slice.md",
-                "docs/decisions/0009-actor-id-conventions.md",
-                "docs/features/F-004-sect-map-m1-gameplay-foundation.md"
-              ],
-              "updated_at": "2026-04-22T02:11:06.914Z"
-            },
-            {
-              "id": "subfunction-produce-building-asset-footprint-and-state-spec",
-              "title": "产出建筑资源占地与状态规格",
-              "owner_role": "art_asset_producer",
-              "status": "accepted",
-              "objective": "建立第一份持久化建筑资源规格，覆盖矩形占地、格子占用、基础渲染尺寸以及可导入宗门地图资源的状态驱动视觉处理。",
-              "done_when": [
-                "Each planned building class has a clear footprint-to-render-size rule that matches the sect-map grid contract and rectangular-only building constraint.",
-                "The state treatment plan covers blueprint, active, damaged, and upgrade/readability needs without multiplying unnecessary art variants."
-              ],
-              "refs": [
-                "AGENTS.md",
-                "docs/features/F-004-sect-map-m1-gameplay-foundation.md",
-                "docs/vision/design-decisions.md"
-              ],
-              "updated_at": "2026-04-22T02:15:32.196Z"
-            },
-            {
-              "id": "subfunction-bind-shared-config-and-assets-into-runtime",
-              "title": "将共享配置与资源接入运行时",
-              "owner_role": "engineer",
-              "status": "accepted",
-              "objective": "将共享配置源和第一批建筑资源标识接入客户端与 authority 运行时，同时避免生成并行的内容定义体系。",
-              "done_when": [
-                "The client and authority runtime resolve planned M1 building/resource rules from the shared source rather than from duplicated hardcoded tables.",
-                "The runtime can map configured building identifiers to importable sect-map asset ids without ad hoc per-system overrides."
-              ],
-              "refs": [
-                "docs/architecture/client-structure.md",
-                "docs/architecture/server-structure.md",
-                "docs/plans/m0-vertical-slice.md"
-              ],
-              "updated_at": "2026-04-22T02:28:42.056Z"
-            }
-          ],
-          "updated_at": "2026-04-22T02:28:42.056Z"
-        },
-        {
-          "id": "milestone-authority-boundary-reset",
-          "title": "Authority 边界重置",
-          "status": "accepted",
-          "summary": "在进一步落地实现前，冻结 authority-only 运行时合同、重新定义轻客户端边界，并移除 hybrid 验收语言。",
-          "acceptance_owner": "supervisor",
-          "current_subfunction_id": null,
-          "subfunctions": [
-            {
-              "id": "subfunction-freeze-authority-only-sect-map-contract",
-              "title": "冻结 Authority-Only 宗门地图合同",
-              "owner_role": "engineer",
-              "status": "accepted",
-              "objective": "重写宗门地图运行时合同，使 authority 拥有全部玩法状态，而客户端仅限于渲染、输入、有界本地事实与调试界面。",
-              "done_when": [
-                "The active client/server contract explicitly removes client ownership over disciple assignment, build completion, repair completion, and session phase closure.",
-                "The accepted contract defines what remains a player intent command, what counts as a bounded fact, and which previous preview commands are no longer allowed as client-owned progression."
-              ],
-              "refs": [
-                "docs/plans/authority-first-runtime-rebuild.md",
-                "shared/contracts/m1-authority-short-session-v1.md",
-                "docs/architecture/client-structure.md",
-                "docs/architecture/server-structure.md"
-              ],
-              "updated_at": "2026-04-22T03:59:17.314Z"
-            },
-            {
-              "id": "subfunction-document-thin-client-runtime-responsibilities",
-              "title": "文档化轻客户端运行时职责",
-              "owner_role": "engineer",
-              "status": "accepted",
-              "objective": "定义重构后客户端仍然保留的具体职责，使预览运行时不再继续扮演部分模拟权威。",
-              "done_when": [
-                "The client runtime contract clearly separates render state, animation/interpolation state, debug state, and player-input submission from gameplay truth.",
-                "The project docs state which current client responsibilities are transitional debt and which are part of the permanent thin-client design."
-              ],
-              "refs": [
-                "docs/plans/authority-first-runtime-rebuild.md",
-                "docs/architecture/client-structure.md",
-                "docs/features/F-004-sect-map-m1-gameplay-foundation.md"
-              ],
-              "updated_at": "2026-04-22T04:02:06.430Z"
-            },
-            {
-              "id": "subfunction-rewrite-f004-acceptance-boundaries-for-authority-only-play",
-              "title": "为 Authority-Only 玩法重写 F-004 验收边界",
-              "owner_role": "engineer",
-              "status": "accepted",
-              "objective": "重写功能与交付的验收语言，使 hybrid 预览成功不再被视为主玩法循环已成立的充分证据。",
-              "done_when": [
-                "The sect-map feature doc and the delivery ledger both require authority-only mainline replay rather than hybrid or fallback success.",
-                "The acceptance language explicitly fails closed on authority/client drift, repeated command rejection, and client-local fallback participation."
-              ],
-              "refs": [
-                "docs/plans/authority-first-runtime-rebuild.md",
-                "docs/features/F-004-sect-map-m1-gameplay-foundation.md",
-                "docs/project/delivery-ledger.md"
-              ],
-              "updated_at": "2026-04-22T04:03:26.118Z"
-            }
-          ],
-          "updated_at": "2026-04-22T04:03:26.118Z"
-        },
-        {
-          "id": "milestone-authority-owned-disciple-orchestration",
-          "title": "Authority 拥有的弟子编排",
-          "status": "accepted",
-          "summary": "将弟子分工、搬运、建造和修复推进迁入 authority 拥有的大状态，而不是继续由客户端本地选择任务。",
-          "acceptance_owner": "supervisor",
-          "current_subfunction_id": null,
-          "subfunctions": [
-            {
-              "id": "subfunction-move-disciple-task-assignment-and-work-intent-into-authority",
-              "title": "将弟子任务分配与工作意图迁入 Authority",
-              "owner_role": "engineer",
-              "status": "accepted",
-              "objective": "将当前弟子任务选择、携带意图与工作目标选择迁入 authority 状态，使客户端只负责消费 assignment。",
-              "done_when": [
-                "Authority snapshot includes the disciple assignment and work-target fields required to render gather, haul, build, repair, and guard behavior.",
-                "The main preview loop no longer decides the disciple's next gameplay task locally when authority is connected."
-              ],
-              "refs": [
-                "docs/plans/authority-first-runtime-rebuild.md",
-                "shared/contracts/m1-authority-short-session-v1.md",
-                "docs/decisions/0010-offline-deterministic-simulation.md"
-              ],
-              "updated_at": "2026-04-22T04:16:31.945Z"
-            },
-            {
-              "id": "subfunction-replace-client-step-completion-with-authority-work-progression",
-              "title": "用 Authority 工作推进替代客户端步骤完成",
-              "owner_role": "engineer",
-              "status": "accepted",
-              "objective": "移除由客户端拥有的建造与修复完成步骤，让 authority 基于 assignment、进度与模拟 tick 推进工作。",
-              "done_when": [
-                "The mainline flow no longer relies on client-owned `start_building_work`, `complete_building_work`, or `complete_repair` to declare gameplay completion.",
-                "Authority can advance from supplied to constructing to active, and from damaged to repaired, using its own state and bounded client facts only where strictly necessary."
-              ],
-              "refs": [
-                "docs/plans/authority-first-runtime-rebuild.md",
-                "shared/contracts/m1-authority-short-session-v1.md",
-                "docs/architecture/client-structure.md"
-              ],
-              "updated_at": "2026-04-22T04:26:14.120Z"
-            },
-            {
-              "id": "subfunction-cut-build-repair-session-state-from-client-runtime",
-              "title": "从客户端运行时切除建造修复会话状态",
-              "owner_role": "engineer",
-              "status": "accepted",
-              "objective": "从预览运行时中剥离客户端拥有的建造、修复与会话状态切换，使本地对象不再先于 authority 快照修改玩法真相。",
-              "done_when": [
-                "Client-side building/session objects only hold render-facing and interpolation-facing state outside authority snapshots.",
-                "Preview runtime cannot enter a build/repair/session state that authority has not already declared in snapshot data."
-              ],
-              "refs": [
-                "docs/plans/authority-first-runtime-rebuild.md",
-                "docs/architecture/client-structure.md",
-                "docs/features/F-004-sect-map-m1-gameplay-foundation.md"
-              ],
-              "updated_at": "2026-04-22T04:30:52.214Z"
-            }
-          ],
-          "updated_at": "2026-04-22T04:30:52.214Z"
-        },
-        {
-          "id": "milestone-authority-owned-raid-and-repair-closure",
-          "title": "Authority 拥有的敌袭与修复收口",
-          "status": "accepted",
-          "summary": "让敌袭伤害、修复收口与战后延续都归 authority 所有，从而避免第一轮短会话在 defend/recover 边界继续漂移。",
-          "acceptance_owner": "supervisor",
-          "current_subfunction_id": null,
-          "subfunctions": [
-            {
-              "id": "subfunction-move-raid-damage-and-repair-closure-into-authority",
-              "title": "将敌袭伤害与修复收口迁入 Authority",
-              "owner_role": "engineer",
-              "status": "accepted",
-              "objective": "将受损状态声明、修复资格与修复收口迁入 authority，使客户端无法基于陈旧或不存在的伤害进入 recover 循环。",
-              "done_when": [
-                "Authority snapshot is the single source of truth for damaged buildings and repair completion eligibility.",
-                "The recover loop cannot get stuck on repeated repair completion rejection while the mainline preview remains authority-connected."
-              ],
-              "refs": [
-                "docs/plans/authority-first-runtime-rebuild.md",
-                "shared/contracts/m1-authority-short-session-v1.md",
-                "docs/decisions/0010-offline-deterministic-simulation.md"
-              ],
-              "updated_at": "2026-04-22T04:34:50.605Z"
-            },
-            {
-              "id": "subfunction-move-post-raid-transition-and-second-cycle-readiness-into-authority-clock",
-              "title": "将战后转换与第二轮就绪迁入 Authority 时钟",
-              "owner_role": "engineer",
-              "status": "accepted",
-              "objective": "在 worker 编排切换之后，让 recover、第二轮就绪与下一轮采集延续完全由 authority 时钟驱动。",
-              "done_when": [
-                "The post-raid loop can advance through recover and back into viable management continuity without client-local readiness guesses.",
-                "Authority tick / snapshot state cleanly explains why the slice is in recover, second-cycle-ready, or later outcome closure."
-              ],
-              "refs": [
-                "docs/plans/authority-first-runtime-rebuild.md",
-                "docs/features/F-004-sect-map-m1-gameplay-foundation.md",
-                "docs/decisions/0010-offline-deterministic-simulation.md"
-              ],
-              "updated_at": "2026-04-22T04:44:20.835Z"
-            },
-            {
-              "id": "subfunction-reconcile-client-combat-presentation-with-authority-results-only",
-              "title": "将客户端战斗表现收敛为只消费 Authority 结果",
-              "owner_role": "engineer",
-              "status": "accepted",
-              "objective": "将战斗表现层收敛为纯可视化与有界上报界面，使其不再表现得像一套部分战斗权威。",
-              "done_when": [
-                "Client combat presentation can animate defend/recover states without inventing damage or session closure locally.",
-                "Any retained combat-side facts sent from client are explicitly bounded and cannot themselves declare gameplay completion."
-              ],
-              "refs": [
-                "docs/plans/authority-first-runtime-rebuild.md",
-                "shared/contracts/m1-authority-short-session-v1.md",
-                "docs/architecture/client-structure.md"
-              ],
-              "updated_at": "2026-04-22T04:55:13.291Z"
-            }
-          ],
-          "updated_at": "2026-04-22T04:55:13.291Z"
-        },
-        {
-          "id": "milestone-authority-session-persistence-and-replay",
-          "title": "Authority 会话持久化与回放",
-          "status": "accepted",
-          "summary": "保留已接受的存档/读档基线，并进一步扩展，使 worker 拥有的运行时状态与确定性回放都能在 authority-first 切换后继续成立。",
-          "acceptance_owner": "supervisor",
-          "current_subfunction_id": null,
-          "subfunctions": [
-            {
-              "id": "subfunction-implement-authority-session-save-load-core",
-              "title": "实现 Authority 会话存档读档核心",
-              "owner_role": "engineer",
-              "status": "accepted",
-              "objective": "实现第一版与存档协议及确定性模拟 ADR 保持一致的 authority 会话存档/读档核心。",
-              "done_when": [
-                "The authority runtime can serialize and restore the current short-session state without relying on wall-clock time or package-level randomness.",
-                "The saved state structure is compatible with the accepted save-protocol direction and does not introduce a second event or save system."
-              ],
-              "refs": [
+                "docs/vision/gdd_v3_backend_design.md",
                 "docs/decisions/0008-save-protocol-and-pgstore-schema.md",
                 "docs/decisions/0010-offline-deterministic-simulation.md",
-                "docs/architecture/server-structure.md"
+                "docs/decisions/0011-v1-sync-model-and-multiplayer-pattern.md"
               ],
-              "updated_at": "2026-04-22T02:39:44.378Z"
+              "updated_at": "2026-04-23T00:00:00.000Z"
             },
             {
-              "id": "subfunction-wire-preview-bootstrap-to-save-recovery",
-              "title": "将预览引导接入存档恢复",
-              "owner_role": "engineer",
+              "id": "subfunction-clean-decisions-design-features",
+              "title": "清理 decisions / design / features 中的并行真相",
+              "owner_role": "supervisor",
               "status": "accepted",
-              "objective": "接通预览 bootstrap 流程，使本地验证可以有意恢复或重置 authority 会话，而不是每次都从头开始。",
+              "objective": "迁移旧主线文档到 legacy，把 features 改成历史目录，把 design 改成 inactive，并把 ADR 0007-0011 压缩为 GDD v3.1 的约束补丁。",
               "done_when": [
-                "Preview bootstrap can choose between restoring the latest saved authority session and resetting to a clean test session.",
-                "The client and authority runtime agree on the restored snapshot shape after reload."
+                "旧的 active feature / design / plan 文档不再留在默认目录里与 GDD 竞争。",
+                "ADR 0007-0011 不再继续保留旧 actor 粒度、旧多人、旧 JSON 路线的正文真相。"
               ],
               "refs": [
-                "shared/contracts/m1-authority-short-session-v1.md",
+                "docs/features/README.md",
+                "docs/design/README.md",
+                "docs/decisions/0007-hollywood-actor-framework.md",
+                "docs/decisions/0008-save-protocol-and-pgstore-schema.md",
+                "docs/decisions/0009-actor-id-conventions.md",
+                "docs/decisions/0010-offline-deterministic-simulation.md",
+                "docs/decisions/0011-v1-sync-model-and-multiplayer-pattern.md"
+              ],
+              "updated_at": "2026-04-23T00:00:00.000Z"
+            }
+          ],
+          "updated_at": "2026-04-23T00:00:00.000Z"
+        }
+      ],
+      "updated_at": "2026-04-23T00:00:00.000Z"
+    },
+    {
+      "id": "phase-gdd-v31-authority-core-bootstrap",
+      "title": "GDD v3.1 权威核心引导",
+      "status": "accepted",
+      "summary": "落地第一阶段最小权威后端骨架：protobuf 命令/结果/状态增量、SectState、DomainEvent / ApplyEvent、snapshot / event / command 持久化，以及最小 SectActor 闭环。",
+      "current_milestone_id": null,
+      "milestones": [
+        {
+          "id": "milestone-protobuf-protocol-and-state-kernel",
+          "title": "Protobuf 协议与状态内核",
+          "status": "accepted",
+          "summary": "先冻结 protobuf-first 的命令、结果、状态增量和 SectState 根边界，避免再次分叉协议与状态修改路径。",
+          "acceptance_owner": "supervisor",
+          "current_subfunction_id": null,
+          "subfunctions": [
+            {
+              "id": "subfunction-freeze-protobuf-command-result-and-statepatch-contract",
+              "title": "冻结 Protobuf 命令结果与状态增量合同",
+              "owner_role": "engineer",
+              "status": "accepted",
+              "objective": "冻结权威 runtime 的 `ClientCommand / CommandResult / StatePatch` protobuf 合同，使正式服务端与后续薄客户端都不再建立 JSON 权威协议。",
+              "done_when": [
+                "存在 protobuf-first 的命令、结果、错误和状态增量边界定义。",
+                "权威路径不再把 JSON transport 作为当前或未来的默认正式协议。"
+              ],
+              "refs": [
+                "docs/vision/gdd_v3_backend_design.md",
+                "docs/decisions/0008-save-protocol-and-pgstore-schema.md",
+                "docs/decisions/0012-adopt-gdd-v3-authoritative-backend-gdd.md"
+              ],
+              "updated_at": "2026-04-23T00:42:51.830Z"
+            },
+            {
+              "id": "subfunction-define-sectstate-root-and-versioned-authority-boundary",
+              "title": "定义 SectState 根结构与版本边界",
+              "owner_role": "engineer",
+              "status": "accepted",
+              "objective": "定义第一版 `SectState` 根结构、版本字段与 authority-owned 子状态边界，使后续资源、建筑、弟子、任务与机构循环都落在同一份 big-state 上。",
+              "done_when": [
+                "SectState 定义了宗门 meta、运行时、时间、资源、库存、弟子、建筑、任务等第一阶段必需根字段。",
+                "状态边界没有把弟子、建筑或 active storylet 拆成 standalone server actor。"
+              ],
+              "refs": [
+                "docs/vision/gdd_v3_backend_design.md",
+                "docs/decisions/0010-offline-deterministic-simulation.md",
+                "docs/decisions/0009-actor-id-conventions.md"
+              ],
+              "updated_at": "2026-04-23T00:48:56.740Z"
+            },
+            {
+              "id": "subfunction-freeze-domain-event-and-applyevent-pipeline",
+              "title": "冻结 DomainEvent 与 ApplyEvent 流水线",
+              "owner_role": "engineer",
+              "status": "accepted",
+              "objective": "冻结命令只产事件、状态只由 `ApplyEvent` 修改的事件应用流水线，并明确它服务于 snapshot-first 权威持久化，而不是 pure event sourcing。",
+              "done_when": [
+                "主架构文档把 event-applied pipeline 定义为唯一玩法状态修改入口。",
+                "该流水线被明确写成与 snapshot-first 持久化兼容，而不是纯事件溯源。"
+              ],
+              "refs": [
+                "docs/vision/gdd_v3_backend_design.md",
+                "docs/decisions/0008-save-protocol-and-pgstore-schema.md",
+                "docs/decisions/0010-offline-deterministic-simulation.md"
+              ],
+              "updated_at": "2026-04-23T00:57:49.980Z"
+            }
+          ],
+          "updated_at": "2026-04-23T00:57:49.980Z"
+        },
+        {
+          "id": "milestone-sect-snapshot-persistence-and-minimum-runtime",
+          "title": "快照持久化与最小 SectActor 路径",
+          "status": "accepted",
+          "summary": "在协议与状态边界冻结后，落地 protobuf blob 存档、命令幂等、事件记录与最小 JoinSect / SubmitCommand / SectActor 路由闭环。",
+          "acceptance_owner": "supervisor",
+          "current_subfunction_id": null,
+          "subfunctions": [
+            {
+              "id": "subfunction-rewrite-persistence-schema-to-protobuf-blob-and-index-tables",
+              "title": "将持久化表重写为 Protobuf Blob 与索引表",
+              "owner_role": "engineer",
+              "status": "accepted",
+              "objective": "按 ADR 0008 将 `sect_snapshots / sect_events / command_log` 重写为 protobuf blob + 查询索引表方案，而不是 JSONB 权威存储。",
+              "done_when": [
+                "快照、事件和命令存储统一使用 protobuf blob。",
+                "表结构只暴露有界的索引和排障字段，不再依赖 JSONB 权威存储。"
+              ],
+              "refs": [
+                "docs/vision/gdd_v3_backend_design.md",
+                "docs/decisions/0008-save-protocol-and-pgstore-schema.md"
+              ],
+              "updated_at": "2026-04-23T01:04:08.255Z"
+            },
+            {
+              "id": "subfunction-implement-idempotent-command-log-and-post-snapshot-replay",
+              "title": "实现幂等命令日志与快照后回放",
+              "owner_role": "engineer",
+              "status": "accepted",
+              "objective": "实现 `cmd_id` 幂等、快照后事件回放与恢复规则，使权威 runtime 在断线、重试与恢复时只有一条确定性路径。",
+              "done_when": [
+                "重复命令不会重复执行玩法副作用，而是返回已有结果。",
+                "加载宗门状态时能从 snapshot 后有界回放恢复权威可见状态。"
+              ],
+              "refs": [
+                "docs/vision/gdd_v3_backend_design.md",
+                "docs/decisions/0008-save-protocol-and-pgstore-schema.md",
+                "docs/decisions/0010-offline-deterministic-simulation.md"
+              ],
+              "updated_at": "2026-04-23T01:15:01.516Z"
+            },
+            {
+              "id": "subfunction-boot-minimal-joinsect-submitcommand-sectactor-path",
+              "title": "启动最小 JoinSect / SubmitCommand / SectActor 路径",
+              "owner_role": "engineer",
+              "status": "accepted",
+              "objective": "实现第一条最小可运行的 authority 主线：连接进入、加载或生成宗门、提交 `BuildBuilding`、产出事件、保存状态并返回结果。",
+              "done_when": [
+                "玩家会话可以通过最小路由进入 SectActor 并收到权威 snapshot。",
+                "Runtime 可以接受第一条 `BuildBuilding` 命令并沿同一路径返回版本化结果。"
+              ],
+              "refs": [
+                "docs/vision/gdd_v3_backend_design.md",
+                "docs/architecture/server-structure.md",
+                "docs/plans/gdd-v3-authority-core-bootstrap.md"
+              ],
+              "updated_at": "2026-04-23T01:25:43.894Z"
+            }
+          ],
+          "updated_at": "2026-04-23T01:25:43.894Z"
+        }
+      ],
+      "updated_at": "2026-04-23T01:25:43.894Z"
+    },
+    {
+      "id": "phase-gdd-v31-resource-building-disciple",
+      "title": "GDD v3.1 资源、建筑与弟子基线",
+      "status": "accepted",
+      "summary": "在 Authority Core 之上建立第一条资源、建筑、入门弟子与 assignment 主循环，为任务堂、贡献与修炼系统打共同底座。",
+      "current_milestone_id": null,
+      "milestones": [
+        {
+          "id": "milestone-first-resource-and-building-loop",
+          "title": "第一条资源与建筑 Authority 循环",
+          "status": "accepted",
+          "summary": "把资源状态、建造、升级和存档恢复做成第一条可重复的权威玩法闭环。",
+          "acceptance_owner": "supervisor",
+          "current_subfunction_id": null,
+          "subfunctions": [
+            {
+              "id": "subfunction-wire-first-resource-state-and-resourcechanged-event",
+              "title": "接入第一版资源状态与 ResourceChanged 事件",
+              "owner_role": "engineer",
+              "status": "accepted",
+              "objective": "实现第一版 `ResourceState` 与 `ResourceChanged` 事件，使建筑消耗、奖励结算与后续机构循环都依赖同一份 authority 资源模型。",
+              "done_when": [
+                "Authority runtime 暴露统一资源状态与资源变化事件路径。",
+                "资源变化不再依赖 client-local 记账或 sect-map 专用常量。"
+              ],
+              "refs": [
+                "docs/vision/gdd_v3_backend_design.md",
+                "docs/decisions/0010-offline-deterministic-simulation.md"
+              ],
+              "updated_at": "2026-04-23T01:39:56.695Z"
+            },
+            {
+              "id": "subfunction-implement-first-buildbuilding-loop",
+              "title": "实现第一条 BuildBuilding 权威闭环",
+              "owner_role": "engineer",
+              "status": "accepted",
+              "objective": "让 `BuildBuilding` 成为第一条稳定的 authority 玩法命令，验证资源校验、事件产出、状态应用与快照更新。",
+              "done_when": [
+                "Runtime 可以校验建造成本并稳定写入对应 DomainEvent / ApplyEvent 结果。",
+                "建造闭环不再依赖旧 sect-map 脚手架或 preview-only 规则。"
+              ],
+              "refs": [
+                "docs/vision/gdd_v3_backend_design.md",
+                "docs/plans/gdd-v3-authority-core-bootstrap.md"
+              ],
+              "updated_at": "2026-04-23T01:41:42.427Z"
+            },
+            {
+              "id": "subfunction-extend-buildbuilding-to-upgrade-and-snapshot-replay",
+              "title": "扩展到 UpgradeBuilding 与快照恢复回放",
+              "owner_role": "engineer",
+              "status": "accepted",
+              "objective": "把 `BuildBuilding` 扩展到 `UpgradeBuilding` 和恢复后 replay，使资源与建筑闭环可作为后续弟子和机构系统的稳定底座。",
+              "done_when": [
+                "升级路径与建造路径共享同一套 authority state / event / snapshot 规则。",
+                "恢复后的 replay 能继续推进建筑状态而不依赖客户端重构真相。"
+              ],
+              "refs": [
+                "docs/vision/gdd_v3_backend_design.md",
+                "docs/decisions/0008-save-protocol-and-pgstore-schema.md"
+              ],
+              "updated_at": "2026-04-23T01:47:42.029Z"
+            }
+          ],
+          "updated_at": "2026-04-23T01:47:42.029Z"
+        },
+        {
+          "id": "milestone-first-disciple-admission-and-assignment-loop",
+          "title": "第一条弟子入门与分配循环",
+          "status": "accepted",
+          "summary": "把入门弟子、assignment、基础需求与薄客户端消费路径放进 SectState big-state。",
+          "acceptance_owner": "supervisor",
+          "current_subfunction_id": null,
+          "subfunctions": [
+            {
+              "id": "subfunction-implement-joinsect-first-disciple-admission",
+              "title": "实现 JoinSect 与第一名弟子入门",
+              "owner_role": "engineer",
+              "status": "accepted",
+              "objective": "让第一次进入宗门时的基础弟子生成、SectState 写入与权威可见身份边界成立。",
+              "done_when": [
+                "JoinSect 能生成或恢复一份包含基础弟子的 SectState。",
+                "第一名弟子以 authority-owned 结构进入 snapshot，而不是由客户端推测生成。"
+              ],
+              "refs": [
+                "docs/vision/gdd_v3_backend_design.md",
+                "docs/decisions/0009-actor-id-conventions.md",
+                "docs/decisions/0010-offline-deterministic-simulation.md"
+              ],
+              "updated_at": "2026-04-23T01:53:56.343Z"
+            },
+            {
+              "id": "subfunction-authority-own-disciple-assignment-and-support-needs",
+              "title": "让 Authority 拥有弟子 assignment 与基础供养需求",
+              "owner_role": "engineer",
+              "status": "accepted",
+              "objective": "把弟子的当前 assignment、工作目标、基础供养与支持状态迁入 authority，使客户端只消费 assignment 视图。",
+              "done_when": [
+                "Authority snapshot 包含弟子 assignment、目标与基础支持状态字段。",
+                "客户端不再本地决定弟子的下一份玩法任务。"
+              ],
+              "refs": [
+                "docs/vision/gdd_v3_backend_design.md",
+                "docs/architecture/client-structure.md"
+              ],
+              "updated_at": "2026-04-23T01:58:01.758Z"
+            },
+            {
+              "id": "subfunction-bind-disciple-render-surface-to-authority-only-view-model",
+              "title": "把弟子表现层绑定到 Authority-only 视图模型",
+              "owner_role": "engineer",
+              "status": "accepted",
+              "objective": "让 Cocos 端只消费 authority 下发的弟子状态、assignment 与动画所需字段，不再持有玩法真相。",
+              "done_when": [
+                "客户端弟子对象只保留渲染、插值、动画和 debug 所需状态。",
+                "没有 authority snapshot 声明时，客户端不能自行进入新的弟子玩法状态。"
+              ],
+              "refs": [
+                "docs/vision/gdd_v3_backend_design.md",
+                "docs/architecture/client-structure.md",
+                "docs/process/dedicated-browser-workflow.md"
+              ],
+              "updated_at": "2026-04-23T02:07:58.280Z"
+            }
+          ],
+          "updated_at": "2026-04-23T02:07:58.280Z"
+        }
+      ],
+      "updated_at": "2026-04-23T02:07:58.280Z"
+    },
+    {
+      "id": "phase-gdd-v31-task-contribution-cultivation",
+      "title": "GDD v3.1 任务、贡献与修炼循环",
+      "status": "accepted",
+      "summary": "在宗门资源、建筑与弟子基线之上，建立任务堂、贡献、生产与修炼这几条真正的宗门经营核心循环。",
+      "current_milestone_id": null,
+      "milestones": [
+        {
+          "id": "milestone-task-hall-and-contribution-loop",
+          "title": "任务堂与贡献循环",
+          "status": "accepted",
+          "summary": "建立 authority-owned 的任务接取、执行、结算、贡献记录与索取边界。",
+          "acceptance_owner": "supervisor",
+          "current_subfunction_id": null,
+          "subfunctions": [
+            {
+              "id": "subfunction-implement-task-hall-authority-loop",
+              "title": "实现任务堂权威闭环",
+              "owner_role": "engineer",
+              "status": "accepted",
+              "objective": "实现任务堂的发布、接取、推进和结算 authority 路径，使弟子工作不再只是地图杂工循环。",
+              "done_when": [
+                "任务状态与结算由 authority 拥有。",
+                "客户端只能提交任务相关意图，不能本地宣布任务完成。"
+              ],
+              "refs": [
+                "docs/vision/gdd_v3_backend_design.md",
+                "docs/decisions/0010-offline-deterministic-simulation.md"
+              ],
+              "updated_at": "2026-04-23T02:17:35.005Z"
+            },
+            {
+              "id": "subfunction-implement-contribution-ledger-and-redemption-boundary",
+              "title": "实现贡献账本与兑换边界",
+              "owner_role": "engineer",
+              "status": "accepted",
+              "objective": "实现贡献点作为弟子索取权的 authority 账本与兑换边界，明确它不是宗门库存而是分配规则。",
+              "done_when": [
+                "贡献账本进入 SectState 并具备权威结算路径。",
+                "兑换和分配不再通过 client-local 规则推断。"
+              ],
+              "refs": [
+                "docs/vision/gdd_v3_backend_design.md"
+              ],
+              "updated_at": "2026-04-23T02:24:40.096Z"
+            },
+            {
+              "id": "subfunction-bind-task-and-contribution-client-surfaces",
+              "title": "绑定任务与贡献的薄客户端界面",
+              "owner_role": "engineer",
+              "status": "accepted",
+              "objective": "让任务堂、贡献显示与交互成为 authority-only 数据的界面消费层，而不是新的本地玩法状态机。",
+              "done_when": [
+                "任务与贡献界面只消费权威 snapshot / patch。",
+                "客户端不再为任务与贡献建立并行的本地真相。"
+              ],
+              "refs": [
+                "docs/vision/gdd_v3_backend_design.md",
+                "docs/architecture/client-structure.md"
+              ],
+              "updated_at": "2026-04-23T02:39:29.313Z"
+            }
+          ],
+          "updated_at": "2026-04-23T02:39:29.313Z"
+        },
+        {
+          "id": "milestone-production-and-cultivation-loop",
+          "title": "生产与修炼循环",
+          "status": "accepted",
+          "summary": "建立宗门生产、炼制、修炼与突破的第一条权威闭环。",
+          "acceptance_owner": "supervisor",
+          "current_subfunction_id": null,
+          "subfunctions": [
+            {
+              "id": "subfunction-implement-resource-production-and-refinement-kernels",
+              "title": "实现生产与炼制内核",
+              "owner_role": "engineer",
+              "status": "accepted",
+              "objective": "实现矿材、灵植、炼制等资源转化内核，使宗门经济从单条建造消耗扩展到真实供养循环。",
+              "done_when": [
+                "资源生产与炼制进入 authority 状态与事件路径。",
+                "产出不再通过本地脚本直接结算。"
+              ],
+              "refs": [
+                "docs/vision/gdd_v3_backend_design.md"
+              ],
+              "updated_at": "2026-04-23T03:04:13.518Z"
+            },
+            {
+              "id": "subfunction-implement-cultivation-breakthrough-and-risk-baseline",
+              "title": "实现修炼、突破与风险基线",
+              "owner_role": "engineer",
+              "status": "accepted",
+              "objective": "实现第一条 authority-owned 修炼与突破基线，让弟子成长与风险正式进入宗门闭环。",
+              "done_when": [
+                "修炼、突破和基础风险由 authority 持有并可恢复。",
+                "成长结果不再由客户端声明。"
+              ],
+              "refs": [
+                "docs/vision/gdd_v3_backend_design.md"
+              ],
+              "updated_at": "2026-04-23T03:10:19.546Z"
+            },
+            {
+              "id": "subfunction-bind-institution-and-cultivation-state-to-thin-client",
+              "title": "把机构与修炼状态绑定到薄客户端",
+              "owner_role": "engineer",
+              "status": "accepted",
+              "objective": "让机构界面和修炼表现层消费 authority-owned 的生产与成长状态，而不是在客户端生成第二套月结/成长真相。",
+              "done_when": [
+                "机构与修炼界面只消费权威状态。",
+                "客户端不再持有平行的成长、修炼或月结状态机。"
+              ],
+              "refs": [
+                "docs/vision/gdd_v3_backend_design.md",
+                "docs/architecture/client-structure.md"
+              ],
+              "updated_at": "2026-04-23T03:23:00.155Z"
+            }
+          ],
+          "updated_at": "2026-04-23T03:23:00.155Z"
+        }
+      ],
+      "updated_at": "2026-04-23T03:23:00.155Z"
+    },
+    {
+      "id": "phase-gdd-v31-event-offline-client-integration",
+      "title": "GDD v3.1 事件、离线补偿与客户端集成",
+      "status": "accepted",
+      "summary": "在核心宗门循环成立后，建立 fate foreshadowing、离线追赶、弟子日记和薄客户端正式同步门禁。",
+      "current_milestone_id": null,
+      "milestones": [
+        {
+          "id": "milestone-event-offline-and-diary-loop",
+          "title": "事件种子、离线补偿与弟子日记",
+          "status": "accepted",
+          "summary": "把 fate foreshadowing、offline catch-up 与 diary replay 放进同一条权威事件路径。",
+          "acceptance_owner": "supervisor",
+          "current_subfunction_id": null,
+          "subfunctions": [
+            {
+              "id": "subfunction-implement-event-seeding-and-fate-foreshadowing-baseline",
+              "title": "实现事件种子与天机预兆基线",
+              "owner_role": "engineer",
+              "status": "accepted",
+              "objective": "实现第一条 authority-owned 的事件种子与天机预兆路径，确保重大因果不会静默触发。",
+              "done_when": [
+                "事件种子和预兆进入权威状态与事件系统。",
+                "客户端只消费预兆结果，不自行决定事件闭环。"
+              ],
+              "refs": [
+                "docs/vision/gdd_v3_backend_design.md"
+              ],
+              "updated_at": "2026-04-23T03:36:26.183Z"
+            },
+            {
+              "id": "subfunction-implement-offline-catchup-and-disciple-diary-replay",
+              "title": "实现离线补偿与弟子日记回放",
+              "owner_role": "engineer",
+              "status": "accepted",
+              "objective": "把 offline catch-up、event_log 和记事回放连成一条可恢复、可解释的权威路径。",
+              "done_when": [
+                "离线补偿复用同一条 SectState / DomainEvent / ApplyEvent 路径。",
+                "弟子日记和回放可以从 event_log 中生成，而不是依赖第二套日志系统。"
+              ],
+              "refs": [
+                "docs/vision/gdd_v3_backend_design.md",
+                "docs/decisions/0008-save-protocol-and-pgstore-schema.md",
+                "docs/decisions/0010-offline-deterministic-simulation.md"
+              ],
+              "updated_at": "2026-04-23T03:43:14.608Z"
+            },
+            {
+              "id": "subfunction-prove-mid-session-restore-and-offline-continuity",
+              "title": "验证中途恢复与离线连续性",
+              "owner_role": "engineer",
+              "status": "accepted",
+              "objective": "建立中途恢复和离线追赶的一致性验证，证明宗门状态不会因为 restore 或 offline catch-up 而回退到客户端猜测。",
+              "done_when": [
+                "存在 authority-side replay 覆盖 mid-session restore 和 offline catch-up。",
+                "证据足够支撑 supervisor 做 bounded acceptance。"
+              ],
+              "refs": [
+                "docs/vision/gdd_v3_backend_design.md",
+                "docs/process/dedicated-browser-workflow.md"
+              ],
+              "updated_at": "2026-04-23T03:47:46.705Z"
+            }
+          ],
+          "updated_at": "2026-04-23T03:47:46.705Z"
+        },
+        {
+          "id": "milestone-thin-client-integration-and-acceptance-gate",
+          "title": "薄客户端集成与验收门禁",
+          "status": "accepted",
+          "summary": "在不恢复 client-local authority 的前提下，收口薄客户端与专用浏览器验收门禁，只保留基础架构与玩法所需的客户端集成面。",
+          "acceptance_owner": "supervisor",
+          "current_subfunction_id": null,
+          "subfunctions": [
+            {
+              "id": "subfunction-bind-thin-client-session-sync-and-authority-render-path",
+              "title": "绑定薄客户端会话同步与权威渲染路径",
+              "owner_role": "engineer",
+              "status": "accepted",
+              "objective": "把 Cocos 端正式绑定到权威 snapshot / state patch / command result 路径，杜绝 local gameplay fallback 回流。",
+              "done_when": [
+                "主预览路径只能在 authority 存在时推进玩法。",
+                "薄客户端只保留输入、渲染、动画、调试和 bounded fact 上报。"
+              ],
+              "refs": [
+                "docs/vision/gdd_v3_backend_design.md",
+                "docs/architecture/client-structure.md",
+                "docs/process/dedicated-browser-workflow.md"
+              ],
+              "updated_at": "2026-04-23T04:03:33.033Z"
+            },
+            {
+              "id": "subfunction-build-dedicated-browser-acceptance-replay-gate",
+              "title": "构建专用浏览器验收回放门禁",
+              "owner_role": "engineer",
+              "status": "accepted",
+              "objective": "把 dedicated browser 下的 replay 与 bounded evidence 固定成 engineer / supervisor 都能独立运行的 acceptance gate。",
+              "done_when": [
+                "存在可重复的 reset / restore / recovery replay 门禁。",
+                "acceptance 不再依赖 oversized logs 或临时手动解释。"
+              ],
+              "refs": [
+                "docs/process/dedicated-browser-workflow.md",
+                "docs/project/delivery-ledger.md"
+              ],
+              "updated_at": "2026-04-23T04:15:43.784Z"
+            }
+          ],
+          "updated_at": "2026-04-23T04:15:43.784Z"
+        }
+      ],
+      "updated_at": "2026-04-23T04:15:43.784Z"
+    },
+    {
+      "id": "phase-thin-client-player-experience-closure",
+      "title": "薄客户端玩家体验收口",
+      "status": "accepted",
+      "summary": "在不恢复客户端本地玩法权威的前提下，修复主 HUD 遮挡、采集意图入口、敌人移动插值、伤害飘字和对应浏览器验收，让玩家能消费已经成立的 authority 主线。",
+      "current_milestone_id": null,
+      "milestones": [
+        {
+          "id": "milestone-primary-hud-and-gather-intent-repair",
+          "title": "主 HUD 与采集意图修复",
+          "status": "accepted",
+          "summary": "把调试信息从常驻 HUD 中收起，恢复主按钮命中，并把采集标记改成 authority-owned 玩家意图而非 client-local 玩法回流。",
+          "acceptance_owner": "supervisor",
+          "current_subfunction_id": null,
+          "subfunctions": [
+            {
+              "id": "subfunction-collapse-debug-hud-and-unblock-primary-actions",
+              "title": "折叠调试 HUD 并解除主操作遮挡",
+              "owner_role": "engineer",
+              "status": "accepted",
+              "objective": "把顶部大段调试 HUD 收进默认关闭的状态/调试面板，让新局、宗务、建造、拆除等主操作按钮在默认视图中可见且可点击，同时保留结构化调试读取能力。",
+              "done_when": [
+                "默认 HUD 只显示玩家可消费的短目标、阶段与关键库存，不再覆盖右上角新局/宗务按钮。",
+                "状态/调试按钮打开后能显示 authority、lastError、lastEvent、弟子任务、建筑统计、宗务版本和预兆数量等详细信息。",
+                "__MIS_RUNTIME_DEBUG__.getSnapshot() 继续提供完整结构化调试数据，自动化验收不依赖展开面板文字。"
+              ],
+              "refs": [
+                "docs/vision/gdd_v3_backend_design.md",
+                "docs/process/dedicated-browser-workflow.md",
+                "client/my-immortal-sect/assets/scripts/app/sect-map-bootstrap.ts"
+              ],
+              "updated_at": "2026-04-23T08:42:54.529Z"
+            },
+            {
+              "id": "subfunction-restore-authority-gather-designation-intent",
+              "title": "恢复 Authority 采集标记意图入口",
+              "owner_role": "engineer",
+              "status": "accepted",
+              "objective": "把采集按钮从禁用态改成正式的 authority 玩家意图入口，使玩家可以标记或取消资源采集目标，但资源消耗、弟子 assignment 与库存结算仍由 authority 拥有。",
+              "done_when": [
+                "采集按钮在 authority 已连接时可点击，进入采集标记模式并向 authority 提交资源标记/取消标记意图。",
+                "资源格标记状态来自 authority snapshot 或 patch，客户端只渲染标记反馈，不本地决定采集完成或库存变化。",
+                "authority 不可用时采集按钮保持 fail-closed，不恢复旧 client-local gather fallback。"
+              ],
+              "refs": [
+                "docs/vision/gdd_v3_backend_design.md",
+                "docs/architecture/client-structure.md",
+                "client/my-immortal-sect/assets/scripts/app/sect-map-bootstrap.ts",
+                "server/internal/slggame/sect"
+              ],
+              "updated_at": "2026-04-23T09:04:03.374Z"
+            }
+          ],
+          "updated_at": "2026-04-23T09:04:03.374Z"
+        },
+        {
+          "id": "milestone-combat-presentation-readability",
+          "title": "战斗表现可读性",
+          "status": "accepted",
+          "summary": "在 authority 结果不变的前提下，补齐敌人平滑移动、受击反馈和伤害飘字，让首波敌袭过程可观察。",
+          "acceptance_owner": "supervisor",
+          "current_subfunction_id": null,
+          "subfunctions": [
+            {
+              "id": "subfunction-smooth-authority-hostile-movement-interpolation",
+              "title": "平滑 Authority 敌人移动插值",
+              "owner_role": "engineer",
+              "status": "accepted",
+              "objective": "把敌人表现层从快照硬跳格改成 snapshot 目标驱动的插值移动，使敌袭过程像弟子移动一样连续，但不让客户端推导敌人路径或战斗结果。",
+              "done_when": [
+                "敌人 tile 和目标仍来自 authority snapshot，客户端只维护 render position、interpolation progress 和 visual state。",
+                "连续 authority snapshot 之间敌人按时间插值移动，不再一格一格闪现。",
+                "断线或 authority_blocked 时敌人表现停在最后权威状态，不自行继续战斗。"
+              ],
+              "refs": [
+                "docs/architecture/client-structure.md",
+                "docs/process/dedicated-browser-workflow.md",
+                "client/my-immortal-sect/assets/scripts/app/sect-map-bootstrap.ts"
+              ],
+              "updated_at": "2026-04-23T09:14:50.514Z"
+            },
+            {
+              "id": "subfunction-add-authority-combat-damage-floaters",
+              "title": "添加 Authority 战斗伤害飘字",
+              "owner_role": "engineer",
+              "status": "accepted",
+              "objective": "为 NPC、弟子和建筑补充头顶伤害飘字与受击提示，让玩家能看到首波敌袭中的伤害变化，飘字只反映 authority 下发或快照差分出的结果。",
+              "done_when": [
+                "NPC、弟子和建筑在 HP 下降时显示短生命周期头顶飘字，包含伤害量和受击对象。",
+                "伤害数值来自 authority event、patch 或相邻 snapshot HP 差分，客户端不得本地重新结算伤害。",
+                "飘字不遮挡主操作 HUD，且可通过 dedicated browser 截图或 runtime snapshot 做 bounded 验收。"
+              ],
+              "refs": [
+                "docs/vision/gdd_v3_backend_design.md",
+                "docs/architecture/client-structure.md",
+                "client/my-immortal-sect/assets/scripts/app/sect-map-bootstrap.ts"
+              ],
+              "updated_at": "2026-04-23T09:57:38.052Z"
+            }
+          ],
+          "updated_at": "2026-04-23T09:57:38.052Z"
+        },
+        {
+          "id": "milestone-player-experience-acceptance-gate",
+          "title": "玩家体验验收门禁",
+          "status": "accepted",
+          "summary": "把 HUD 可点击、authority 采集意图、敌人插值和伤害飘字加入 dedicated browser 有界验收，避免表现层再次靠人工解释过关。",
+          "acceptance_owner": "supervisor",
+          "current_subfunction_id": null,
+          "subfunctions": [
+            {
+              "id": "subfunction-extend-dedicated-browser-gate-for-player-facing-combat-and-inputs",
+              "title": "扩展浏览器门禁覆盖输入与战斗表现",
+              "owner_role": "engineer",
+              "status": "accepted",
+              "objective": "扩展 dedicated browser replay gate，使 engineer 和 supervisor 能独立验证主按钮可点击、采集标记 authority round-trip、敌人移动插值和伤害飘字，而不是只验证底层 phase 通过。",
+              "done_when": [
+                "门禁能验证新局/宗务/调试面板按钮没有被常驻 HUD 遮挡，并能打开宗务面板。",
+                "门禁能验证采集标记走 authority round-trip：点击资源格后 snapshot/patch 反映标记变化，断服时不走本地 fallback。",
+                "门禁能输出有界证据证明敌人移动不是硬跳格，并在战斗伤害发生时捕获至少一次伤害飘字或等价 debug 证据。"
+              ],
+              "refs": [
+                "docs/process/dedicated-browser-acceptance-replay-gate.md",
+                "docs/process/dedicated-browser-workflow.md",
+                "server/tools/acceptance/dedicated_browser_replay_gate.mjs",
+                "workspace/acceptance/dedicated-browser-replay-gate/latest.json"
+              ],
+              "updated_at": "2026-04-23T10:25:11.675Z"
+            }
+          ],
+          "updated_at": "2026-04-23T10:25:11.675Z"
+        }
+      ],
+      "updated_at": "2026-04-23T10:25:11.675Z"
+    },
+    {
+      "id": "phase-gdd-v31-core-sect-daily-loop",
+      "title": "GDD v3.1 核心宗门日常闭环",
+      "status": "accepted",
+      "summary": "把已经成立的 authority 主线扩展为玩家可连续经营 15-30 分钟的宗门日常：多弟子、任务派遣、生产队列、修炼突破、月结、事件反馈与多日验收。",
+      "current_milestone_id": null,
+      "milestones": [
+        {
+          "id": "milestone-disciple-roster-and-recruitment-loop",
+          "title": "弟子名册与招收循环",
+          "status": "accepted",
+          "summary": "从单个开局弟子扩展到多弟子名册和候选招收，让玩家能围绕弟子身份、资质、需求和当前 assignment 做第一批经营决策。",
+          "acceptance_owner": "supervisor",
+          "current_subfunction_id": null,
+          "subfunctions": [
+            {
+              "id": "subfunction-extend-joinsect-to-candidate-recruitment-roster",
+              "title": "扩展 JoinSect 到候选招收与弟子名册",
+              "owner_role": "engineer",
+              "status": "accepted",
+              "objective": "把开山收徒、候选弟子、接纳/拒绝和多弟子名册接入同一份 SectState，使弟子来源与身份边界由 authority 拥有。",
+              "done_when": [
+                "JoinSect 或对应玩家意图可以生成候选弟子池，并通过 authority 命令接纳或拒绝候选。",
+                "SectState snapshot 暴露多弟子名册、身份、资质、基础需求、贡献账户和当前 assignment。",
+                "弟子仍然是 SectActor big-state 内部结构，不拆成 standalone actor。"
+              ],
+              "refs": [
+                "docs/vision/gdd_v3_backend_design.md",
+                "docs/decisions/0010-offline-deterministic-simulation.md",
+                "server/internal/slggame/sect"
+              ],
+              "updated_at": "2026-04-23T10:47:34.208Z"
+            },
+            {
+              "id": "subfunction-bind-recruitment-and-roster-thin-client-surfaces",
+              "title": "绑定招收与名册薄客户端界面",
+              "owner_role": "engineer",
+              "status": "accepted",
+              "objective": "让 Cocos 端显示候选弟子、弟子名册、基础状态与当前 assignment，并只提交接纳、拒绝、查看与选择意图。",
+              "done_when": [
+                "客户端能展示候选池和多弟子名册，且所有弟子数据来自 authority snapshot 或 patch。",
+                "客户端不本地生成弟子身份、资质、需求、贡献或 assignment。",
+                "断线或 authority_blocked 时，招收和弟子状态不能通过本地 fallback 推进。"
+              ],
+              "refs": [
+                "docs/vision/gdd_v3_backend_design.md",
+                "docs/architecture/client-structure.md",
+                "client/my-immortal-sect/assets/scripts/app/sect-map-bootstrap.ts"
+              ],
+              "updated_at": "2026-04-23T10:53:36.939Z"
+            },
+            {
+              "id": "subfunction-prove-roster-recruitment-save-restore",
+              "title": "验证名册招收存档恢复",
+              "owner_role": "engineer",
+              "status": "accepted",
+              "objective": "为候选池、多弟子名册、接纳结果和 assignment 建立 authority-side replay 与 save/restore 验证，防止客户端重构弟子真相。",
+              "done_when": [
+                "存在服务端测试覆盖候选生成、接纳/拒绝、多弟子 snapshot、重复 cmd_id 和 snapshot 后回放。",
+                "恢复后的名册、候选状态、贡献账户和 assignment 与连续 authority 分支一致。",
+                "测试不依赖客户端本地弟子生成或调试注入。"
+              ],
+              "refs": [
+                "docs/vision/gdd_v3_backend_design.md",
+                "docs/decisions/0008-save-protocol-and-pgstore-schema.md",
+                "docs/decisions/0010-offline-deterministic-simulation.md"
+              ],
+              "updated_at": "2026-04-23T11:00:07.411Z"
+            }
+          ],
+          "updated_at": "2026-04-23T11:00:07.411Z"
+        },
+        {
+          "id": "milestone-task-production-cultivation-decision-loop",
+          "title": "任务、生产与修炼决策循环",
+          "status": "accepted",
+          "summary": "把任务堂、生产队列、修炼突破从已有内核推进为玩家能选择、比较、派遣和读取反馈的日常经营循环。",
+          "acceptance_owner": "supervisor",
+          "current_subfunction_id": null,
+          "subfunctions": [
+            {
+              "id": "subfunction-build-task-pool-and-disciple-dispatch-loop",
+              "title": "构建任务池与弟子派遣闭环",
+              "owner_role": "engineer",
+              "status": "accepted",
+              "objective": "把任务堂扩展为 authority-owned 任务池，支持任务发布、优先级、弟子派遣、推进、完成/失败和贡献奖励。",
+              "done_when": [
+                "Authority snapshot 暴露 3-5 个可选任务及其奖励、风险、需求和状态。",
+                "玩家只能提交发布、取消、派遣和优先级意图；任务完成与奖励结算由 authority 计算。",
+                "多弟子任务派遣能处理忙碌、资质不匹配、资源不足和重复命令。"
+              ],
+              "refs": [
+                "docs/vision/gdd_v3_backend_design.md",
+                "server/internal/slggame/sect",
+                "client/my-immortal-sect/assets/scripts/app/sect-map-bootstrap.ts"
+              ],
+              "updated_at": "2026-04-23T11:08:47.469Z"
+            },
+            {
+              "id": "subfunction-build-production-queue-and-resource-bottleneck-ui",
+              "title": "构建生产队列与资源瓶颈界面",
+              "owner_role": "engineer",
+              "status": "accepted",
+              "objective": "把灵田、采矿、炼制等生产内核做成玩家可操作的 authority 生产队列，并在客户端展示投入、进度、产出和瓶颈。",
+              "done_when": [
+                "Authority 拥有生产任务、配方、投入、进度、完成事件和库存变化。",
+                "客户端只提交开始、取消或调整生产意图，并从 snapshot 渲染队列、进度和资源短缺提示。",
+                "生产完成、资源扣减和产出写入同一条 DomainEvent / ApplyEvent 路径。"
+              ],
+              "refs": [
+                "docs/vision/gdd_v3_backend_design.md",
+                "docs/architecture/client-structure.md",
+                "server/internal/slggame/sect"
+              ],
+              "updated_at": "2026-04-23T11:18:57.422Z"
+            },
+            {
+              "id": "subfunction-build-cultivation-breakthrough-decision-chain",
+              "title": "构建修炼与突破决策链",
+              "owner_role": "engineer",
+              "status": "accepted",
+              "objective": "把修炼、丹药使用、洞府/环境支持、突破概率、风险和天机预兆整理为玩家可读且 authority-owned 的成长决策链。",
+              "done_when": [
+                "玩家能选择弟子修炼、使用资源或丹药、尝试突破，并看到 authority 计算出的成功率、风险和预兆。",
+                "修炼点、突破结果、伤病、压力和资源消耗由 authority 事件结算。",
+                "客户端不能本地宣布成长、突破成功或风险结果。"
+              ],
+              "refs": [
+                "docs/vision/gdd_v3_backend_design.md",
+                "docs/architecture/client-structure.md",
+                "server/internal/slggame/sect"
+              ],
+              "updated_at": "2026-04-23T11:31:42.351Z"
+            }
+          ],
+          "updated_at": "2026-04-23T11:31:42.351Z"
+        },
+        {
+          "id": "milestone-monthly-diary-and-multiday-acceptance",
+          "title": "月结、日记与多日验收",
+          "status": "accepted",
+          "summary": "把月例、义务、满意忠诚、事件反馈和多日经营门禁收口，证明宗门日常循环能跨天、跨月、离线和恢复连续运行。",
+          "acceptance_owner": "supervisor",
+          "current_subfunction_id": null,
+          "subfunctions": [
+            {
+              "id": "subfunction-implement-monthly-stipend-duty-satisfaction-settlement",
+              "title": "实现月例、义务与满意忠诚结算",
+              "owner_role": "engineer",
+              "status": "accepted",
+              "objective": "实现 GDD Phase B 的月结基础：月例、任务义务、贡献兑付、满意度和忠诚度，使宗门供养与弟子反哺形成可持续压力。",
+              "done_when": [
+                "Authority 可以按游戏月结算月例、义务、贡献兑付、满意度和忠诚度。",
+                "结算结果通过 DomainEvent / ApplyEvent 修改 SectState，并进入 event_log。",
+                "月结测试覆盖资源不足、贡献不足、义务未完成、满意变化和恢复连续性。"
+              ],
+              "refs": [
+                "docs/vision/gdd_v3_backend_design.md",
+                "docs/decisions/0010-offline-deterministic-simulation.md",
+                "server/internal/slggame/sect"
+              ],
+              "updated_at": "2026-04-23T11:42:40.757Z"
+            },
+            {
+              "id": "subfunction-surface-disciple-diary-and-sect-event-feedback",
+              "title": "展示弟子日记与宗门事件反馈",
+              "owner_role": "engineer",
+              "status": "accepted",
+              "objective": "把 event_log 转成玩家可读的弟子日记和宗门事件面板，让任务、生产、修炼、突破、月结和预兆都有可解释反馈。",
+              "done_when": [
+                "客户端能展示来自 authority event_log 的有界日记和事件摘要。",
+                "任务结果、资源变化、修炼突破、伤病、月结和预兆至少各有一类可读反馈。",
+                "日记和事件面板不成为第二套玩法状态或第二套日志系统。"
+              ],
+              "refs": [
+                "docs/vision/gdd_v3_backend_design.md",
                 "docs/architecture/client-structure.md",
                 "docs/decisions/0008-save-protocol-and-pgstore-schema.md"
               ],
-              "updated_at": "2026-04-22T02:47:03.362Z"
+              "updated_at": "2026-04-23T11:53:13.665Z"
             },
             {
-              "id": "subfunction-fix-authority-build-delivery-retry-deadlock",
-              "title": "修复 Authority 建造运料重试死锁",
+              "id": "subfunction-build-multiday-core-sect-loop-acceptance-gate",
+              "title": "构建多日宗门核心循环验收门禁",
               "owner_role": "engineer",
               "status": "accepted",
-              "objective": "修复预览/运行时中的 bug：弟子可能会拿着不再需要的资源反复重试 `deliver_build_resource`，从而阻止护山台等 planned 建筑进入已补料和施工状态。",
+              "objective": "扩展服务端 deterministic replay 和 dedicated browser gate，覆盖招收、派任务、生产、修炼、月结、事件反馈、离线追赶和 restore 连续性。",
               "done_when": [
-                "If authority rejects `deliver_build_resource` because the target building no longer needs that resource, the client clears or retargets the stale haul task instead of looping the same failed command forever.",
-                "A planned guard tower can continue from partial supply to full supply and then construction without requiring a full preview reset after this mismatch occurs.",
-                "The fix stays inside the current client/authority task flow and does not introduce a parallel build-delivery state machine."
+                "存在固定随机种子的服务端 golden simulation，至少模拟 30 天并验证资源、弟子、任务、生产、修炼、事件和月结关键指标。",
+                "dedicated browser gate 能独立复跑一条 15-30 分钟等价的压缩经营流程，并输出 bounded JSON 证据。",
+                "restore_latest 与 offline catch-up 后的宗门状态与连续 authority 分支保持一致。"
               ],
               "refs": [
-                "docs/features/F-004-sect-map-m1-gameplay-foundation.md",
-                "shared/contracts/m1-authority-short-session-v1.md",
-                "docs/architecture/client-structure.md"
+                "docs/vision/gdd_v3_backend_design.md",
+                "docs/process/dedicated-browser-acceptance-replay-gate.md",
+                "docs/process/dedicated-browser-workflow.md",
+                "server/tools/acceptance/dedicated_browser_replay_gate.mjs"
               ],
-              "updated_at": "2026-04-22T03:11:07.074Z"
-            },
+              "updated_at": "2026-04-23T12:12:54.295Z"
+            }
+          ],
+          "updated_at": "2026-04-23T12:12:54.295Z"
+        }
+      ],
+      "updated_at": "2026-04-23T12:12:54.295Z"
+    },
+    {
+      "id": "phase-gdd-v31-governance-event-decision-loop",
+      "title": "GDD v3.1 宗门治理与事件决策闭环",
+      "status": "accepted",
+      "summary": "在已成立的多日宗门日常之上，补齐玩家作为掌门的治理决策层：事件选择、宗门政策、弟子晋升考核，以及对应的多日 restore/offline 验收。",
+      "current_milestone_id": null,
+      "milestones": [
+        {
+          "id": "milestone-sect-event-choice-loop",
+          "title": "宗门事件选择闭环",
+          "status": "accepted",
+          "summary": "把已存在的事件反馈推进为玩家可读、可选择、可过期、可恢复的 authority-owned 事件决策系统。",
+          "acceptance_owner": "supervisor",
+          "current_subfunction_id": null,
+          "subfunctions": [
             {
-              "id": "subfunction-bind-save-load-to-authority-owned-worker-state",
-              "title": "将存档读档绑定到 Authority 拥有的 Worker 状态",
+              "id": "subfunction-implement-authority-sect-event-choice-loop",
+              "title": "实现 Authority 宗门事件选择闭环",
               "owner_role": "engineer",
               "status": "accepted",
-              "objective": "扩展存档/读档能力，使 authority 拥有的弟子 assignment、工作进度与战后延续都能从同一个确定性会话 blob 中恢复。",
+              "objective": "实现第一版 active sect events、事件选项、ChooseEventOption / DismissEvent 权威命令、过期规则与结果事件，使宗门事件不再只是只读反馈。",
               "done_when": [
-                "Save/load covers the authority-owned worker and work-progress fields introduced by the rebuild.",
-                "A restored mid-session replay resumes from the same authority-visible worker and building state instead of reconstructing it from client-local assumptions."
+                "SectState 拥有 active events、resolved events、tension、severity、expiresAt、options、requirements 和 result preview 等事件选择字段。",
+                "ChooseEventOption / DismissEvent 由 authority 校验事件存在、未过期、选项条件满足，并通过 DomainEvent / ApplyEvent 修改资源、弟子、任务、名望、tension 或事件状态。",
+                "在线推进和 offline catch-up 只能生成待处理事件或过期事件，不能替玩家静默选择重大事件结果。"
               ],
               "refs": [
-                "docs/plans/authority-first-runtime-rebuild.md",
-                "docs/decisions/0008-save-protocol-and-pgstore-schema.md",
-                "docs/decisions/0010-offline-deterministic-simulation.md"
-              ],
-              "updated_at": "2026-04-22T05:01:24.926Z"
-            },
-            {
-              "id": "subfunction-build-deterministic-mainline-replay-harness",
-              "title": "构建确定性主线回放测试框架",
-              "owner_role": "engineer",
-              "status": "accepted",
-              "objective": "为宗门地图主短会话路径构建一套确定性的 authority 侧回放测试框架，使回归验证不再仅依赖临时的手动浏览。",
-              "done_when": [
-                "There is a repeatable replay harness that can assert key checkpoints for the authority-owned mainline loop.",
-                "The replay harness can validate mid-session restore and replay continuity without inventing a second runtime path."
-              ],
-              "refs": [
-                "docs/plans/authority-first-runtime-rebuild.md",
+                "docs/vision/gdd_v3_backend_design.md",
                 "docs/decisions/0010-offline-deterministic-simulation.md",
-                "docs/project/delivery-ledger.md"
+                "server/internal/slggame/sect"
               ],
-              "updated_at": "2026-04-22T05:06:53.179Z"
-            }
-          ],
-          "updated_at": "2026-04-22T05:06:53.179Z"
-        },
-        {
-          "id": "milestone-authority-thin-client-cutover",
-          "title": "Authority 轻客户端切换",
-          "status": "planned",
-          "summary": "将主预览路径切换为轻量 authority 消费端，并从常规验证中移除客户端本地玩法兜底。",
-          "acceptance_owner": "supervisor",
-          "current_subfunction_id": "subfunction-consume-authority-worker-state-through-render-only-view-model",
-          "subfunctions": [
+              "updated_at": "2026-04-23T12:28:56.175Z"
+            },
             {
-              "id": "subfunction-remove-client-local-gameplay-fallbacks-from-main-preview",
-              "title": "从主预览中移除客户端本地玩法兜底",
+              "id": "subfunction-bind-event-choice-thin-client-surface",
+              "title": "绑定事件选择薄客户端界面",
               "owner_role": "engineer",
               "status": "accepted",
-              "objective": "从主预览验证路径中移除或强制禁用客户端本地玩法兜底分支，使 authority-only 行为成为默认且必需的模式。",
+              "objective": "让 Cocos 端展示 active events、选项、条件、预览后果、过期时间与已解决摘要，并只提交 authority 事件选择意图。",
               "done_when": [
-                "The main preview flow cannot silently advance gameplay through client-local fallback when authority is unavailable or out of sync.",
-                "If authority is disconnected or rejects progression, the preview fails boundedly instead of inventing local gameplay continuation."
+                "客户端事件面板只消费 authority snapshot / patch 中的事件状态、选项、预览和结果摘要。",
+                "选择、忽略或关闭事件面板只提交 ChooseEventOption / DismissEvent 等玩家意图，客户端不本地计算资源、弟子、任务或满意变化。",
+                "authority 不可用或事件状态缺失时，事件选择按钮 fail-closed，不恢复本地事件结算或调试注入。"
               ],
               "refs": [
-                "docs/plans/authority-first-runtime-rebuild.md",
+                "docs/vision/gdd_v3_backend_design.md",
                 "docs/architecture/client-structure.md",
-                "docs/process/dedicated-browser-workflow.md"
+                "client/my-immortal-sect/assets/scripts/app/sect-map-bootstrap.ts"
               ],
-              "updated_at": "2026-04-22T05:31:12.820Z"
+              "updated_at": "2026-04-23T12:40:34.858Z"
             },
             {
-              "id": "subfunction-consume-authority-worker-state-through-render-only-view-model",
-              "title": "通过纯渲染视图模型消费 Authority Worker 状态",
+              "id": "subfunction-prove-event-choice-save-restore-offline",
+              "title": "验证事件选择存档恢复与离线连续性",
               "owner_role": "engineer",
-              "status": "blocked",
-              "objective": "重构 Cocos 运行时，通过纯渲染视图模型来消费 authority 的 worker/建筑/会话状态，而不是直接修改玩法对象。",
+              "status": "accepted",
+              "objective": "为事件生成、选择、忽略、过期、结果反馈、重复 cmd_id、restore 和 offline catch-up 建立 authority-side 与浏览器有界验收。",
               "done_when": [
-                "The main client runtime derives animation, interpolation, HUD, and selection behavior from authority-fed view models.",
-                "Gameplay-state objects in the client no longer serve as a hidden second simulation source."
+                "服务端测试覆盖固定随机种子事件生成、事件选择结果、忽略/过期、重复 cmd_id 幂等和 snapshot 后 replay。",
+                "restore_latest 与 offline catch-up 后 active/resolved event、tension、event_log、diary 与连续 authority 分支一致。",
+                "dedicated browser gate 能打开事件面板、执行至少一次事件选择，并输出 bounded JSON 证明结果来自 authority。"
               ],
               "refs": [
-                "docs/plans/authority-first-runtime-rebuild.md",
-                "docs/architecture/client-structure.md",
-                "shared/contracts/m1-authority-short-session-v1.md"
+                "docs/vision/gdd_v3_backend_design.md",
+                "docs/decisions/0008-save-protocol-and-pgstore-schema.md",
+                "docs/process/dedicated-browser-acceptance-replay-gate.md",
+                "server/tools/acceptance/dedicated_browser_replay_gate.mjs"
               ],
-              "updated_at": "2026-04-22T05:56:14.544Z"
-            },
-            {
-              "id": "subfunction-harden-reject-recovery-through-unified-authority-resync",
-              "title": "通过统一 Authority 重同步强化拒绝恢复机制",
-              "owner_role": "engineer",
-              "status": "idle",
-              "objective": "用统一的 authority reject 恢复路径替代零散的命令拒绝补丁，该路径需负责清理本地表现状态并从快照重新同步。",
-              "done_when": [
-                "The client has one bounded reject-recovery path for authority command failures instead of bespoke per-command deadlock patches.",
-                "Rejected commands cannot leave stale worker/building/session presentation state that continues to drive gameplay locally."
-              ],
-              "refs": [
-                "docs/plans/authority-first-runtime-rebuild.md",
-                "docs/architecture/client-structure.md",
-                "docs/process/dedicated-browser-workflow.md"
-              ],
-              "updated_at": "2026-04-22T03:30:54.000Z"
+              "updated_at": "2026-04-23T12:54:14.835Z"
             }
           ],
-          "updated_at": "2026-04-22T05:56:14.544Z"
+          "updated_at": "2026-04-23T12:54:14.835Z"
         },
         {
-          "id": "milestone-authority-e2e-verification-gate",
-          "title": "Authority 端到端验证门禁",
-          "status": "planned",
-          "summary": "将完整 authority-only 回放与双角色验证设为后续所有宗门地图验收的硬门槛。",
+          "id": "milestone-sect-policy-governance-loop",
+          "title": "宗门政策与治理倾向闭环",
+          "status": "accepted",
+          "summary": "实现任务、资源、招生与修炼倾向政策，让玩家通过掌门治理而不是逐项微操影响宗门长期走向。",
           "acceptance_owner": "supervisor",
           "current_subfunction_id": null,
           "subfunctions": [
             {
-              "id": "subfunction-author-full-mainline-e2e-matrix",
-              "title": "编写完整主线 E2E 矩阵",
+              "id": "subfunction-implement-sect-policy-authority-state-and-effects",
+              "title": "实现宗门政策 Authority 状态与效果",
               "owner_role": "engineer",
-              "status": "idle",
-              "objective": "编写针对 reset、restore、拒绝恢复以及战后延续的固定端到端矩阵，使宗门地图主线循环始终只有一份规范回放合同。",
+              "status": "accepted",
+              "objective": "实现 PolicyState、SetPolicy 命令与第一版政策效果，使任务生成、生产优先级、招生质量、修炼倾向和月结满意压力受 authority 政策影响。",
               "done_when": [
-                "The mainline E2E matrix covers reset mainline, restore_latest replay, rejection recovery, and post-raid continuity on the dedicated browser and authority snapshot surfaces.",
-                "The matrix defines the bounded checkpoint fields that must stay aligned between authority and preview."
+                "SectState 拥有 taskPolicy、resourcePolicy、recruitmentPolicy、cultivationPolicy 或等价政策字段，并通过 SetPolicy 产生 PolicyChanged 事件。",
+                "政策至少影响任务池权重、生产/修炼优先级、候选弟子数量或质量、月例/兑付满意压力中的三类结果。",
+                "政策修改、效果应用、event_log、save/restore 和 offline catch-up 都走同一条 DomainEvent / ApplyEvent 路径。"
               ],
               "refs": [
-                "docs/plans/authority-first-runtime-rebuild.md",
-                "docs/process/dedicated-browser-workflow.md",
-                "docs/project/delivery-ledger.md"
+                "docs/vision/gdd_v3_backend_design.md",
+                "docs/decisions/0010-offline-deterministic-simulation.md",
+                "server/internal/slggame/sect"
               ],
-              "updated_at": "2026-04-22T03:30:54.000Z"
+              "updated_at": "2026-04-23T13:04:51.398Z"
             },
             {
-              "id": "subfunction-require-engineer-self-replay-before-submit",
-              "title": "要求 Engineer 提交前自测回放",
+              "id": "subfunction-bind-policy-thin-client-surface",
+              "title": "绑定宗门政策薄客户端界面",
               "owner_role": "engineer",
-              "status": "idle",
-              "objective": "将 engineer 侧自测回放设为提交前的强制门槛，使代码、点测与日志摘录不再单独构成充分证据。",
+              "status": "accepted",
+              "objective": "让玩家在宗务面板中读取当前政策、政策解释、预期影响和近期结果，并只提交 SetPolicy 意图。",
               "done_when": [
-                "Engineer handoff requirements include authority tests, dedicated-browser replay, and bounded checkpoint evidence for the active slice.",
-                "Submissions that lack replay evidence are explicitly non-compliant with the project validation contract."
+                "客户端政策界面只消费 authority snapshot / patch 中的政策状态、解释字段、影响摘要和最近政策事件。",
+                "玩家选择政策只提交 SetPolicy 意图；客户端不本地改变任务权重、招生池、生产收益、月结或满意结果。",
+                "authority_blocked 或断线时政策选择不能推进，本地只保留渲染、选择焦点和 debug 状态。"
               ],
               "refs": [
-                "docs/plans/authority-first-runtime-rebuild.md",
-                "AGENTS.md",
-                "docs/process/development-execution-manual.md"
+                "docs/vision/gdd_v3_backend_design.md",
+                "docs/architecture/client-structure.md",
+                "client/my-immortal-sect/assets/scripts/app/sect-map-bootstrap.ts"
               ],
-              "updated_at": "2026-04-22T03:30:54.000Z"
+              "updated_at": "2026-04-23T13:12:04.539Z"
             },
             {
-              "id": "subfunction-require-supervisor-independent-replay-before-accept",
-              "title": "要求 Supervisor 验收前独立回放",
+              "id": "subfunction-prove-policy-multiday-impact-and-restore",
+              "title": "验证政策多日影响与恢复连续性",
               "owner_role": "engineer",
-              "status": "idle",
-              "objective": "写定验收门槛：supervisor 在接受任何后续宗门地图里程碑之前，都必须独立回放 reset 与 restore 流程。",
+              "status": "accepted",
+              "objective": "建立政策影响的多日 deterministic replay 和 dedicated browser 验收，证明政策不是只改 UI 文案，而是稳定影响 authority 结果。",
               "done_when": [
-                "Supervisor acceptance docs require an independent dedicated-browser replay rather than a restatement of engineer evidence.",
-                "The gate explicitly blocks acceptance when authority/client drift, repeated command rejection, or fallback-driven continuation are observed."
+                "固定随机种子服务端测试比较至少两组不同政策下的任务、生产、招生、修炼或月结指标差异。",
+                "重复 SetPolicy cmd_id、snapshot 后 replay、restore_latest 和 offline catch-up 不会产生政策重复副作用或丢失政策效果。",
+                "dedicated browser gate 能切换政策并在 bounded JSON 中记录政策状态、后续指标变化和 authority lastError=null。"
               ],
               "refs": [
-                "docs/plans/authority-first-runtime-rebuild.md",
-                "AGENTS.md",
-                "docs/project/delivery-ledger.md"
+                "docs/vision/gdd_v3_backend_design.md",
+                "docs/process/dedicated-browser-acceptance-replay-gate.md",
+                "server/tools/acceptance/dedicated_browser_replay_gate.mjs"
               ],
-              "updated_at": "2026-04-22T03:30:54.000Z"
+              "updated_at": "2026-04-23T13:24:35.178Z"
             }
           ],
-          "updated_at": "2026-04-22T03:30:54.000Z"
+          "updated_at": "2026-04-23T13:24:35.178Z"
+        },
+        {
+          "id": "milestone-disciple-promotion-and-assessment-loop",
+          "title": "弟子晋升与考核闭环",
+          "status": "accepted",
+          "summary": "实现基础身份跃迁、考核条件、晋升后待遇和任务权限，让弟子成长与宗门制度压力发生连接。",
+          "acceptance_owner": "supervisor",
+          "current_subfunction_id": null,
+          "subfunctions": [
+            {
+              "id": "subfunction-implement-disciple-promotion-and-assessment-authority-loop",
+              "title": "实现弟子晋升与考核 Authority 闭环",
+              "owner_role": "engineer",
+              "status": "accepted",
+              "objective": "实现第一版弟子身份晋升、考核资格、晋升成本、月例变化、任务权限变化与满意/忠诚影响。",
+              "done_when": [
+                "Authority 能根据修为、贡献、义务、忠诚、伤病和建筑条件判断弟子晋升或考核资格。",
+                "PromoteDisciple 或 StartAssessment 等玩家意图由 authority 校验并产出 DisciplePromoted / AssessmentResolved / ContributionSpent / SatisfactionChanged 等事件。",
+                "晋升后的身份会影响月例、可接任务、贡献兑换资格、任务风险或修炼支持，且 save/restore 后保持一致。"
+              ],
+              "refs": [
+                "docs/vision/gdd_v3_backend_design.md",
+                "docs/decisions/0010-offline-deterministic-simulation.md",
+                "server/internal/slggame/sect"
+              ],
+              "updated_at": "2026-04-23T13:34:21.638Z"
+            },
+            {
+              "id": "subfunction-bind-promotion-and-assessment-client-surface",
+              "title": "绑定晋升与考核薄客户端界面",
+              "owner_role": "engineer",
+              "status": "accepted",
+              "objective": "让名册界面显示晋升资格、阻塞原因、晋升收益、月例变化和考核结果，并只提交 authority 晋升/考核意图。",
+              "done_when": [
+                "客户端从 authority snapshot / patch 渲染每名弟子的身份、晋升 readiness、缺失条件、预计影响和最近考核/晋升反馈。",
+                "晋升、考核或取消只提交 authority 意图；客户端不本地修改身份、月例、任务权限、满意或贡献。",
+                "断线或 authority_blocked 时晋升按钮 fail-closed，名册只能显示最后权威状态和阻断原因。"
+              ],
+              "refs": [
+                "docs/vision/gdd_v3_backend_design.md",
+                "docs/architecture/client-structure.md",
+                "client/my-immortal-sect/assets/scripts/app/sect-map-bootstrap.ts"
+              ],
+              "updated_at": "2026-04-23T13:42:59.370Z"
+            },
+            {
+              "id": "subfunction-build-governance-event-promotion-acceptance-gate",
+              "title": "构建治理事件与晋升综合验收门禁",
+              "owner_role": "engineer",
+              "status": "accepted",
+              "objective": "扩展服务端 golden simulation 和 dedicated browser gate，覆盖政策、事件选择、晋升考核、月结影响、日记反馈、restore 和 offline continuity。",
+              "done_when": [
+                "存在固定随机种子的 60-90 天服务端 golden simulation，验证政策、事件选择、晋升/考核、月结、日记和资源/弟子指标。",
+                "dedicated browser gate 能独立复跑压缩治理流程：切换政策、处理事件、晋升或考核弟子，并输出 bounded JSON 证据。",
+                "restore_latest 与 offline catch-up 后的政策、事件、晋升、月结、日记和核心指标与连续 authority 分支一致。"
+              ],
+              "refs": [
+                "docs/vision/gdd_v3_backend_design.md",
+                "docs/process/dedicated-browser-acceptance-replay-gate.md",
+                "docs/process/dedicated-browser-workflow.md",
+                "server/tools/acceptance/dedicated_browser_replay_gate.mjs"
+              ],
+              "updated_at": "2026-04-23T13:57:40.524Z"
+            }
+          ],
+          "updated_at": "2026-04-23T13:57:40.524Z"
         }
       ],
-      "updated_at": "2026-04-22T05:56:14.544Z"
+      "updated_at": "2026-04-23T13:57:40.524Z"
     },
     {
-      "id": "phase-platform-and-production-hardening",
-      "title": "平台与生产加固",
-      "status": "planned",
-      "summary": "只有在 authority-only 宗门地图主循环稳定之后，正式协议工作、小游戏外壳加固以及有界可观测性才应进入前台。",
+      "id": "phase-gdd-v31-sect-expansion-external-risk-loop",
+      "title": "GDD v3.1 宗门扩张、外务与风险压力闭环",
+      "status": "accepted",
+      "summary": "把已成立的宗门日常循环推进到中期经营：宗门等级、建筑维护、核心机构、外务探索、法器装备、阵法防御、弟子记忆、宗门目标与危机链共同形成收益、扩张和风险压力。",
       "current_milestone_id": null,
       "milestones": [
         {
-          "id": "milestone-formal-protobuf-gateway-and-session-sync",
-          "title": "正式 Protobuf 网关与会话同步",
-          "status": "planned",
-          "summary": "在 authority-only 主循环稳定之后，用正式的 protobuf 网关与可安全重连的同步边界替代预览期合同。",
+          "id": "milestone-sect-level-building-maintenance-loop",
+          "title": "宗门等级与建筑维护闭环",
+          "status": "accepted",
+          "summary": "让扩建不再只是一次性建造，而是引入宗门等级、建筑解锁、维护成本、耐久、效率和管理弟子，形成长期经营压力。",
           "acceptance_owner": "supervisor",
           "current_subfunction_id": null,
           "subfunctions": [
             {
-              "id": "subfunction-freeze-formal-protobuf-session-contract",
-              "title": "冻结正式 Protobuf 会话合同",
+              "id": "subfunction-implement-sect-level-building-unlock-and-maintenance",
+              "title": "实现宗门等级、建筑解锁与维护压力",
               "owner_role": "engineer",
-              "status": "idle",
-              "objective": "冻结宗门地图 authority 会话的正式 protobuf 合同，使请求/响应与未来推送同步不再依赖仅用于预览的 JSON 传输假设。",
+              "status": "accepted",
+              "objective": "在 SectState 中实现宗门等级、扩张度、建筑解锁、建筑数量上限、维护资源、效率和耐久，使扩张稳定进入 authority 日结算。",
               "done_when": [
-                "The formal protocol defines the session, command, error, and snapshot/update shapes needed for the authority-only loop.",
-                "The protocol work does not reintroduce a second gameplay rules table outside the shared config and authority runtime."
+                "Authority 根据宗门等级、主殿等级、前置建筑和资源校验建筑解锁、建造和升级。",
+                "每日维护通过 DomainEvent / ApplyEvent 扣除资源；资源不足会降低建筑效率、损伤耐久或进入 damaged。",
+                "建筑状态、维护压力、效率和 damaged 原因可以从 snapshot / patch 恢复，并通过 save/restore 与 offline catch-up 保持连续。"
               ],
               "refs": [
-                "docs/plans/authority-first-runtime-rebuild.md",
-                "docs/architecture/server-structure.md",
-                "shared/contracts/m1-authority-short-session-v1.md"
+                "docs/vision/gdd_v3_backend_design.md",
+                "docs/decisions/0010-offline-deterministic-simulation.md",
+                "server/internal/slggame/sect"
               ],
-              "updated_at": "2026-04-22T03:30:54.000Z"
+              "updated_at": "2026-04-23T14:44:03.656Z"
             },
             {
-              "id": "subfunction-implement-reconnect-safe-session-sync",
-              "title": "实现可安全重连的会话同步",
+              "id": "subfunction-bind-building-unlock-maintenance-client-surface",
+              "title": "绑定建筑解锁、维护与效率薄客户端界面",
               "owner_role": "engineer",
-              "status": "idle",
-              "objective": "在正式协议之上实现可安全重连的网关/会话同步，使客户端恢复不再依赖临时的快照轮询行为。",
+              "status": "accepted",
+              "objective": "让宗务和地图界面显示宗门等级、建筑解锁条件、维护消耗、效率、耐久、损坏原因和升级收益，并只提交 authority 建造、升级或修复意图。",
               "done_when": [
-                "The client can recover authority session state after reconnect without falling back to client-local gameplay continuation.",
-                "Sync sequencing and recovery behavior are bounded enough to test through the same dedicated-browser replay contract."
+                "客户端从 authority snapshot / patch 渲染建筑解锁树、维护压力、效率、耐久和 damaged 状态。",
+                "建造、升级、修复只提交玩家意图；客户端不本地修改建筑状态、维护结算或效率结果。",
+                "authority_blocked 或断线时建筑按钮 fail-closed，只显示最后权威状态和阻断原因。"
               ],
               "refs": [
+                "docs/vision/gdd_v3_backend_design.md",
                 "docs/architecture/client-structure.md",
-                "docs/architecture/server-structure.md",
-                "docs/process/dedicated-browser-workflow.md"
+                "client/my-immortal-sect/assets/scripts/app/sect-map-bootstrap.ts"
               ],
-              "updated_at": "2026-04-22T03:30:54.000Z"
+              "updated_at": "2026-04-23T15:11:58.760Z"
+            },
+            {
+              "id": "subfunction-prove-building-maintenance-restore-offline",
+              "title": "验证建筑维护、损坏与离线连续性",
+              "owner_role": "engineer",
+              "status": "accepted",
+              "objective": "建立建筑维护、资源不足、耐久损伤、修复、restore 和 offline catch-up 的 authority-side 与浏览器验收。",
+              "done_when": [
+                "服务端固定随机种子测试覆盖 60-90 天建筑维护、资源短缺、效率下降、损坏、修复和升级。",
+                "snapshot 后 replay、restore_latest 和 offline catch-up 后的建筑、资源、效率与连续 authority 分支一致。",
+                "dedicated browser gate 输出建筑维护压力、损坏/修复、lastError=null 和 bounded JSON 断言。"
+              ],
+              "refs": [
+                "docs/vision/gdd_v3_backend_design.md",
+                "docs/process/dedicated-browser-acceptance-replay-gate.md",
+                "server/tools/acceptance/dedicated_browser_replay_gate.mjs"
+              ],
+              "updated_at": "2026-04-23T15:27:13.250Z"
             }
           ],
-          "updated_at": "2026-04-22T03:30:54.000Z"
+          "updated_at": "2026-04-23T15:27:13.250Z"
         },
         {
-          "id": "milestone-mini-game-shell-hardening",
-          "title": "小游戏外壳加固",
-          "status": "planned",
-          "summary": "只有在主线运行时与验证门禁稳定之后，才让 authority-only 宗门地图切片进入有界的微信/抖音外壳验证。",
+          "id": "milestone-core-institution-management-loop",
+          "title": "核心机构与宗务总览闭环",
+          "status": "accepted",
+          "summary": "深化山门、主殿、任务堂、功勋宝库、居舍、膳堂、药庐、洞府等机构，让玩家能从宗务面板看到瓶颈并做治理取舍。",
           "acceptance_owner": "supervisor",
           "current_subfunction_id": null,
           "subfunctions": [
             {
-              "id": "subfunction-establish-authority-only-shell-export-paths",
-              "title": "建立 Authority-Only 外壳导出路径",
+              "id": "subfunction-implement-core-institution-state-and-manager-effects",
+              "title": "实现核心机构状态与管事效果",
               "owner_role": "engineer",
-              "status": "idle",
-              "objective": "为 authority-only 宗门地图切片建立可重复执行的小游戏导出/构建路径，而不重新引入 hybrid 预览假设。",
+              "status": "accepted",
+              "objective": "为山门、主殿、任务堂、功勋宝库、居舍、膳堂、药庐和洞府实现 authority-owned 机构状态、管事分配、容量、舒适、治疗、洞府席位和效果摘要。",
               "done_when": [
-                "There is a documented export/build flow from the active Cocos project to the requested mini-game shells for the authority-only slice.",
-                "The shell export path does not depend on hidden preview-only code paths that are absent from the authority-only runtime."
+                "机构状态进入 SectState，并由 AssignInstitutionManager、SetGatePolicy、SetExchangeRule、ReserveCave 或等价命令修改。",
+                "管事弟子的身份、能力、忠诚和伤病会影响机构效率、任务上限、兑换压力、恢复、治疗或修炼支持。",
+                "机构效果通过 DomainEvent / ApplyEvent 影响任务、生产、修炼、满意、恢复或资源结算。"
               ],
               "refs": [
+                "docs/vision/gdd_v3_backend_design.md",
+                "server/internal/slggame/sect"
+              ],
+              "updated_at": "2026-04-23T15:40:16.624Z"
+            },
+            {
+              "id": "subfunction-bind-sect-affairs-overview-and-institution-panels",
+              "title": "绑定宗务总览与机构面板",
+              "owner_role": "engineer",
+              "status": "accepted",
+              "objective": "把宗务面板扩展为玩家可读的经营总览，显示缺人、缺维护、缺材料、风险过高、满意下降、机构效率和可操作建议。",
+              "done_when": [
+                "宗务总览只消费 authority snapshot / patch 中的机构、资源、风险、满意、任务、生产和弟子状态。",
+                "机构面板展示管事、容量、效率、瓶颈、近期结果和可提交的玩家意图。",
+                "客户端不本地计算机构收益、管事效果、满意变化或恢复结果。"
+              ],
+              "refs": [
+                "docs/vision/gdd_v3_backend_design.md",
                 "docs/architecture/client-structure.md",
-                "docs/project/decision-log.md",
-                "docs/process/browser-runtime-workflow.md"
+                "client/my-immortal-sect/assets/scripts/app/sect-map-bootstrap.ts"
               ],
-              "updated_at": "2026-04-22T03:30:54.000Z"
+              "updated_at": "2026-04-23T15:49:37.773Z"
             },
             {
-              "id": "subfunction-run-bounded-shell-smoke-on-authority-mainline",
-              "title": "在 Authority 主线上执行有界外壳冒烟测试",
+              "id": "subfunction-prove-institution-management-multiday-impact",
+              "title": "验证机构管理多日影响",
               "owner_role": "engineer",
-              "status": "idle",
-              "objective": "使用同一套 authority-only 主线检查点执行有界外壳冒烟测试，使外壳可行性基于真实玩法运行时而不是降级后的预览流程来判断。",
+              "status": "accepted",
+              "objective": "用 deterministic replay 和 browser gate 证明机构管事、容量、舒适、洞府、药庐和宝库规则稳定影响多日经营结果。",
               "done_when": [
-                "WeChat and Douyin shell smoke can boot the authority-only sect-map slice far enough to expose startup, orientation, and bounded runtime viability findings.",
-                "The captured evidence remains bounded and aligned with the mainline authority acceptance fields."
+                "服务端测试比较不同机构配置下的任务上限、兑换压力、恢复、修炼支持、满意和资源指标差异。",
+                "restore_latest 与 offline catch-up 后机构状态、管事分配、近期事件和核心指标与连续分支一致。",
+                "dedicated browser gate 能打开宗务总览和至少两个机构面板，并输出 bounded JSON 证据。"
               ],
               "refs": [
-                "docs/project/delivery-ledger.md",
-                "docs/process/browser-runtime-workflow.md",
-                "docs/plans/authority-first-runtime-rebuild.md"
+                "docs/vision/gdd_v3_backend_design.md",
+                "docs/process/dedicated-browser-acceptance-replay-gate.md",
+                "server/tools/acceptance/dedicated_browser_replay_gate.mjs"
               ],
-              "updated_at": "2026-04-22T03:30:54.000Z"
-            },
-            {
-              "id": "subfunction-tune-portrait-safe-ui-and-assets-for-shell-findings",
-              "title": "针对外壳结论调整竖屏安全 UI 与资源",
-              "owner_role": "art_asset_producer",
-              "status": "idle",
-              "objective": "基于 authority-only 运行时得出的有界外壳结论，调整竖屏安全 HUD 间距、可读性与资源导出假设。",
-              "done_when": [
-                "The art and UI tuning directly addresses shell-specific portrait/readability problems found during bounded smoke.",
-                "The adjusted visuals remain consistent with the sect-map presentation and do not fork into platform-specific art systems."
-              ],
-              "refs": [
-                "AGENTS.md",
-                "docs/vision/design-decisions.md",
-                "docs/features/F-004-sect-map-m1-gameplay-foundation.md"
-              ],
-              "updated_at": "2026-04-22T03:30:54.000Z"
+              "updated_at": "2026-04-23T16:10:02.053Z"
             }
           ],
-          "updated_at": "2026-04-22T03:30:54.000Z"
+          "updated_at": "2026-04-23T16:10:02.053Z"
         },
         {
-          "id": "milestone-observability-and-live-ops-bounds",
-          "title": "可观测性与运维边界",
-          "status": "planned",
-          "summary": "只有在 authority-only 主线稳定且可测试之后，才补充有界可观测性与运维证据面。",
+          "id": "milestone-external-affairs-exploration-risk-loop",
+          "title": "外务、探索与战斗任务风险闭环",
+          "status": "accepted",
+          "summary": "在不引入独立 MarketActor 或 ExpeditionActor 的前提下，把外务、探索和战斗任务做成 SectActor 内部的高风险高回报经营路径。",
           "acceptance_owner": "supervisor",
           "current_subfunction_id": null,
           "subfunctions": [
             {
-              "id": "subfunction-define-bounded-runtime-telemetry-and-drift-signals",
-              "title": "定义有界运行时遥测与漂移信号",
+              "id": "subfunction-implement-external-affairs-and-exploration-task-types",
+              "title": "实现外务、探索与战斗任务类型",
               "owner_role": "engineer",
-              "status": "idle",
-              "objective": "定义调试 authority/client 不一致所需的有界遥测与漂移信号，而不再把超大原始日志作为主要运维界面。",
+              "status": "accepted",
+              "objective": "扩展 authority task pool，加入商会委托、山下村寨、巡山、妖踪探查、古道探索和战斗历练任务，产出灵石、名望、关系、稀有材料、伤病或危机线索。",
               "done_when": [
-                "The runtime exposes bounded drift, rejection, and session-recovery signals suitable for debugging and acceptance work.",
-                "The observability surface fits the project rule against loading full logs into context by default."
+                "外务、探索和战斗任务作为 SectActor 内部任务类型生成、派遣、推进和结算，不创建独立外务或秘境 actor。",
+                "任务成功率由弟子能力、境界、装备、队伍配合、风险、政策和建筑支持计算。",
+                "失败或低评价会通过 DomainEvent / ApplyEvent 造成伤病、压力、忠诚变化、资源损失或 event tension 上升。"
               ],
               "refs": [
-                "AGENTS.md",
-                "docs/process/development-execution-manual.md",
-                "docs/process/development-event-protocol.md"
+                "docs/vision/gdd_v3_backend_design.md",
+                "server/internal/slggame/sect"
               ],
-              "updated_at": "2026-04-22T03:30:54.000Z"
+              "updated_at": "2026-04-23T16:28:44.034Z"
             },
             {
-              "id": "subfunction-prepare-authority-mainline-operations-runbook",
-              "title": "准备 Authority 主线运维手册",
+              "id": "subfunction-bind-external-task-dispatch-client-surface",
+              "title": "绑定外务派遣薄客户端界面",
               "owner_role": "engineer",
-              "status": "idle",
-              "objective": "准备第一份简洁的 authority 主线运维手册，覆盖启动、回放、恢复、有界漂移检查与失败分诊。",
+              "status": "accepted",
+              "objective": "让任务堂显示外务、探索和战斗任务的推荐弟子、成功率、风险、预计收益和可能代价，并只提交发布、派遣、取消或优先级意图。",
               "done_when": [
-                "There is a single repeatable runbook for authority-mainline startup, replay, restore, and bounded failure inspection.",
-                "The runbook is concise enough for supervisor reuse and future live-ops hardening without becoming a second planning system."
+                "客户端从 authority snapshot / patch 渲染任务风险、收益、成功率、队伍要求、伤病风险和推荐弟子。",
+                "玩家派遣队伍只提交 authority 意图；客户端不本地结算成功、失败、奖励、伤病或名望变化。",
+                "authority_blocked 或断线时外务任务按钮 fail-closed。"
               ],
               "refs": [
-                "docs/plans/authority-first-runtime-rebuild.md",
-                "docs/process/development-execution-manual.md",
-                "docs/project/delivery-ledger.md"
+                "docs/vision/gdd_v3_backend_design.md",
+                "docs/architecture/client-structure.md",
+                "client/my-immortal-sect/assets/scripts/app/sect-map-bootstrap.ts"
               ],
-              "updated_at": "2026-04-22T03:30:54.000Z"
+              "updated_at": "2026-04-23T16:43:31.244Z"
+            },
+            {
+              "id": "subfunction-prove-external-risk-reward-and-restore",
+              "title": "验证外务风险收益与恢复连续性",
+              "owner_role": "engineer",
+              "status": "accepted",
+              "objective": "建立外务、探索和战斗任务在 90 日经营中的风险收益、伤病、名望、event tension、restore 与 offline 连续性验证。",
+              "done_when": [
+                "固定随机种子测试覆盖外务收益、探索稀有材料、战斗风险、伤病、压力、名望和事件 tension。",
+                "重复派遣 cmd_id、snapshot 后 replay、restore_latest 和 offline catch-up 不产生重复奖励或丢失伤病/风险结果。",
+                "dedicated browser gate 能完成至少一次外务派遣，并输出成功率、风险、结果、反馈和 lastError=null。"
+              ],
+              "refs": [
+                "docs/vision/gdd_v3_backend_design.md",
+                "docs/process/dedicated-browser-acceptance-replay-gate.md",
+                "server/tools/acceptance/dedicated_browser_replay_gate.mjs"
+              ],
+              "updated_at": "2026-04-23T17:01:36.556Z"
             }
           ],
-          "updated_at": "2026-04-22T03:30:54.000Z"
-        }
-      ],
-      "updated_at": "2026-04-22T03:30:54.000Z"
-    },
-    {
-      "id": "phase-m0-sect-home-authority-expansion",
-      "title": "M0 宗门家园 Authority 扩展",
-      "status": "planned",
-      "summary": "只有在 authority-only 宗门地图主循环稳定之后，弟子到来、宗门机构以及第一条有预兆的因果钩子才应扩展当前 vertical slice。",
-      "current_milestone_id": null,
-      "milestones": [
-        {
-          "id": "milestone-first-disciple-arrival-authority-loop",
-          "title": "第一条弟子到来 Authority 循环",
-          "status": "planned",
-          "summary": "在不重新引入客户端玩法真相的前提下，将 authority 拥有的宗门地图切片扩展到第一条弟子到来与宗门家园循环。",
-          "acceptance_owner": "supervisor",
-          "current_subfunction_id": null,
-          "subfunctions": [
-            {
-              "id": "subfunction-implement-first-disciple-arrival-contract",
-              "title": "实现第一条弟子到来合同",
-              "owner_role": "engineer",
-              "status": "idle",
-              "objective": "在 authority 拥有的宗门地图切片之上实现第一条弟子到来合同，使地图通过明确的宗门收徒路径而不是无上下文出生点来表达宗门家园幻想。",
-              "done_when": [
-                "A new or progressing run can trigger the first disciple-arrival step through the real authority-backed stack via a bounded sect intake path.",
-                "The implementation keeps disciples inside the shared sect simulation model rather than splitting them into standalone authority actors."
-              ],
-              "refs": [
-                "docs/plans/m0-vertical-slice.md",
-                "docs/plans/authority-first-runtime-rebuild.md",
-                "docs/vision/design-decisions.md",
-                "docs/decisions/0010-offline-deterministic-simulation.md"
-              ],
-              "updated_at": "2026-04-22T03:30:54.000Z"
-            },
-            {
-              "id": "subfunction-produce-disciple-portrait-token-readability-pack",
-              "title": "产出弟子头像 Token 可读性资源包",
-              "owner_role": "art_asset_producer",
-              "status": "idle",
-              "objective": "产出第一版弟子头像/Token 可读性资源包，使到来来源、早期等级、assignment 与情感存在感能在宗门地图表现中被清晰识别。",
-              "done_when": [
-                "The disciple visuals fit the established big-head-first presentation strategy and support map readability.",
-                "The pack is sufficient to distinguish first-disciple arrival, early sect rank, and sect-home interaction states without requiring full-body animation-heavy solutions."
-              ],
-              "refs": [
-                "AGENTS.md",
-                "docs/vision/design-decisions.md",
-                "docs/plans/m0-vertical-slice.md"
-              ],
-              "updated_at": "2026-04-22T03:30:54.000Z"
-            },
-            {
-              "id": "subfunction-integrate-sect-home-feedback-into-authority-map-loop",
-              "title": "将宗门家园反馈整合进 Authority 地图循环",
-              "owner_role": "engineer",
-              "status": "idle",
-              "objective": "将弟子到来反馈、assignment 提示、住宿/支持提示以及宗门家园状态变化整合回 authority 拥有的地图循环，使新内容在机制上可见且可测试。",
-              "done_when": [
-                "The sect-map loop reflects the first disciple-arrival, assignment, and basic sect-home support state through authority-backed runtime-visible feedback.",
-                "The added feedback can be verified in the same authority-only client/server stack used for the rebuilt M1 slice."
-              ],
-              "refs": [
-                "docs/features/F-004-sect-map-m1-gameplay-foundation.md",
-                "docs/plans/m0-vertical-slice.md",
-                "docs/plans/authority-first-runtime-rebuild.md",
-                "docs/architecture/client-structure.md"
-              ],
-              "updated_at": "2026-04-22T03:30:54.000Z"
-            }
-          ],
-          "updated_at": "2026-04-22T03:30:54.000Z"
+          "updated_at": "2026-04-23T17:01:36.556Z"
         },
         {
-          "id": "milestone-minimal-sect-institutions-authority-loop",
-          "title": "最小宗门机构 Authority 循环",
-          "status": "planned",
-          "summary": "在 authority 拥有的宗门家园运行时之上，引入任务堂、功绩兑换、俸给与修炼支持语义。",
+          "id": "milestone-artifact-equipment-lightweight-loop",
+          "title": "法器与装备轻量闭环",
+          "status": "accepted",
+          "summary": "实现第一版轻量装备：少量法器类型、品质、耐久、装备、修理和制作，让弟子成长、生产、探索与战斗有可见承载物。",
           "acceptance_owner": "supervisor",
           "current_subfunction_id": null,
           "subfunctions": [
             {
-              "id": "subfunction-define-minimal-sect-institutions-and-resource-semantics",
-              "title": "定义最小宗门机构与资源语义",
+              "id": "subfunction-implement-artifact-state-craft-equip-repair-loop",
+              "title": "实现法器状态、制作、装备与修理闭环",
               "owner_role": "engineer",
-              "status": "idle",
-              "objective": "为 authority 拥有的宗门家园循环定义最小宗门机构合同，覆盖任务堂、功绩库、俸给、贡献与修炼支持语义。",
+              "status": "accepted",
+              "objective": "在 SectState 中实现低阶法器、法袍、工具、炼丹炉和阵盘的轻量 ArtifactState，并支持制作、装备、卸下和修理。",
               "done_when": [
-                "The active design and runtime contract distinguish sect currency, cultivation fuel, and formation power without inventing a second economy system.",
-                "The minimal institution set defines contribution as a disciple claim on sect resources plus a bounded redemption-pressure metric suitable for the early slice."
+                "ArtifactState 拥有类型、品质、耐久、绑定弟子和少量固定属性，不引入复杂随机词条或掉落池。",
+                "CraftArtifact、EquipArtifact、UnequipArtifact、RepairArtifact 或等价命令由 authority 校验资源、建筑、弟子和耐久条件。",
+                "装备通过 DomainEvent / ApplyEvent 影响战斗任务、生产效率、修炼支持、伤病概率或任务成功率。"
               ],
               "refs": [
-                "docs/vision/design-decisions.md",
-                "docs/plans/m0-vertical-slice.md",
-                "docs/plans/authority-first-runtime-rebuild.md"
+                "docs/vision/gdd_v3_backend_design.md",
+                "server/internal/slggame/sect"
               ],
-              "updated_at": "2026-04-22T03:30:54.000Z"
+              "updated_at": "2026-04-23T17:15:28.553Z"
             },
             {
-              "id": "subfunction-implement-minimal-task-hall-stipend-and-redemption-loop",
-              "title": "实现最小任务堂俸给与兑换循环",
+              "id": "subfunction-bind-artifact-equipment-client-surface",
+              "title": "绑定法器装备薄客户端界面",
               "owner_role": "engineer",
-              "status": "idle",
-              "objective": "实现第一条由宗门机构支撑的 authority 循环，使弟子能够被纳入宗门工作、获得有界俸给/支持、通过宗门任务赚取贡献，并兑换至少一种宗门提供的资源。",
+              "status": "accepted",
+              "objective": "让名册和机构界面显示弟子装备、法器品质、耐久、加成、修理需求和制作材料，并只提交装备相关 authority 意图。",
               "done_when": [
-                "The authority-backed slice can express one bounded loop connecting sect task obligation, stipend/upkeep accounting, contribution gain, and at least one merit redemption path.",
-                "The implementation exposes enough state to reason about payout reliability without inventing a second economy outside the shared sect simulation."
+                "客户端从 authority snapshot / patch 渲染装备槽、法器库存、品质、耐久、加成和修理需求。",
+                "制作、装备、卸下、修理只提交 authority 意图；客户端不本地修改战力、生产效率或修炼加成。",
+                "断线或 authority_blocked 时装备操作 fail-closed。"
               ],
               "refs": [
-                "docs/vision/design-decisions.md",
-                "docs/plans/m0-vertical-slice.md",
-                "docs/decisions/0010-offline-deterministic-simulation.md"
+                "docs/vision/gdd_v3_backend_design.md",
+                "docs/architecture/client-structure.md",
+                "client/my-immortal-sect/assets/scripts/app/sect-map-bootstrap.ts"
               ],
-              "updated_at": "2026-04-22T03:30:54.000Z"
+              "updated_at": "2026-04-23T17:38:40.642Z"
             },
             {
-              "id": "subfunction-produce-sect-institution-readability-pack",
-              "title": "产出宗门机构可读性资源包",
-              "owner_role": "art_asset_producer",
-              "status": "idle",
-              "objective": "产出第一版宗门机构可读性资源包，使任务堂、功绩兑换、早期等级与宗门支持状态无需退回 debug 标签也能被理解。",
-              "done_when": [
-                "The sect-map or HUD readability layer can distinguish the first institution states for task hall, merit redemption, and early disciple rank/support within the established portrait-first presentation.",
-                "The resulting pack remains consistent with the sect-map readability strategy and does not fork into a separate menu-heavy visual language."
-              ],
-              "refs": [
-                "AGENTS.md",
-                "docs/vision/design-decisions.md",
-                "docs/features/F-004-sect-map-m1-gameplay-foundation.md"
-              ],
-              "updated_at": "2026-04-22T03:30:54.000Z"
-            },
-            {
-              "id": "subfunction-bind-minimal-rank-and-cultivation-support-into-authority-slice",
-              "title": "将最小等级与修炼支持接入 Authority 切片",
+              "id": "subfunction-prove-artifact-impact-on-task-production-cultivation",
+              "title": "验证法器对任务、生产与修炼的影响",
               "owner_role": "engineer",
-              "status": "idle",
-              "objective": "将最小弟子等级梯度与修炼支持层绑定进同一条 authority-backed 切片，使弟子成长由宗门角色、环境与支持塑形，而不是由一条孤立的经验值条驱动。",
+              "status": "accepted",
+              "objective": "证明装备不是 UI 装饰，而是稳定影响外务战斗、生产效率、修炼突破和伤病风险的 authority 状态。",
               "done_when": [
-                "The slice includes a bounded early rank gradient and at least one cultivation-support distinction driven by sect environment or support rather than by a raw qi inventory.",
-                "The added rank and cultivation-support rules stay inside the shared sect simulation and directly affect task access, support, or growth in a way that can be validated through the real stack."
+                "服务端测试比较装备前后任务成功率、生产效率、修炼支持或伤病风险的指标差异。",
+                "装备、耐久、修理和属性加成在 save/restore 与 offline catch-up 后保持一致。",
+                "dedicated browser gate 能制作或装备至少一件法器，并输出属性变化、任务或生产指标变化和 bounded JSON 证据。"
               ],
               "refs": [
-                "docs/vision/design-decisions.md",
-                "docs/plans/m0-vertical-slice.md",
-                "docs/decisions/0010-offline-deterministic-simulation.md"
+                "docs/vision/gdd_v3_backend_design.md",
+                "docs/process/dedicated-browser-acceptance-replay-gate.md",
+                "server/tools/acceptance/dedicated_browser_replay_gate.mjs"
               ],
-              "updated_at": "2026-04-22T03:30:54.000Z"
+              "updated_at": "2026-04-23T17:56:53.766Z"
             }
           ],
-          "updated_at": "2026-04-22T03:30:54.000Z"
+          "updated_at": "2026-04-23T17:56:53.766Z"
         },
         {
-          "id": "milestone-first-foreshadowed-karma-hook",
-          "title": "第一条有预兆的因果钩子",
-          "status": "planned",
-          "summary": "在弟子到来与宗门机构稳定之后，将第一条有预兆的因果 storylet 接入 authority 拥有的宗门家园运行时。",
+          "id": "milestone-formation-defense-risk-loop",
+          "title": "阵法、防御与风险升级闭环",
+          "status": "accepted",
+          "summary": "让名望、财富、高阶弟子、外务和事件 tension 推高风险，并用守卫、阵法和建筑防御形成可读的压力对抗。",
           "acceptance_owner": "supervisor",
           "current_subfunction_id": null,
           "subfunctions": [
             {
-              "id": "subfunction-hook-foreshadowed-karma-storylet-into-authority-runtime",
-              "title": "将有预兆的因果 Storylet 接入 Authority 运行时",
+              "id": "subfunction-implement-formation-attachment-and-defense-risk-model",
+              "title": "实现阵法挂接与防御风险模型",
               "owner_role": "engineer",
-              "status": "idle",
-              "objective": "通过同一套 authority 运行时与宗门模拟路径引入第一条有预兆的 karma/storylet 钩子，并将其绑定到弟子到来或宗门家园义务，而不是另起一套脱离玩法的叙事引擎。",
+              "status": "accepted",
+              "objective": "实现聚灵阵、护田阵、守御阵和静心阵的轻量 FormationState，并把阵法挂接到建筑，影响修炼、灵田、风险、防御或压力。",
               "done_when": [
-                "The first karma/storylet hook enters through the shared sect runtime and respects the project rule that karma and descent share one storylet engine.",
-                "The trigger is foreshadowed and durable enough to be treated as part of the vertical slice, and it can read bounded disciple-origin or sect-institution state instead of behaving like a detached scripted cutaway."
+                "阵法作为 SectActor big-state 内部结构存在，不创建独立阵法 actor。",
+                "AttachFormationToBuilding、DetachFormation、MaintainFormation 或等价命令由 authority 校验阵盘、建筑、等级和维护资源。",
+                "风险强度由名望、财富、高阶弟子、外务任务、政策和事件 tension 计算，并通过 snapshot 暴露来源摘要。"
               ],
               "refs": [
-                "docs/vision/design-decisions.md",
-                "docs/plans/m0-vertical-slice.md",
-                "docs/plans/authority-first-runtime-rebuild.md"
+                "docs/vision/gdd_v3_backend_design.md",
+                "docs/decisions/0010-offline-deterministic-simulation.md",
+                "server/internal/slggame/sect"
               ],
-              "updated_at": "2026-04-22T03:30:54.000Z"
+              "updated_at": "2026-04-23T20:16:23.178Z"
             },
             {
-              "id": "subfunction-verify-first-storylet-through-authority-vertical-slice",
-              "title": "通过 Authority Vertical Slice 验证第一条 Storylet",
+              "id": "subfunction-extend-raid-defense-from-risk-to-recovery",
+              "title": "扩展敌袭防御、伤害与战后恢复闭环",
               "owner_role": "engineer",
-              "status": "idle",
-              "objective": "验证第一条 karma/storylet 钩子能够通过真实的 authority vertical slice 被触达并理解，而无需绕过宗门地图循环、弟子到来合同或机构支撑层。",
+              "status": "accepted",
+              "objective": "把敌袭从固定首波推进为由风险曲线、预兆、防御值、守卫、阵法和建筑耐久共同决定的 authority 防御流程。",
               "done_when": [
-                "There is a bounded end-to-end validation path showing the first storylet hook appear through the authority-backed vertical slice after disciple arrival and the first sect institution loop are already in play.",
-                "The verification can be accepted without claiming that the full long-tail disciple and karma roadmap is already complete."
+                "Authority 根据风险强度和张弛曲线生成敌袭预兆、敌袭、伤害、守卫表现、建筑损坏和战后恢复事件。",
+                "守卫、守御阵、建筑耐久、弟子装备和政策会影响伤害、伤病、资源损失或战后修复压力。",
+                "客户端只表现敌袭、伤害飘字、防御摘要和修复建议，不本地结算战斗或损坏。"
               ],
               "refs": [
-                "docs/plans/m0-vertical-slice.md",
-                "docs/project/delivery-ledger.md",
+                "docs/vision/gdd_v3_backend_design.md",
+                "docs/architecture/client-structure.md",
+                "server/internal/slggame/sect",
+                "client/my-immortal-sect/assets/scripts/app/sect-map-bootstrap.ts"
+              ],
+              "updated_at": "2026-04-23T20:54:39.820Z"
+            },
+            {
+              "id": "subfunction-prove-formation-defense-risk-acceptance-gate",
+              "title": "验证阵法防御与风险压力门禁",
+              "owner_role": "engineer",
+              "status": "accepted",
+              "objective": "建立风险升级、阵法防御、敌袭伤害、战后恢复、restore 和 offline 连续性的综合验收门禁。",
+              "done_when": [
+                "服务端 90 日 golden simulation 验证不同阵法/防御配置下风险、敌袭、伤害、损坏、修复和资源压力差异。",
+                "restore_latest 与 offline catch-up 后风险、阵法挂接、敌袭预兆、损坏和修复状态与连续分支一致。",
+                "dedicated browser gate 捕获风险摘要、防御配置、敌袭表现、伤害反馈、恢复结果和 lastError=null。"
+              ],
+              "refs": [
+                "docs/vision/gdd_v3_backend_design.md",
+                "docs/process/dedicated-browser-acceptance-replay-gate.md",
+                "server/tools/acceptance/dedicated_browser_replay_gate.mjs"
+              ],
+              "updated_at": "2026-04-23T21:43:38.630Z"
+            }
+          ],
+          "updated_at": "2026-04-23T21:43:38.630Z"
+        },
+        {
+          "id": "milestone-disciple-memory-relationship-and-sect-story-loop",
+          "title": "弟子记忆、关系与宗门故事反馈闭环",
+          "status": "accepted",
+          "summary": "加入轻量弟子记忆、关系标签和事件链反馈，把任务、外务、受伤、晋升、处罚、厚养和危机结果转化为宗门社会叙事。",
+          "acceptance_owner": "supervisor",
+          "current_subfunction_id": null,
+          "subfunctions": [
+            {
+              "id": "subfunction-implement-disciple-memory-and-relationship-tags",
+              "title": "实现弟子记忆与关系标签",
+              "owner_role": "engineer",
+              "status": "accepted",
+              "objective": "实现第一版 authority-owned 弟子记忆和关系标签，让完成外务、受伤、突破、晋升、处罚、厚养、战斗立功等经历影响满意、忠诚、任务意愿或事件选项。",
+              "done_when": [
+                "DiscipleState 或等价结构拥有有界记忆、关系标签、情绪标签和最近经历摘要。",
+                "记忆由 DomainEvent / ApplyEvent 从任务、外务、修炼、晋升、月结、事件和危机结果生成，不建立第二套日志系统。",
+                "记忆和关系标签能影响至少三类 authority 结果：满意/忠诚、任务意愿、晋升/考核、事件选项或风险响应。"
+              ],
+              "refs": [
+                "docs/vision/gdd_v3_backend_design.md",
+                "server/internal/slggame/sect"
+              ],
+              "updated_at": "2026-04-23T22:02:03.333Z"
+            },
+            {
+              "id": "subfunction-bind-disciple-memory-diary-and-story-feedback-client-surface",
+              "title": "绑定弟子记忆、日记与故事反馈界面",
+              "owner_role": "engineer",
+              "status": "accepted",
+              "objective": "让名册、日记和事件面板展示弟子近期经历、关系标签、情绪变化、关键记忆和事件链摘要，使数值变化有可读故事反馈。",
+              "done_when": [
+                "客户端只消费 authority 记忆、日记、关系和事件反馈摘要。",
+                "玩家能在名册中看到每名弟子的关键经历、情绪标签、满意/忠诚原因和近期变化来源。",
+                "客户端不本地生成记忆、关系、满意原因或事件后续。"
+              ],
+              "refs": [
+                "docs/vision/gdd_v3_backend_design.md",
+                "docs/architecture/client-structure.md",
+                "client/my-immortal-sect/assets/scripts/app/sect-map-bootstrap.ts"
+              ],
+              "updated_at": "2026-04-23T22:08:54.313Z"
+            },
+            {
+              "id": "subfunction-prove-memory-relationship-restore-and-feedback",
+              "title": "验证记忆关系与故事反馈连续性",
+              "owner_role": "engineer",
+              "status": "accepted",
+              "objective": "用 deterministic replay 和 browser gate 验证弟子记忆、关系标签、事件链反馈、restore 与 offline 连续性。",
+              "done_when": [
+                "服务端测试覆盖多名弟子在外务、受伤、晋升、月结、事件选择后的记忆与关系标签变化。",
+                "restore_latest 与 offline catch-up 后记忆、日记、关系标签和故事反馈与连续分支一致。",
+                "dedicated browser gate 能打开名册/日记并输出至少三类可读故事反馈和 bounded JSON 证据。"
+              ],
+              "refs": [
+                "docs/vision/gdd_v3_backend_design.md",
+                "docs/process/dedicated-browser-acceptance-replay-gate.md",
+                "server/tools/acceptance/dedicated_browser_replay_gate.mjs"
+              ],
+              "updated_at": "2026-04-23T22:30:41.542Z"
+            }
+          ],
+          "updated_at": "2026-04-23T22:30:41.542Z"
+        },
+        {
+          "id": "milestone-sect-goals-crisis-chain-and-monthly-assessment-loop",
+          "title": "宗门目标、危机链与月度小比闭环",
+          "status": "accepted",
+          "summary": "加入短期目标、连续危机链、治疗恢复、安全秩序和月度小比雏形，让玩家每 30-90 天形成明确经营目标和阶段反馈。",
+          "acceptance_owner": "supervisor",
+          "current_subfunction_id": null,
+          "subfunctions": [
+            {
+              "id": "subfunction-implement-sect-goals-and-crisis-chain-events",
+              "title": "实现宗门目标与危机链事件",
+              "owner_role": "engineer",
+              "status": "accepted",
+              "objective": "实现第一版宗门目标和危机链：例如建成洞府、培养内门、完成外务、稳定月结；危机按预兆、小危机、选择、后续结果推进。",
+              "done_when": [
+                "SectState 拥有有界宗门目标、进度、奖励和完成/失败状态。",
+                "危机链事件必须先有预兆，再进入选择或结果阶段；重大结果不能在玩家无选择时静默触发。",
+                "目标与危机链通过 DomainEvent / ApplyEvent 影响名望、资源、满意、风险、任务或弟子记忆。"
+              ],
+              "refs": [
+                "docs/vision/gdd_v3_backend_design.md",
+                "server/internal/slggame/sect"
+              ],
+              "updated_at": "2026-04-23T22:52:48.333Z"
+            },
+            {
+              "id": "subfunction-implement-treatment-order-and-monthly-assessment-baseline",
+              "title": "实现治疗、秩序与月度小比雏形",
+              "owner_role": "engineer",
+              "status": "accepted",
+              "objective": "实现药庐治疗、伤病恢复、安全/秩序值和月度小比雏形，让外务风险、弟子成长和宗门制度形成月度反馈。",
+              "done_when": [
+                "治疗恢复消耗药材、丹药或药庐容量，并通过 authority 事件修改伤病、压力、满意或任务可用性。",
+                "安全/秩序值由山门守卫、政策、执法严格度、事件和弟子满意影响，并反向影响危机或内斗概率。",
+                "月度小比作为宗门内部简化结算，产出名望、贡献、晋升资格、弟子记忆或关系变化，不实现完整年度大比淘汰赛。"
+              ],
+              "refs": [
+                "docs/vision/gdd_v3_backend_design.md",
+                "server/internal/slggame/sect"
+              ],
+              "updated_at": "2026-04-23T23:11:31.181Z"
+            },
+            {
+              "id": "subfunction-bind-goals-crisis-treatment-and-assessment-client-surfaces",
+              "title": "绑定目标、危机、治疗与小比薄客户端界面",
+              "owner_role": "engineer",
+              "status": "accepted",
+              "objective": "让宗务、事件、名册和药庐界面展示目标进度、危机阶段、治疗队列、安全秩序、月度小比结果，并只提交 authority 玩家意图。",
+              "done_when": [
+                "客户端展示宗门目标、危机链阶段、治疗恢复、安全/秩序、小比结果和后续建议。",
+                "治疗、目标领取、危机选择、小比报名或处理只提交 authority 意图。",
+                "客户端不本地改变目标奖励、危机结果、治疗结算、秩序值或小比结果。"
+              ],
+              "refs": [
+                "docs/vision/gdd_v3_backend_design.md",
+                "docs/architecture/client-structure.md",
+                "client/my-immortal-sect/assets/scripts/app/sect-map-bootstrap.ts"
+              ],
+              "updated_at": "2026-04-23T23:25:44.459Z"
+            },
+            {
+              "id": "subfunction-build-expansion-risk-120-day-acceptance-gate",
+              "title": "构建扩张风险 120 日综合验收门禁",
+              "owner_role": "engineer",
+              "status": "accepted",
+              "objective": "扩展服务端 golden simulation 和 dedicated browser gate，覆盖宗门等级、建筑维护、机构管理、外务探索、法器装备、阵法防御、弟子记忆、宗门目标、危机链、治疗、小比、restore 和 offline continuity。",
+              "done_when": [
+                "存在固定随机种子的 90-120 天服务端 golden simulation，验证扩张收益、维护压力、风险升级、防御配置、弟子成长、外务收益、装备影响、阵法效果、记忆反馈和月度阶段目标。",
+                "dedicated browser gate 能独立复跑压缩中期经营流程：升级宗门、配置机构、派外务、装备法器、挂接阵法、处理危机、治疗弟子、完成小比或目标，并输出 bounded JSON 证据。",
+                "restore_latest 与 offline catch-up 后的建筑、机构、任务、风险、装备、阵法、弟子记忆、目标、危机链、治疗、小比和核心指标与连续 authority 分支一致。"
+              ],
+              "refs": [
+                "docs/vision/gdd_v3_backend_design.md",
+                "docs/process/dedicated-browser-acceptance-replay-gate.md",
                 "docs/process/dedicated-browser-workflow.md",
-                "docs/plans/authority-first-runtime-rebuild.md"
+                "server/tools/acceptance/dedicated_browser_replay_gate.mjs"
               ],
-              "updated_at": "2026-04-22T03:30:54.000Z"
+              "updated_at": "2026-04-24T00:27:12.061Z"
             }
           ],
-          "updated_at": "2026-04-22T03:30:54.000Z"
+          "updated_at": "2026-04-24T00:27:12.061Z"
         }
       ],
-      "updated_at": "2026-04-22T03:30:54.000Z"
+      "updated_at": "2026-04-24T00:27:12.061Z"
     }
   ]
 }

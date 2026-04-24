@@ -1,5 +1,10 @@
 # M0 技术垂直切片计划
 
+> **状态说明**：historical / superseded
+> 本文件是早期 M0 切片计划，已不再定义当前产品与后端主线。当前主规范见：
+> - [docs/vision/gdd_v3_backend_design.md](/Users/mawei/MyWork/SlgGame/docs/vision/gdd_v3_backend_design.md)
+> - [docs/plans/gdd-v3-authority-core-bootstrap.md](/Users/mawei/MyWork/SlgGame/docs/plans/gdd-v3-authority-core-bootstrap.md)
+
 **状态**: 草案 (Draft)
 **最后更新**: 2026-04-15
 **依赖**:

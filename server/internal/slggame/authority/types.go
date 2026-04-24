@@ -120,6 +120,7 @@ type TileCoord struct {
 type ResourceNodeSnapshot struct {
 	Tile              TileCoord         `json:"tile"`
 	Kind              ResourceKind      `json:"kind"`
+	Designated        bool              `json:"designated"`
 	State             ResourceNodeState `json:"state"`
 	RemainingCharges  int               `json:"remainingCharges"`
 	MaxCharges        int               `json:"maxCharges"`
@@ -135,6 +136,10 @@ type BuildingSnapshot struct {
 	Level               int               `json:"level"`
 	HP                  int               `json:"hp"`
 	MaxHP               int               `json:"maxHp"`
+	Durability          int               `json:"durability"`
+	Efficiency          int               `json:"efficiency"`
+	MaintenanceDebt     int               `json:"maintenanceDebt"`
+	DamagedReason       *string           `json:"damagedReason"`
 	MarkedForDemolition bool              `json:"markedForDemolition"`
 	PendingAction       *BuildingWorkKind `json:"pendingAction"`
 	PendingLevel        *int              `json:"pendingLevel"`
@@ -147,7 +152,7 @@ type DiscipleCarryingSnapshot struct {
 }
 
 type DiscipleSnapshot struct {
-	ArchetypeID             UnitArchetypeID           `json:"archetypeId"`
+	ArchetypeID            UnitArchetypeID          `json:"archetypeId"`
 	ID                     string                   `json:"id"`
 	Name                   string                   `json:"name"`
 	AssignmentKind         DiscipleAssignmentKind   `json:"assignmentKind"`
@@ -174,6 +179,27 @@ type HostileSnapshot struct {
 	TargetBuildingID *string         `json:"targetBuildingId"`
 }
 
+type DefenseSourceSummary struct {
+	Source string `json:"source"`
+	Label  string `json:"label"`
+	Delta  int    `json:"delta"`
+}
+
+type ExternalDefenseContext struct {
+	RiskIntensity           int                    `json:"riskIntensity"`
+	RiskMitigation          int                    `json:"riskMitigation"`
+	ThreatCurve             int                    `json:"threatCurve"`
+	GuardDiscipleCount      int                    `json:"guardDiscipleCount"`
+	DefenseFormationLevel   int                    `json:"defenseFormationLevel"`
+	CombatEquipmentBonus    int                    `json:"combatEquipmentBonus"`
+	InjuryMitigation        int                    `json:"injuryMitigation"`
+	PolicyDefenseBonus      int                    `json:"policyDefenseBonus"`
+	OmenStatus              string                 `json:"omenStatus"`
+	OmenText                string                 `json:"omenText"`
+	Summary                 string                 `json:"summary"`
+	SourceSummary           []DefenseSourceSummary `json:"sourceSummary,omitempty"`
+}
+
 type SessionProgressSnapshot struct {
 	Phase                  SessionPhase         `json:"phase"`
 	Outcome                SessionOutcome       `json:"outcome"`
@@ -187,6 +213,17 @@ type SessionProgressSnapshot struct {
 	RecoverReason          SessionRecoverReason `json:"recoverReason"`
 	DamagedBuildingCount   int                  `json:"damagedBuildingCount"`
 	RegeneratingNodeCount  int                  `json:"regeneratingNodeCount"`
+	RiskIntensity          int                  `json:"riskIntensity"`
+	RiskMitigation         int                  `json:"riskMitigation"`
+	ThreatCurve            int                  `json:"threatCurve"`
+	DefenseRating          int                  `json:"defenseRating"`
+	GuardDiscipleCount     int                  `json:"guardDiscipleCount"`
+	OmenStatus             string               `json:"omenStatus"`
+	OmenText               string               `json:"omenText"`
+	DefenseSummary         string               `json:"defenseSummary"`
+	DamageSummary          string               `json:"damageSummary"`
+	RepairSuggestion       string               `json:"repairSuggestion"`
+	SourceSummary          []DefenseSourceSummary `json:"sourceSummary,omitempty"`
 }
 
 type SessionSnapshot struct {
@@ -201,14 +238,16 @@ type SessionSnapshot struct {
 }
 
 type CommandEnvelope struct {
-	Name    string          `json:"name"`
-	Payload json.RawMessage `json:"payload"`
+	CommandID string          `json:"cmdId,omitempty"`
+	Name      string          `json:"name"`
+	Payload   json.RawMessage `json:"payload"`
 }
 
 type CommandResult struct {
-	Accepted bool   `json:"accepted"`
-	Event    string `json:"event"`
-	Message  string `json:"message"`
+	CommandID string `json:"cmdId,omitempty"`
+	Accepted  bool   `json:"accepted"`
+	Event     string `json:"event"`
+	Message   string `json:"message"`
 }
 
 type SessionBootstrapMode string
@@ -246,6 +285,11 @@ type ExecuteCommand struct {
 	Command     CommandEnvelope
 }
 
+type SyncExternalDefenseContext struct {
+	SessionID string
+	Context   ExternalDefenseContext
+}
+
 type PlayerIdentity struct {
 	PlayerID        string `json:"playerId"`
 	PlayerToken     string `json:"playerToken"`
@@ -268,5 +312,8 @@ type AuthoritySessionSaveEnvelope struct {
 	ConfigVersion     int    `json:"config_version"`
 	SessionID         string `json:"session_id"`
 	GameTick          int64  `json:"game_tick"`
+	SnapshotGameTick  int64  `json:"snapshot_game_tick,omitempty"`
 	StateBlob         []byte `json:"state_blob"`
+	ReplayLogBlob     []byte `json:"replay_log_blob,omitempty"`
+	CommandLogBlob    []byte `json:"command_log_blob,omitempty"`
 }

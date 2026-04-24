@@ -105,6 +105,11 @@ func (a *SessionActor) Receive(ctx *actor.Context) {
 			Snapshot: session.snapshot(),
 			Result:   &result,
 		})
+	case SyncExternalDefenseContext:
+		session := a.getOrCreateSession(msg.SessionID)
+		session.syncExternalDefenseContext(msg.Context)
+		a.captureSessionSave(session)
+		ctx.Respond(SessionResponse{Snapshot: session.snapshot()})
 	}
 }
 

@@ -1,14 +1,21 @@
 # F-004-sect-map-m1-gameplay-foundation
 
-**状态**: active  
-**Area**: design / client / server  
-**Owner**: `supervisor`  
-**Reviewer**: `engineer`  
+> **状态说明**：superseded / historical
+> 本文件记录 F-004 宗门地图 authority rebuild 历史。当前产品与后端主线已迁移到：
+> - [docs/vision/gdd_v3_backend_design.md](/Users/mawei/MyWork/SlgGame/docs/vision/gdd_v3_backend_design.md)
+> - [docs/decisions/0012-adopt-gdd-v3-authoritative-backend-gdd.md](/Users/mawei/MyWork/SlgGame/docs/decisions/0012-adopt-gdd-v3-authoritative-backend-gdd.md)
+>
+> 本文件不得再作为 active implementation spec。
+
+**状态**: accepted / historical baseline
+**Area**: design / client / server
+**Owner**: `supervisor`
+**Reviewer**: `engineer`
 **最后更新**: 2026-04-22
 
 ## Context
 
-`F-004` 是当前宗门地图 M1 主功能文档。
+`F-004` 是宗门地图 M1 authority 基线文档，也是当前仓库里已经沉淀完成的一段历史玩法/运行时基线。
 
 它承接了 `F-002` 留下的结论：
 
@@ -36,7 +43,19 @@ Use it in a bounded way:
 - use `docs/project/delivery-ledger.md` and `docs/project/decision-log.md` for detailed accepted history
 - do not treat this file as a second full-project plan
 
-## Current Goal
+## Current Role In The Project
+
+`F-004` 仍然重要，但它不再定义整个项目的产品主线。
+
+当前应按下面的层级理解它：
+
+- `gdd_v3_backend_design.md`：当前产品闭环与后端实现主规范
+- `development-plan.json`：从主规范导出的当前执行拆解
+- `F-004`：宗门地图 authority baseline、薄客户端经验与历史验收边界
+
+换句话说，`F-004` 现在服务于“宗门地图 authority 基线可复用”，而不是继续充当全项目的唯一玩法主线。
+
+## Historical Goal
 
 把宗门地图 M1 做成当前仓库中最可信的一条真实玩法主线：
 
@@ -91,21 +110,19 @@ Use it in a bounded way:
 - `M1-F`：authority 资源刷新与多轮短会话收口
 - 共享配置源收口：冻结 buildings / resources / phases 的第一份 shared config
 
-## Current Milestone
+## Historical Milestone Trail
 
-当前 milestone 以 `docs/project/development-plan.json` 为准。
-
-截至当前，`F-004` 对应的最近期开工重点是：
+`F-004` 关联过的 authority runtime rebuild 已经形成历史基线，主要包括：
 
 - 冻结 authority-only runtime contract，停止继续维护 hybrid 主线
 - 把 disciple assignment、build/repair completion、raid damage closure、post-raid continuity 全部收回 authority
 - 把验收从“子功能 bounded 点测”提升到“authority-only 整链 replay + engineer/supervisor 双重独立验证”
 
-如果你要确认当前第一条应执行的子功能，请读：
+如果你要确认当前真正的第一条应执行子功能，请读：
 
 - `docs/project/development-plan.json`
 - `docs/project/development.active.json`
-- `docs/plans/authority-first-runtime-rebuild.md`
+- `docs/vision/gdd_v3_backend_design.md`
 
 ## Transitional Client Debt Vs Permanent Design
 
@@ -147,7 +164,7 @@ Use it in a bounded way:
 - server 现存 authority 常量应在后续实现环节逐步迁入该 shared source，而不是继续加新常量
 - `shared/contracts/m1-authority-short-session-v1.md` 负责传输面，不再单独成为第二份规则表
 
-## Current Acceptance Boundary
+## Acceptance Boundary
 
 当前对 `F-004` 的正确表述必须保持克制：
 
@@ -159,7 +176,7 @@ Use it in a bounded way:
 
 - 历史 client-local 基线
 - authority bridge / first authority closure
-- authority-only runtime rebuild
+- authority-only runtime rebuild 历史基线
 - 或更后续的 formal protocol、平台壳与宗门扩展
 
 在当前里程碑下，以下内容都**不再**构成主玩法循环成立的充分证据：

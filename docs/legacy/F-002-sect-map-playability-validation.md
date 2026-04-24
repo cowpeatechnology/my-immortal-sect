@@ -1,9 +1,9 @@
 # F-002-sect-map-playability-validation
 
-**状态**: historical  
-**Area**: client / validation  
-**Owner**: `supervisor`  
-**Reviewer**: `human`  
+**状态**: historical
+**Area**: client / validation
+**Owner**: `supervisor`
+**Reviewer**: `human`
 **最后更新**: 2026-04-21
 
 ## Context
@@ -29,9 +29,9 @@ Read it when:
 
 For live execution, prefer:
 
+- `docs/vision/gdd_v3_backend_design.md`
 - `docs/project/development-plan.json`
 - `docs/project/development.active.json`
-- `docs/features/F-004-sect-map-m1-gameplay-foundation.md`
 
 ## Historical Goal
 

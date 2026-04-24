@@ -7,10 +7,60 @@ import (
 )
 
 const (
-	authoritySessionSchemaVersion     = 1
+	authoritySessionSchemaVersion     = 2
+	authoritySessionSchemaVersionV1   = 1
 	authoritySessionSimulationVersion = 1
 	authoritySessionConfigVersion     = 1
 )
+
+type persistedReplayEntryKind int
+
+const (
+	persistedReplayEntryKindUnspecified persistedReplayEntryKind = 0
+	persistedReplayEntryKindCommand     persistedReplayEntryKind = 1
+	persistedReplayEntryKindAdvanceTick persistedReplayEntryKind = 2
+	persistedReplayEntryKindDefenseSync persistedReplayEntryKind = 3
+)
+
+type persistedReplayEntry struct {
+	Kind           persistedReplayEntryKind
+	CommandID      string
+	CommandName    string
+	CommandPayload []byte
+	AdvanceSeconds int
+	DefenseContext ExternalDefenseContext
+}
+
+type persistedCommandLogEntry struct {
+	CommandID      string
+	CommandName    string
+	CommandPayload []byte
+	Result         CommandResult
+	ErrorMessage   string
+}
+
+func newPersistedCommandLogEntry(envelope CommandEnvelope, result CommandResult, err error) persistedCommandLogEntry {
+	entry := persistedCommandLogEntry{
+		CommandID:      envelope.CommandID,
+		CommandName:    envelope.Name,
+		CommandPayload: append([]byte(nil), envelope.Payload...),
+		Result:         result,
+	}
+	if entry.Result.CommandID == "" {
+		entry.Result.CommandID = envelope.CommandID
+	}
+	if err != nil {
+		entry.ErrorMessage = err.Error()
+	}
+	return entry
+}
+
+func (e persistedCommandLogEntry) outcome() (CommandResult, error) {
+	if e.ErrorMessage != "" {
+		return CommandResult{}, errors.New(e.ErrorMessage)
+	}
+	return e.Result, nil
+}
 
 type persistedBuildingEntity struct {
 	ID                  string            `json:"id"`
@@ -19,6 +69,9 @@ type persistedBuildingEntity struct {
 	State               BuildingState     `json:"state"`
 	Level               int               `json:"level"`
 	HP                  int               `json:"hp"`
+	Durability          int               `json:"durability"`
+	DamagedReason       string            `json:"damaged_reason,omitempty"`
+	RepairPressure      int               `json:"repair_pressure,omitempty"`
 	MarkedForDemolition bool              `json:"marked_for_demolition"`
 	PendingAction       *BuildingWorkKind `json:"pending_action,omitempty"`
 	PendingLevel        *int              `json:"pending_level,omitempty"`
@@ -30,6 +83,7 @@ type persistedBuildingEntity struct {
 type persistedResourceNodeEntity struct {
 	Kind              ResourceKind      `json:"kind"`
 	Tile              TileCoord         `json:"tile"`
+	Designated        bool              `json:"designated"`
 	State             ResourceNodeState `json:"state"`
 	RemainingCharges  int               `json:"remaining_charges"`
 	MaxCharges        int               `json:"max_charges"`
@@ -56,6 +110,9 @@ type persistedSessionState struct {
 	FirstRaidResolved      bool                          `json:"first_raid_resolved"`
 	RaidCountdownSeconds   int                           `json:"raid_countdown_seconds"`
 	DefendRemainingSeconds int                           `json:"defend_remaining_seconds"`
+	ExternalDefense        ExternalDefenseContext        `json:"external_defense,omitempty"`
+	LastDefenseSummary     string                        `json:"last_defense_summary,omitempty"`
+	LastDamageSummary      string                        `json:"last_damage_summary,omitempty"`
 }
 
 type persistedHostileEntity struct {
@@ -64,6 +121,9 @@ type persistedHostileEntity struct {
 	Name             string          `json:"name"`
 	Tile             TileCoord       `json:"tile"`
 	HP               int             `json:"hp"`
+	MaxHP            int             `json:"max_hp"`
+	AttackPower      int             `json:"attack_power"`
+	Defense          int             `json:"defense"`
 	VisualState      UnitVisualState `json:"visual_state"`
 	TargetBuildingID *string         `json:"target_building_id,omitempty"`
 	AttackCooldown   int             `json:"attack_cooldown"`
@@ -71,7 +131,22 @@ type persistedHostileEntity struct {
 }
 
 func (s *sessionState) exportSaveEnvelope() (AuthoritySessionSaveEnvelope, error) {
-	stateBlob, err := encodePersistedSessionStateProto(s.persistedState())
+	s.ensurePersistenceState()
+
+	snapshotBase := s.snapshotBase
+	if len(s.postSnapshotReplay) == 0 {
+		snapshotBase = s.persistedState()
+	}
+
+	stateBlob, err := encodePersistedSessionStateProto(snapshotBase)
+	if err != nil {
+		return AuthoritySessionSaveEnvelope{}, err
+	}
+	replayLogBlob, err := encodePersistedReplayLogProto(s.postSnapshotReplay)
+	if err != nil {
+		return AuthoritySessionSaveEnvelope{}, err
+	}
+	commandLogBlob, err := encodePersistedCommandLogProto(s.sortedCommandLogEntries())
 	if err != nil {
 		return AuthoritySessionSaveEnvelope{}, err
 	}
@@ -82,12 +157,15 @@ func (s *sessionState) exportSaveEnvelope() (AuthoritySessionSaveEnvelope, error
 		ConfigVersion:     authoritySessionConfigVersion,
 		SessionID:         s.SessionID,
 		GameTick:          s.GameTick,
+		SnapshotGameTick:  snapshotBase.GameTick,
 		StateBlob:         stateBlob,
+		ReplayLogBlob:     replayLogBlob,
+		CommandLogBlob:    commandLogBlob,
 	}, nil
 }
 
 func restoreSessionStateFromSaveEnvelope(save AuthoritySessionSaveEnvelope) (*sessionState, error) {
-	if save.SchemaVersion != authoritySessionSchemaVersion {
+	if save.SchemaVersion != authoritySessionSchemaVersion && save.SchemaVersion != authoritySessionSchemaVersionV1 {
 		return nil, fmt.Errorf("unsupported authority session schema version: %d", save.SchemaVersion)
 	}
 	if save.SimulationVersion != authoritySessionSimulationVersion {
@@ -111,8 +189,12 @@ func restoreSessionStateFromSaveEnvelope(save AuthoritySessionSaveEnvelope) (*se
 	if normalizedSessionID(save.SessionID) != normalizedSessionID(persisted.SessionID) {
 		return nil, fmt.Errorf("authority session envelope session_id %q does not match state blob session_id %q", save.SessionID, persisted.SessionID)
 	}
-	if save.GameTick != persisted.GameTick {
-		return nil, fmt.Errorf("authority session envelope game_tick %d does not match state blob game_tick %d", save.GameTick, persisted.GameTick)
+	expectedSnapshotTick := save.GameTick
+	if save.SchemaVersion >= authoritySessionSchemaVersion {
+		expectedSnapshotTick = save.SnapshotGameTick
+	}
+	if expectedSnapshotTick != persisted.GameTick {
+		return nil, fmt.Errorf("authority session envelope snapshot game_tick %d does not match state blob game_tick %d", expectedSnapshotTick, persisted.GameTick)
 	}
 
 	state := &sessionState{
@@ -133,6 +215,12 @@ func restoreSessionStateFromSaveEnvelope(save AuthoritySessionSaveEnvelope) (*se
 		FirstRaidResolved:      persisted.FirstRaidResolved,
 		RaidCountdownSeconds:   persisted.RaidCountdownSeconds,
 		DefendRemainingSeconds: persisted.DefendRemainingSeconds,
+		ExternalDefense:        normalizeExternalDefenseContext(persisted.ExternalDefense),
+		LastDefenseSummary:     persisted.LastDefenseSummary,
+		LastDamageSummary:      persisted.LastDamageSummary,
+		snapshotBase:           persisted,
+		postSnapshotReplay:     nil,
+		commandLog:             map[string]persistedCommandLogEntry{},
 	}
 
 	for _, node := range persisted.ResourceNodes {
@@ -140,6 +228,7 @@ func restoreSessionStateFromSaveEnvelope(save AuthoritySessionSaveEnvelope) (*se
 		state.ResourceNodes[resourceTileKey(copied.Tile)] = &resourceNodeEntity{
 			Kind:              copied.Kind,
 			Tile:              copied.Tile,
+			Designated:        copied.Designated,
 			State:             copied.State,
 			RemainingCharges:  copied.RemainingCharges,
 			MaxCharges:        copied.MaxCharges,
@@ -150,6 +239,10 @@ func restoreSessionStateFromSaveEnvelope(save AuthoritySessionSaveEnvelope) (*se
 
 	for _, building := range persisted.Buildings {
 		copied := building
+		durability := copied.Durability
+		if durability <= 0 && copied.HP > 0 {
+			durability = clampInt(int(float64(copied.HP)/float64(maxInt(1, getBuildingMaxHP(copied.Type, copied.Level)))*100), 1, 100)
+		}
 		state.Buildings[copied.ID] = &buildingEntity{
 			ID:                  copied.ID,
 			Type:                copied.Type,
@@ -157,6 +250,9 @@ func restoreSessionStateFromSaveEnvelope(save AuthoritySessionSaveEnvelope) (*se
 			State:               copied.State,
 			Level:               copied.Level,
 			HP:                  copied.HP,
+			Durability:          durability,
+			DamagedReason:       copied.DamagedReason,
+			RepairPressure:      copied.RepairPressure,
 			MarkedForDemolition: copied.MarkedForDemolition,
 			PendingAction:       copied.PendingAction,
 			PendingLevel:        copied.PendingLevel,
@@ -167,12 +263,18 @@ func restoreSessionStateFromSaveEnvelope(save AuthoritySessionSaveEnvelope) (*se
 	}
 
 	if persisted.Hostile != nil {
+		hostileMaxHP := choosePositiveInt(persisted.Hostile.MaxHP, mustUnitArchetype(persisted.Hostile.ArchetypeID).Stats.MaxHP)
+		hostileAttackPower := choosePositiveInt(persisted.Hostile.AttackPower, mustUnitArchetype(persisted.Hostile.ArchetypeID).Stats.AttackPower)
+		hostileDefense := choosePositiveInt(persisted.Hostile.Defense, mustUnitArchetype(persisted.Hostile.ArchetypeID).Stats.Defense)
 		state.Hostile = &hostileEntity{
 			ID:               persisted.Hostile.ID,
 			ArchetypeID:      persisted.Hostile.ArchetypeID,
 			Name:             persisted.Hostile.Name,
 			Tile:             persisted.Hostile.Tile,
 			HP:               persisted.Hostile.HP,
+			MaxHP:            hostileMaxHP,
+			AttackPower:      hostileAttackPower,
+			Defense:          hostileDefense,
 			VisualState:      persisted.Hostile.VisualState,
 			TargetBuildingID: persisted.Hostile.TargetBuildingID,
 			AttackCooldown:   persisted.Hostile.AttackCooldown,
@@ -186,8 +288,111 @@ func restoreSessionStateFromSaveEnvelope(save AuthoritySessionSaveEnvelope) (*se
 	if state.DiscipleHP <= 0 {
 		state.DiscipleHP = mustUnitArchetype(UnitArchetypeSectDisciple).Stats.MaxHP
 	}
+
+	if len(save.ReplayLogBlob) > 0 {
+		replayLog, err := decodePersistedReplayLogProto(save.ReplayLogBlob)
+		if err != nil {
+			return nil, err
+		}
+		for _, entry := range replayLog {
+			if err := state.applyReplayEntry(entry); err != nil {
+				return nil, err
+			}
+		}
+		state.postSnapshotReplay = replayLog
+	}
+
+	if len(save.CommandLogBlob) > 0 {
+		commandEntries, err := decodePersistedCommandLogProto(save.CommandLogBlob)
+		if err != nil {
+			return nil, err
+		}
+		for _, entry := range commandEntries {
+			state.commandLog[entry.CommandID] = entry
+		}
+	}
+
+	if save.GameTick != state.GameTick {
+		return nil, fmt.Errorf("authority session envelope game_tick %d does not match restored game_tick %d", save.GameTick, state.GameTick)
+	}
 	state.syncDerivedProgress()
 	return state, nil
+}
+
+func (s *sessionState) ensurePersistenceState() {
+	if s.commandLog == nil {
+		s.commandLog = map[string]persistedCommandLogEntry{}
+	}
+	if s.snapshotBase.SessionID == "" {
+		s.snapshotBase = s.persistedState()
+	}
+}
+
+func (s *sessionState) resetPersistenceBaseline() {
+	s.snapshotBase = s.persistedState()
+	s.postSnapshotReplay = nil
+	s.commandLog = map[string]persistedCommandLogEntry{}
+}
+
+func (s *sessionState) recordReplayCommand(envelope CommandEnvelope) {
+	s.postSnapshotReplay = append(s.postSnapshotReplay, persistedReplayEntry{
+		Kind:           persistedReplayEntryKindCommand,
+		CommandID:      envelope.CommandID,
+		CommandName:    envelope.Name,
+		CommandPayload: append([]byte(nil), envelope.Payload...),
+	})
+}
+
+func (s *sessionState) recordReplayAdvance(seconds int) {
+	s.postSnapshotReplay = append(s.postSnapshotReplay, persistedReplayEntry{
+		Kind:           persistedReplayEntryKindAdvanceTick,
+		AdvanceSeconds: seconds,
+	})
+}
+
+func (s *sessionState) recordReplayDefenseContext(context ExternalDefenseContext) {
+	s.postSnapshotReplay = append(s.postSnapshotReplay, persistedReplayEntry{
+		Kind:           persistedReplayEntryKindDefenseSync,
+		DefenseContext: normalizeExternalDefenseContext(context),
+	})
+}
+
+func (s *sessionState) applyReplayEntry(entry persistedReplayEntry) error {
+	switch entry.Kind {
+	case persistedReplayEntryKindCommand:
+		_, err := s.executeCommandOnce(CommandEnvelope{
+			CommandID: entry.CommandID,
+			Name:      entry.CommandName,
+			Payload:   append([]byte(nil), entry.CommandPayload...),
+		})
+		return err
+	case persistedReplayEntryKindAdvanceTick:
+		s.advanceResourceNodes(entry.AdvanceSeconds)
+		if len(s.postSnapshotReplay) > 0 {
+			s.postSnapshotReplay = s.postSnapshotReplay[:len(s.postSnapshotReplay)-1]
+		}
+		return nil
+	case persistedReplayEntryKindDefenseSync:
+		beforeLen := len(s.postSnapshotReplay)
+		s.syncExternalDefenseContext(entry.DefenseContext)
+		if len(s.postSnapshotReplay) > beforeLen {
+			s.postSnapshotReplay = s.postSnapshotReplay[:len(s.postSnapshotReplay)-1]
+		}
+		return nil
+	default:
+		return fmt.Errorf("unsupported replay entry kind: %d", entry.Kind)
+	}
+}
+
+func (s *sessionState) sortedCommandLogEntries() []persistedCommandLogEntry {
+	entries := make([]persistedCommandLogEntry, 0, len(s.commandLog))
+	for _, entry := range s.commandLog {
+		entries = append(entries, entry)
+	}
+	sort.Slice(entries, func(i, j int) bool {
+		return entries[i].CommandID < entries[j].CommandID
+	})
+	return entries
 }
 
 func (s *sessionState) persistedState() persistedSessionState {
@@ -196,6 +401,7 @@ func (s *sessionState) persistedState() persistedSessionState {
 		resourceNodes = append(resourceNodes, persistedResourceNodeEntity{
 			Kind:              node.Kind,
 			Tile:              node.Tile,
+			Designated:        node.Designated,
 			State:             node.State,
 			RemainingCharges:  node.RemainingCharges,
 			MaxCharges:        node.MaxCharges,
@@ -216,6 +422,9 @@ func (s *sessionState) persistedState() persistedSessionState {
 			State:               building.State,
 			Level:               building.Level,
 			HP:                  building.HP,
+			Durability:          building.Durability,
+			DamagedReason:       building.DamagedReason,
+			RepairPressure:      building.RepairPressure,
 			MarkedForDemolition: building.MarkedForDemolition,
 			PendingAction:       building.PendingAction,
 			PendingLevel:        building.PendingLevel,
@@ -247,6 +456,9 @@ func (s *sessionState) persistedState() persistedSessionState {
 		FirstRaidResolved:      s.FirstRaidResolved,
 		RaidCountdownSeconds:   s.RaidCountdownSeconds,
 		DefendRemainingSeconds: s.DefendRemainingSeconds,
+		ExternalDefense:        normalizeExternalDefenseContext(s.ExternalDefense),
+		LastDefenseSummary:     s.LastDefenseSummary,
+		LastDamageSummary:      s.LastDamageSummary,
 	}
 }
 
@@ -260,6 +472,9 @@ func (s *sessionState) persistedHostile() *persistedHostileEntity {
 		Name:             s.Hostile.Name,
 		Tile:             s.Hostile.Tile,
 		HP:               s.Hostile.HP,
+		MaxHP:            s.Hostile.MaxHP,
+		AttackPower:      s.Hostile.AttackPower,
+		Defense:          s.Hostile.Defense,
 		VisualState:      s.Hostile.VisualState,
 		TargetBuildingID: s.Hostile.TargetBuildingID,
 		AttackCooldown:   s.Hostile.AttackCooldown,

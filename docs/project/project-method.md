@@ -10,7 +10,8 @@ The project no longer uses two active planning systems in parallel.
 The current Coordex V2 execution truth is:
 
 - root rules: `AGENTS.md`
-- North Star: `docs/vision/design-decisions.md`
+- North Star: `docs/vision/gdd_v3_backend_design.md`
+- Adoption decision: `docs/decisions/0012-adopt-gdd-v3-authoritative-backend-gdd.md`
 - full project route: `docs/project/development-plan.json`
 - active pointer: `docs/project/development.active.json`
 - durable event log: `docs/project/development.log.jsonl`
@@ -47,7 +48,7 @@ If another document still describes `.coordex/current-plan.md`, `.coordex/plan-h
 
 ### `docs/project/development-plan.json`
 
-This is the only authoritative full-route plan.
+This is the only authoritative execution route derived from the active GDD.
 
 Use it for:
 
